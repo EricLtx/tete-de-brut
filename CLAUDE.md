@@ -15,6 +15,7 @@ préfixe stable que le cache de prompt réutilise d'une session à l'autre ; met
 | `01_Docs/00_Index/` | Point d'entrée de la documentation : index, registre des décisions, registre de la documentation |
 | `01_Docs/07_Decisions/` | Décisions structurantes (ADR) et gabarit ; ADR-0001 : périmètre et pile du service |
 | `01_Docs/08_Plans/` | Plan de construction du service (fiches S01 à S10), à relire avant un mandat et à aligner à chaque étape |
+| `01_Docs/05_Integration/` | Guide de branchement des écrans Lovable et d'Oriane sur le service |
 | `01_Docs/04_CICD/` | Pipeline, gardes, intégration continue hébergée, règles d'efficience des mandats |
 | `04_Pipeline/` | Pipeline locale : `ci.sh`, `build.sh`, `check-docs.sh`, `doctor.sh`, gardes git `hooks/` |
 | `.github/workflows/` | Intégration continue GitHub : rejoue `04_Pipeline/ci.sh`, rien d'autre |
