@@ -1,7 +1,7 @@
 ---
 mandat: F013
 titre: Job GitHub « reel » à la demande — appel réel Oriane et parcours contre un service lancé
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: hors fiche (vérification avant H07)
 branche: pipeline/ci-reel (part de main)
@@ -10,7 +10,7 @@ modele: sonnet
 effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T13:30Z
 rendu_a:
 go_a:
 allers_retours: 0
@@ -46,3 +46,4 @@ sha ; `git diff --stat` ; run `pipeline` et run `reel` ; écarts ; points ouvert
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | orchestrateur (session service) | Lancé sur `pipeline/ci-reel` (worktree `.claude/worktrees/pipeline-ci-reel`), réalisateur sonnet / medium. Le secret `ORIANE_API_KEY` du dépôt GitHub est à poser par le propriétaire (`gh secret set ORIANE_API_KEY`), jamais par un agent ; le run `reel` ne peut être vert qu'après. |
