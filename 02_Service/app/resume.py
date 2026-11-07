@@ -21,10 +21,10 @@ import time
 
 from app import base, modele_langue
 from app.config import Configuration, ErreurConfiguration
+from app.filtre_sortie import motif_decision, motif_libelle
 from app.libelles import contient_libelle_refuse
 from app.modele_langue import ErreurModele, ExtraitModele
 from app.modeles import METHODE_GABARIT_V1, Ecart, Operation, Resume, Segment
-from app.mots import normaliser
 
 journal = logging.getLogger("tete_de_brut")
 
@@ -142,9 +142,9 @@ def resumer_par_gabarit(comparaison: Ecart) -> Resume:
 ROUTE_JOURNAL_MODELE = "resume.modele"
 METHODE_MODELE = "rédigé par un modèle de langue ({modele}), à relire"
 LIMITE_PHRASES_MODELE = 4
-# Valeurs de décision (`decision.v1`) qu'un résumé du modèle ne doit jamais écrire.
-DECISIONS_INTERDITES = (("ne", "pas", "amplifier"), ("prêt", "à", "traiter"))
-_FIN_DE_PHRASE = re.compile(r"[.!?…]+(?:\s|$)")
+_FIN_DE_PHRASE = re.compile(r"[.!?]+(?=\s|$)")
+_BALISE = re.compile(r"<[^>]*>")
+_MISE_EN_FORME = re.compile(r"^\s*(?:#|[-*•]\s|\d+[.)]\s)", re.MULTILINE)
 
 
 def extraits_pour_modele(comparaison: Ecart) -> list[ExtraitModele]:
@@ -168,16 +168,23 @@ def _configuration() -> Configuration | None:
         return None
 
 
+def assainir(texte: str) -> str:
+    """Texte simple sur une ligne : balises HTML retirées, blancs et sauts de ligne réduits à une espace."""
+    return " ".join(_BALISE.sub(" ", texte).replace("<", " ").replace(">", " ").split())
+
+
+def nombre_de_phrases(texte: str) -> int:
+    """Segments non vides séparés par une fin de phrase ; le « … » d'un extrait coupé n'en marque pas."""
+    return len([s for s in _FIN_DE_PHRASE.split(texte.replace("…", " ")) if s.strip()])
+
+
 def _raison_de_refus(texte: str) -> str | None:
     """Pourquoi un texte du modèle ne peut pas être servi, ou `None` s'il passe le filtre."""
-    if contient_libelle_refuse(texte) is not None:
+    if contient_libelle_refuse(texte) is not None or motif_libelle(texte) is not None:
         return "résumé du modèle refusé : libellé"
-    mots = normaliser(texte)
-    for interdite in DECISIONS_INTERDITES:
-        n = len(interdite)
-        if any(tuple(mots[i : i + n]) == interdite for i in range(len(mots) - n + 1)):
-            return "résumé du modèle refusé : décision"
-    if len(_FIN_DE_PHRASE.findall(texte.strip())) > LIMITE_PHRASES_MODELE:
+    if motif_decision(texte) is not None:
+        return "résumé du modèle refusé : décision"
+    if nombre_de_phrases(texte) > LIMITE_PHRASES_MODELE:
         return "résumé du modèle refusé : plus de quatre phrases"
     return None
 
@@ -208,7 +215,11 @@ def resumer(comparaison: Ecart) -> Resume:
     except ErreurModele as exc:
         _consigner_modele(exc.raison, config, debut, exc.code)
         return gabarit
-    raison = _raison_de_refus(texte)
+    if _MISE_EN_FORME.search(texte):
+        _consigner_modele("résumé du modèle refusé : mise en forme", config, debut, 200)
+        return gabarit
+    texte = assainir(texte)
+    raison = "résumé du modèle refusé : réponse vide" if not texte else _raison_de_refus(texte)
     if raison is not None:
         _consigner_modele(raison, config, debut, 200)
         return gabarit

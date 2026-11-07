@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
+from starlette.concurrency import run_in_threadpool
 
 from app import base
 from app.ecart import TYPE_DOCUMENT as TYPE_ECART
@@ -61,8 +62,15 @@ async def creer_fiche(demande: DemandeFiche, request: Request, response: Respons
         enregistre_le = (
             comparaison.enregistre_le.isoformat() if comparaison.enregistre_le else base.maintenant()
         )
-    fiche = construire_fiche(
-        comparaison, videos[0], videos[1], mode=mode, enregistre_le=enregistre_le, heure=base.maintenant()
+    # Le résumé peut appeler un modèle de langue (S10) : hors de la boucle, sans bloquer les autres.
+    fiche = await run_in_threadpool(
+        construire_fiche,
+        comparaison,
+        videos[0],
+        videos[1],
+        mode=mode,
+        enregistre_le=enregistre_le,
+        heure=base.maintenant(),
     )
     return _enregistrer(fiche, "creation")
 
