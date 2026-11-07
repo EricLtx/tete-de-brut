@@ -1,6 +1,51 @@
 {
   "components": {
     "schemas": {
+      "Apercu": {
+        "additionalProperties": false,
+        "description": "Vignette et images clés de la vidéo, adresses relayées telles que servies par Oriane.",
+        "properties": {
+          "images_cles": {
+            "description": "Adresses des images clés, dix au plus.",
+            "items": {
+              "pattern": "^https://\\S+$",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Images Cles",
+            "type": "array"
+          },
+          "lue_le": {
+            "format": "date-time",
+            "title": "Lue Le",
+            "type": "string"
+          },
+          "source": {
+            "const": "Oriane",
+            "default": "Oriane",
+            "title": "Source",
+            "type": "string"
+          },
+          "vignette": {
+            "anyOf": [
+              {
+                "pattern": "^https://\\S+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Adresse de la vignette, si servie.",
+            "title": "Vignette"
+          }
+        },
+        "required": [
+          "lue_le"
+        ],
+        "title": "Apercu",
+        "type": "object"
+      },
       "AttributionTranscription": {
         "additionalProperties": false,
         "description": "Attribution d'une transcription comparée : toujours Oriane, avec l'heure de lecture.",
@@ -1235,6 +1280,17 @@
         "additionalProperties": false,
         "description": "Vidéo `video.v1` : seuls les champs de la liste blanche, sans aucune donnée de tiers.",
         "properties": {
+          "apercu": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Apercu"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aperçu relayé par Oriane ; absent quand Oriane n'en sert aucun."
+          },
           "compte": {
             "minLength": 1,
             "title": "Compte",
