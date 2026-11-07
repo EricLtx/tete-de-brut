@@ -77,10 +77,16 @@ def construire_corps(
     comptes: Sequence[str] = (),
     fenetre: Fenetre | None = None,
     plateformes: Sequence[str] = (),
+    comptes_exclus: Sequence[str] = (),
+    identifiants_plateforme: Sequence[tuple[str, str]] = (),
 ) -> dict[str, Any]:
-    """Corps de `POST /rest/contents/search` : une phrase exacte, dite ou écrite à l'écran."""
+    """Corps de `POST /rest/contents/search` : une phrase exacte, dite ou écrite à l'écran.
+
+    `comptes_exclus` écarte des comptes ; `identifiants_plateforme` (couples plateforme et identifiant)
+    cherche des vidéos par leur lien, sans phrase.
+    """
     nettoyees = [p.strip() for p in phrases if p and p.strip()]
-    if not nettoyees:
+    if not nettoyees and not identifiants_plateforme:
         raise RequeteInvalide("requête refusée : au moins une phrase est nécessaire")
     if any(len(p) > liste_blanche.LONGUEUR_MAX_PHRASE for p in nettoyees):
         raise RequeteInvalide(
@@ -88,10 +94,25 @@ def construire_corps(
         )
     nettoyees = list(dict.fromkeys(nettoyees))
     filtres: dict[str, Any] = {}
+    filtre_compte: dict[str, Any] = {}
     if comptes:
-        filtres[liste_blanche.FILTRE_COMPTE] = {liste_blanche.OPERATEUR_COMPTES: [c.strip() for c in comptes]}
+        filtre_compte[liste_blanche.OPERATEUR_COMPTES] = [c.strip() for c in comptes]
+    if comptes_exclus:
+        filtre_compte[liste_blanche.OPERATEUR_COMPTES_EXCLUS] = {
+            "values": [c.strip() for c in comptes_exclus],
+            "operator": "or",
+        }
+    if filtre_compte:
+        filtres[liste_blanche.FILTRE_COMPTE] = filtre_compte
     if plateformes:
         filtres[liste_blanche.FILTRE_PLATEFORME] = {liste_blanche.OPERATEUR_PLATEFORMES: list(plateformes)}
+    if identifiants_plateforme:
+        filtres[liste_blanche.FILTRE_IDENTIFIANT] = {
+            liste_blanche.OPERATEUR_IDENTIFIANTS: [
+                {"platform": plateforme, "platformId": identifiant}
+                for plateforme, identifiant in identifiants_plateforme
+            ]
+        }
     if fenetre is not None:
         if fenetre.fin < fenetre.debut:
             raise RequeteInvalide("requête refusée : la fenêtre se termine avant de commencer")
@@ -113,15 +134,19 @@ def construire_corps(
                     "filters": {filtre: groupe},
                 }
             )
-    dit_ou_ecrit = {"name": liste_blanche.REQUETE_DIT_OU_ECRIT, "operator": "or", "queries": enfants}
-    return {"name": NOM_REQUETE, "operator": "and", "filters": filtres, "queries": [dit_ou_ecrit]}
+    corps: dict[str, Any] = {"name": NOM_REQUETE, "operator": "and", "filters": filtres}
+    if enfants:  # une recherche par lien n'a aucune phrase, donc aucune sous-requête
+        corps["queries"] = [
+            {"name": liste_blanche.REQUETE_DIT_OU_ECRIT, "operator": "or", "queries": enfants}
+        ]
+    return corps
 
 
 def _phrases_du_corps(corps: dict[str, Any]) -> list[dict[str, Any]]:
     """Phrases cherchées, dans l'ordre, lues dans les sous-requêtes `dit:` du corps."""
     return [
         q["filters"][liste_blanche.FILTRE_TRANSCRIPTION][liste_blanche.OPERATEUR_PHRASES]
-        for q in corps["queries"][0]["queries"]
+        for q in (corps["queries"][0]["queries"] if "queries" in corps else [])
         if liste_blanche.FILTRE_TRANSCRIPTION in q["filters"]
     ]
 
@@ -168,6 +193,8 @@ async def rechercher(
     *,
     config: Configuration,
     plateformes: Sequence[str] = (),
+    comptes_exclus: Sequence[str] = (),
+    identifiants_plateforme: Sequence[tuple[str, str]] = (),
     limite: int = TAILLE_PAGE,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> ResultatRecherche:
@@ -176,7 +203,7 @@ async def rechercher(
     Lève `RequeteInvalide` (avant tout appel), `CreditsEpuises` (402) ou `OrianeInjoignable`
     (clé absente, 401, 400, expiration, autre code). Chaque appel parti laisse une ligne au journal.
     """
-    corps = construire_corps(phrases, comptes, fenetre, plateformes)
+    corps = construire_corps(phrases, comptes, fenetre, plateformes, comptes_exclus, identifiants_plateforme)
     cible = (
         f"POST {liste_blanche.CHEMIN_RECHERCHE}?sort={TRI}&offset=0&limit={limite}&projection={PROJECTION}"
     )

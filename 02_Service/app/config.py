@@ -84,6 +84,7 @@ class Configuration:
     modele_langue_id: str = ""
     scaleway_url: str = ""
     scaleway_cle: str = field(default="", repr=False)
+    chemin_comptes: Path | None = None  # liste des comptes à écarter d'une recherche (S13), hors Git
 
     @classmethod
     def depuis_environnement(cls, environnement: Mapping[str, str] | None = None) -> Configuration:
@@ -109,6 +110,7 @@ class Configuration:
             modele_langue_id=_texte(env, "MODELE_LANGUE_ID"),
             scaleway_url=_texte(env, "SCALEWAY_URL"),
             scaleway_cle=_texte(env, "SCALEWAY_API_KEY"),
+            chemin_comptes=Path(_texte(env, "CHEMIN_COMPTES")) if _texte(env, "CHEMIN_COMPTES") else None,
         )
 
     @property
