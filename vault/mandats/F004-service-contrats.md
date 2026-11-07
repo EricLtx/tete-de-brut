@@ -1,0 +1,51 @@
+---
+mandat: F004
+titre: S02 — Contrats JSON et OpenAPI api.v1, normalisation mots.v1, libellés refusés, routes présentes en 501
+statut: redige
+plan: 01_Docs/08_Plans/plan-service-demonstration.md
+fiche: S02
+branche: feat/service-contrats (part de feat/service-socle rendue ; fusion après celle de S01)
+worktree: .claude/worktrees/feat-service-contrats
+modele: opus
+effort: medium
+relecteur: opus / medium (conception du contrat que tous les mandats et les écrans suivent)
+cree: 2026-11-07
+lance_a:
+rendu_a:
+go_a:
+allers_retours: 0
+---
+
+# F004 — S02, contrats du service
+
+Le mandat renvoie à la fiche S02 du plan (ligne S02 du tableau « Fiches de tâches », sous-sections « Contrat d'API attendu » et « Compléments de contrat ») et au guide `01_Docs/05_Integration/branchement-lovable-et-oriane.md` § 2 et § 3. Il ne les recopie pas.
+
+## Objectif
+
+Les contrats partagés par le service et les écrans existent avant tout code métier : modèles pydantic `video.v1`, `recit.v1`, objet `mesure`, `ecart.v1`, `fiche.v1`, `decision.v1` (champs en français `snake_case`), normalisation `mots.v1`, filtre des libellés refusés sur les segments `libelle`, routes de `api.v1` présentes sous `/v1` et répondant 501 dans l'enveloppe, schémas JSON et `contrats/api.v1.json` exportés et égaux à ce que sert l'application.
+
+## Fichiers réservés
+
+Ceux de la fiche S02, sous `02_Service/` : `app/modeles.py`, `app/mots.py`, `app/libelles.py`, `app/routes/__init__.py`, `app/routes/etat.py`, `app/routes/radar.py`, `app/routes/videos.py`, `app/routes/comparaisons.py`, `app/routes/fiches.py`, `app/main.py` (branchement des routeurs seulement, dernier mandat à le toucher), `contrats/*.schema.json`, `contrats/api.v1.json`, `scripts/exporter_contrats.py`, `tests/test_contrats.py`, `tests/conftest.py` (ajout de fixtures de vidéos simulées réutilisables, sans retirer celles de S01).
+
+## État du poste
+
+Python 3.13, venv `02_Service/.venv` créé par S01, fixtures `client`, `client_avec_cle`, `config_test` de S01, aucune clé Oriane, réseau ouvert.
+
+## Commande de fin et sortie attendue
+
+```bash
+cd 02_Service && python -m ruff check . && python -m ruff format --check . && python -m pytest -q -m 'not reel'   # vert
+python scripts/exporter_contrats.py --verifier   # 0 : contrats/ égal à l'application
+gh run list --branch feat/service-contrats --limit 1   # completed success
+curl -s localhost:8080/v1/radar   # 501 {"erreur":"non_implemente",...}
+```
+
+## Compte rendu attendu (cinq lignes)
+
+sha ; `git diff --stat feat/service-socle...HEAD` ; résultat du run GitHub et nombre de tests ; écarts à la fiche ; points ouverts.
+
+## Échanges
+
+| Date | De | Message |
+|---|---|---|
