@@ -1,4 +1,4 @@
-# Tête de Brut.
+# Tête de Brut
 
 Service d'API de la démonstration « Tête de Brut. » (hackathon Hack the Feed, piste éditoriale Brut, 07/11/2026) : lire l'intérieur des vidéos sociales pour donner à une rédaction un signal éditorial vérifiable, avec Oriane comme source dans la pipeline.
 
