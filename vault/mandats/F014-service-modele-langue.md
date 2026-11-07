@@ -13,7 +13,7 @@ cree: 2026-11-07
 lance_a: 2026-11-07T13:34Z
 rendu_a: 2026-11-07T13:47Z
 go_a: 2026-11-07T14:52Z
-allers_retours: 0
+allers_retours: 3
 ---
 
 # F014 — S10, résumé par modèle de langue
