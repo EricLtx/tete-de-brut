@@ -52,6 +52,7 @@ ROUTES_API_V1: list[tuple[str, str, dict[str, Any] | None]] = [
     ("GET", "/v1/fiches/f1/export", None),
     ("POST", "/v1/recherches/preparer", {"question": "places de crèche en 2027"}),
     ("POST", "/v1/recherches", {"question": "places de crèche en 2027"}),
+    ("POST", "/v1/recits/r1/pertinence", None),
 ]
 
 
@@ -382,7 +383,7 @@ def test_exporteur_verifie_les_contrats():
 def test_routes_toutes_sous_v1_sauf_sante(client):
     documentees = {(m.upper(), c) for c, ops in client.app.openapi()["paths"].items() for m in ops}
     attendues = {(m, c) for m, c, _ in ROUTES_API_V1}
-    assert len(documentees) == len(attendues) == 16
+    assert len(documentees) == len(attendues) == 17
     hors_documentation = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc", "/sante"}
     assert routeur_v1.prefix == "/v1"
     for route in client.app.routes:
@@ -413,6 +414,7 @@ ROUTES_IMPLEMENTEES = {
     ("POST", "/v1/radar/actualiser"),
     ("POST", "/v1/recherches/preparer"),  # S13
     ("POST", "/v1/recherches"),
+    ("POST", "/v1/recits/r1/pertinence"),  # F021
 }
 
 

@@ -18,6 +18,11 @@ RESUME_MODES = ("gabarit", "modele")
 RECHERCHE_MODES = ("modele", "deterministe")
 MODELE_LANGUE_URL_PAR_DEFAUT = "https://api.anthropic.com"
 MODELE_LANGUE_ID_PAR_DEFAUT = "claude-sonnet-5-5"
+PERTINENCE_MODES = ("modele", "aucun")
+PERTINENCE_MODELE_ID_PAR_DEFAUT = (
+    "claude-haiku-5-5"  # le plus rapide : un lot de 20 vidéos en quelques secondes
+)
+PERTINENCE_MAX_VIDEOS_PAR_DEFAUT = 60
 
 
 class ErreurConfiguration(ValueError):
@@ -92,6 +97,10 @@ class Configuration:
     # Reformulation de la question libre (F018) : vide, `modele` si la clé du modèle est présente.
     recherche_mode: str = ""
     chemin_comptes: Path | None = None  # liste des comptes à écarter d'une recherche (S13), hors Git
+    # Pertinence des vidéos d'un récit jugée par le modèle (F021) : vide, `modele` si la clé est présente.
+    pertinence_mode: str = ""
+    pertinence_modele_id: str = PERTINENCE_MODELE_ID_PAR_DEFAUT
+    pertinence_max_videos: int = PERTINENCE_MAX_VIDEOS_PAR_DEFAUT
 
     @classmethod
     def depuis_environnement(cls, environnement: Mapping[str, str] | None = None) -> Configuration:
@@ -106,6 +115,12 @@ class Configuration:
         recherche_mode = _texte(env, "RECHERCHE_MODE")
         if recherche_mode and recherche_mode not in RECHERCHE_MODES:
             raise ErreurConfiguration("RECHERCHE_MODE vaut modele ou deterministe")
+        pertinence_mode = _texte(env, "PERTINENCE_MODE")
+        if pertinence_mode and pertinence_mode not in PERTINENCE_MODES:
+            raise ErreurConfiguration("PERTINENCE_MODE vaut modele ou aucun")
+        pertinence_max_videos = _entier(env, "PERTINENCE_MAX_VIDEOS", PERTINENCE_MAX_VIDEOS_PAR_DEFAUT)
+        if pertinence_max_videos < 1:
+            raise ErreurConfiguration("PERTINENCE_MAX_VIDEOS doit être au moins 1")
         return cls(
             oriane_cle=_texte(env, "ORIANE_API_KEY"),
             oriane_url=_texte(env, "ORIANE_URL", ORIANE_URL_PAR_DEFAUT).rstrip("/"),
@@ -125,7 +140,15 @@ class Configuration:
             modele_langue_id=_texte(env, "MODELE_LANGUE_ID", MODELE_LANGUE_ID_PAR_DEFAUT),
             recherche_mode=recherche_mode,
             chemin_comptes=Path(_texte(env, "CHEMIN_COMPTES")) if _texte(env, "CHEMIN_COMPTES") else None,
+            pertinence_mode=pertinence_mode,
+            pertinence_modele_id=_texte(env, "PERTINENCE_MODELE_ID", PERTINENCE_MODELE_ID_PAR_DEFAUT),
+            pertinence_max_videos=pertinence_max_videos,
         )
+
+    @property
+    def pertinence_par_modele(self) -> bool:
+        """Vrai si la pertinence des vidéos est jugée par un modèle : clé présente, mode non `aucun`."""
+        return bool(self.modele_langue_cle) and self.pertinence_mode != "aucun"
 
     @property
     def reformulation_par_modele(self) -> bool:
