@@ -38,9 +38,10 @@ FILTRE_TEXTE_ECRAN = "onScreenText"  # texte affiché à l'écran
 FILTRE_COMPTE = "profileHandle"  # identifiant public du compte
 FILTRE_DATE = "publishedAt"  # fenêtre de publication {after, before}
 FILTRE_PLATEFORME = "platform"  # {"includes": [...]}, relevé H01 (pas exactMatch)
-FILTRE_IDENTIFIANT = (
-    "platformId"  # {"includes": [{"platform", "platformId"}]} : couples, lien d'une vidéo (S13)
-)
+# Lien d'une vidéo (S13, vérifié en réel le 07/11/2026 sur un lien TikTok et un lien Instagram, F018) :
+# `"platformId": {"includes": [{"platform": "tiktok", "platformId": "<identifiant>"}]}`, avec en plus
+# `"platform": {"includes": ["tiktok"]}`, sans phrase ni fenêtre ; Oriane rend la vidéo (totalCount 1).
+FILTRE_IDENTIFIANT = "platformId"
 REQUETE_DIT = "dit"  # préfixe des sous-requêtes sur la parole transcrite : « dit:<phrase> »
 REQUETE_ECRIT = "ecrit"  # préfixe des sous-requêtes sur le texte à l'écran : « ecrit:<phrase> »
 LONGUEUR_MAX_PHRASE = 256

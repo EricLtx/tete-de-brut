@@ -87,7 +87,7 @@
             }
           ],
           "default": null,
-          "description": "Fenêtre de publication (7 jours par défaut). Vide pour un lien : pas de fenêtre."
+          "description": "Fenêtre de publication (30 jours par défaut). Vide pour un lien : pas de fenêtre."
         },
         "identifiant_plateforme": {
           "anyOf": [
@@ -103,7 +103,7 @@
           "title": "Identifiant Plateforme"
         },
         "phrases": {
-          "description": "Phrases exactes cherchées (une seule pour le type `phrase`).",
+          "description": "Phrases exactes cherchées (de une à trois pour le type `phrase`).",
           "items": {
             "type": "string"
           },
@@ -195,6 +195,23 @@
       "minLength": 1,
       "title": "Question",
       "type": "string"
+    },
+    "reformulation": {
+      "anyOf": [
+        {
+          "enum": [
+            "modele",
+            "deterministe"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Comment la question libre est devenue des phrases : `modele` (reformulée par un modèle de langue), `deterministe` (traduction par règles, repli compris) ; absent pour un lien.",
+      "title": "Reformulation"
     },
     "refus": {
       "anyOf": [

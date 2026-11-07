@@ -20,6 +20,7 @@ from app import cas
 from app.config import Configuration
 from app.main import creer_application
 from app.modeles import Video
+from app.recherche_modele import vider_cache
 
 ORIGINE_LOVABLE = "https://exemple.lovable.app"
 CLE_DEMO_TEST = "secret-de-test"
@@ -34,6 +35,14 @@ def construire_config(tmp_path: Path, **surcharges: str) -> Configuration:
     }
     environnement.update(surcharges)
     return Configuration.depuis_environnement(environnement)
+
+
+@pytest.fixture(autouse=True)
+def _sans_reformulation_gardee() -> Iterator[None]:
+    """Chaque test repart sans reformulation du modèle gardée en mémoire (F018)."""
+    vider_cache()
+    yield
+    vider_cache()
 
 
 @pytest.fixture

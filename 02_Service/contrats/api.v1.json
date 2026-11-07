@@ -719,7 +719,7 @@
                 "type": "null"
               }
             ],
-            "description": "Fenêtre de publication (7 jours par défaut). Vide pour un lien : pas de fenêtre."
+            "description": "Fenêtre de publication (30 jours par défaut). Vide pour un lien : pas de fenêtre."
           },
           "identifiant_plateforme": {
             "anyOf": [
@@ -734,7 +734,7 @@
             "title": "Identifiant Plateforme"
           },
           "phrases": {
-            "description": "Phrases exactes cherchées (une seule pour le type `phrase`).",
+            "description": "Phrases exactes cherchées (de une à trois pour le type `phrase`).",
             "items": {
               "type": "string"
             },
@@ -1128,6 +1128,22 @@
             "minLength": 1,
             "title": "Question",
             "type": "string"
+          },
+          "reformulation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "modele",
+                  "deterministe"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Comment la question libre est devenue des phrases : `modele` (reformulée par un modèle de langue), `deterministe` (traduction par règles, repli compris) ; absent pour un lien.",
+            "title": "Reformulation"
           },
           "refus": {
             "anyOf": [
@@ -2553,7 +2569,7 @@
     },
     "/v1/recherches/preparer": {
       "post": {
-        "description": "Traduit `{\"question\": …}` en `recherche.v1` : filtres affichés avant lancement, requête en clair, coût.\n\nAucun appel à Oriane, aucun crédit dépensé, rien d'écrit. Une recherche refusée (RG-02 : le seul\nnom d'une personne, par exemple) rend 200 avec `refus` renseigné et un coût de 0 : l'écran affiche\n`refus.detail` et n'offre pas de lancer. Une question vide rend 422 `validation`.",
+        "description": "Traduit `{\"question\": …}` en `recherche.v1` : filtres affichés avant lancement, requête en clair, coût.\n\nUne question libre est reformulée par le modèle de langue quand sa clé est configurée (champ\n`reformulation`). Aucun appel à Oriane, aucun crédit dépensé, rien d'écrit. Une recherche refusée\n(RG-02 : le seul nom d'une personne, par exemple) rend 200 avec `refus` renseigné et un coût de 0 :\nl'écran affiche `refus.detail` et n'offre pas de lancer. Une question vide rend 422 `validation`.",
         "operationId": "preparer_recherche_v1_recherches_preparer_post",
         "requestBody": {
           "content": {

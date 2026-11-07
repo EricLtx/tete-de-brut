@@ -15,6 +15,7 @@ ORIANE_URL_PAR_DEFAUT = "https://connect.oriane.xyz"
 ORIANE_EN_TETE_PAR_DEFAUT = "Authorization"
 ORIANE_PREFIXE_PAR_DEFAUT = "Bearer "
 RESUME_MODES = ("gabarit", "modele")
+RECHERCHE_MODES = ("modele", "deterministe")
 MODELE_LANGUE_URL_PAR_DEFAUT = "https://api.anthropic.com"
 MODELE_LANGUE_ID_PAR_DEFAUT = "claude-sonnet-5-5"
 
@@ -88,6 +89,8 @@ class Configuration:
     modele_langue_url: str = MODELE_LANGUE_URL_PAR_DEFAUT
     modele_langue_cle: str = field(default="", repr=False)
     modele_langue_id: str = MODELE_LANGUE_ID_PAR_DEFAUT
+    # Reformulation de la question libre (F018) : vide, `modele` si la clé du modèle est présente.
+    recherche_mode: str = ""
     chemin_comptes: Path | None = None  # liste des comptes à écarter d'une recherche (S13), hors Git
 
     @classmethod
@@ -100,6 +103,9 @@ class Configuration:
         resume_mode = _texte(env, "RESUME_MODE", "gabarit")
         if resume_mode not in RESUME_MODES:
             raise ErreurConfiguration("RESUME_MODE vaut gabarit ou modele")
+        recherche_mode = _texte(env, "RECHERCHE_MODE")
+        if recherche_mode and recherche_mode not in RECHERCHE_MODES:
+            raise ErreurConfiguration("RECHERCHE_MODE vaut modele ou deterministe")
         return cls(
             oriane_cle=_texte(env, "ORIANE_API_KEY"),
             oriane_url=_texte(env, "ORIANE_URL", ORIANE_URL_PAR_DEFAUT).rstrip("/"),
@@ -117,8 +123,14 @@ class Configuration:
             modele_langue_url=_texte(env, "MODELE_LANGUE_URL", MODELE_LANGUE_URL_PAR_DEFAUT).rstrip("/"),
             modele_langue_cle=_texte(env, "MODELE_LANGUE_API_KEY", _texte(env, "ANTHROPIC_API_KEY")),
             modele_langue_id=_texte(env, "MODELE_LANGUE_ID", MODELE_LANGUE_ID_PAR_DEFAUT),
+            recherche_mode=recherche_mode,
             chemin_comptes=Path(_texte(env, "CHEMIN_COMPTES")) if _texte(env, "CHEMIN_COMPTES") else None,
         )
+
+    @property
+    def reformulation_par_modele(self) -> bool:
+        """Vrai si la question libre est reformulée par un modèle : clé présente, mode non `deterministe`."""
+        return bool(self.modele_langue_cle) and self.recherche_mode != "deterministe"
 
     @property
     def mode(self) -> str:

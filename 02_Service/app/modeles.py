@@ -496,7 +496,7 @@ class FiltresRecherche(Modele):
     """Filtres tels qu'ils seront envoyés à Oriane : ce que l'écran affiche est ce qui part."""
 
     phrases: list[str] = Field(
-        default_factory=list, description="Phrases exactes cherchées (une seule pour le type `phrase`)."
+        default_factory=list, description="Phrases exactes cherchées (de une à trois pour le type `phrase`)."
     )
     dans: str | None = Field(
         default=None,
@@ -504,7 +504,7 @@ class FiltresRecherche(Modele):
     )
     fenetre: Fenetre | None = Field(
         default=None,
-        description="Fenêtre de publication (7 jours par défaut). Vide pour un lien : pas de fenêtre.",
+        description="Fenêtre de publication (30 jours par défaut). Vide pour un lien : pas de fenêtre.",
     )
     comptes: list[str] = Field(
         default_factory=list,
@@ -553,6 +553,13 @@ class Recherche(Reponse):
     cout_estime: CoutEstime
     refus: RefusRecherche | None = Field(
         default=None, description="Renseigné si la recherche est refusée : rien n'est alors envoyé à Oriane."
+    )
+    reformulation: Literal["modele", "deterministe"] | None = Field(
+        default=None,
+        description=(
+            "Comment la question libre est devenue des phrases : `modele` (reformulée par un modèle de "
+            "langue), `deterministe` (traduction par règles, repli compris) ; absent pour un lien."
+        ),
     )
 
 
