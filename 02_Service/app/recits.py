@@ -32,6 +32,32 @@ NON_CHERCHE = (
 )
 
 
+def verifier_cas(document: Any) -> str | None:
+    """Raison en clair si un document `cas` est mal formé, sinon `None` (le cas sert)."""
+    if not isinstance(document, dict):
+        return "le document n'est pas un objet"
+    phrases = document.get("phrases")
+    if phrases is not None and (
+        not isinstance(phrases, list) or not all(isinstance(p, str) and p.strip() for p in phrases)
+    ):
+        return "phrases n'est pas une liste de textes non vides"
+    phrase = document.get("phrase")
+    if phrase is not None and not (isinstance(phrase, str) and phrase.strip()):
+        return "phrase n'est pas un texte non vide"
+    requete = document.get("requete")
+    if requete is not None and not isinstance(requete, str):
+        return "requete n'est pas un texte"
+    try:
+        if document.get("fenetre"):
+            Fenetre.model_validate(document["fenetre"])
+        if document.get("enregistre_le"):
+            if datetime.fromisoformat(document["enregistre_le"]).tzinfo is None:
+                return "enregistre_le sans fuseau horaire"
+    except (ValueError, TypeError) as exc:
+        return f"fenêtre ou date illisible ({type(exc).__name__})"
+    return None
+
+
 def cle_phrase(phrase: str) -> str:
     """Forme normalisée `mots.v1` d'une phrase, pour comparer et dériver l'identifiant."""
     return " ".join(normaliser(phrase))
@@ -101,6 +127,7 @@ def construire_recit(
     calcule_le: datetime,
     mode: str,
     enregistre_le: datetime | None,
+    ignores: Sequence[str] = (),
 ) -> Recit:
     """Un récit `recit.v1` pour une phrase surveillée."""
     phrase = details["phrase"]
@@ -120,7 +147,7 @@ def construire_recit(
         videos=[v.identifiant for v in trouvees],
         mesures=mesures_du_recit(trouvees, fenetre, calcule_le),
         plus_ancienne_version=plus_ancienne,
-        non_cherche=[Segment(type="libelle", texte=t) for t in NON_CHERCHE],
+        non_cherche=[Segment(type="libelle", texte=t) for t in (*NON_CHERCHE, *ignores)],
         calcule_le=calcule_le,
     )
 
@@ -136,10 +163,16 @@ def calculer_recits(mode: str, calcule_le: datetime | None = None) -> tuple[list
     """Récits calculés sur les vidéos et cas en base, avec la date du calcul."""
     calcule_le = calcule_le or datetime.fromisoformat(base.maintenant())
     videos = [Video.model_validate(d) for d in base.lister(TYPE_VIDEO)]
-    cas = base.lister(TYPE_CAS)
+    cas, ignores = [], []
+    for document in base.lister(TYPE_CAS):
+        raison = verifier_cas(document)
+        if raison is None:
+            cas.append(document)
+        else:
+            ignores.append(f"cas ignoré : {raison}")
     enregistre_le = _enregistre_le(cas, videos, calcule_le) if mode == "enregistre" else None
     recits = [
-        construire_recit(details, videos, calcule_le, mode, enregistre_le)
+        construire_recit(details, videos, calcule_le, mode, enregistre_le, ignores)
         for details in phrases_surveillees(cas, videos).values()
     ]
     return recits, calcule_le
@@ -150,7 +183,7 @@ def calculer_radar(mode: str, raison: str) -> Radar:
     recits, calcule_le = calculer_recits(mode)
     enregistre_le = recits[0].enregistre_le if recits else None
     if mode == "enregistre" and enregistre_le is None:
-        enregistre_le = _enregistre_le(base.lister(TYPE_CAS), [], calcule_le)
+        enregistre_le = calcule_le
     return Radar(
         mode=mode,  # type: ignore[arg-type]
         enregistre_le=enregistre_le,

@@ -167,3 +167,30 @@ def test_fenetre_du_cas_reprise_sur_les_mesures(client: TestClient, tmp_path: Pa
     base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A], "fenetre": fenetre})
     recit = client.get("/v1/radar").json()["recits"][0]
     assert all(m["fenetre"]["debut"].startswith("2026-11-01") for m in recit["mesures"])
+
+
+@pytest.mark.parametrize(
+    ("cas", "morceau"),
+    [
+        ({"phrases": [PHRASE_A], "enregistre_le": "2026-11-07T08:00:00"}, "fuseau"),
+        (
+            {
+                "phrases": [PHRASE_A],
+                "fenetre": {"debut": "2026-11-07T00:00:00+00:00", "fin": "2026-11-01T00:00:00+00:00"},
+            },
+            "illisible",
+        ),
+        ({"phrases": PHRASE_A}, "phrases"),
+    ],
+    ids=["enregistre_le_sans_fuseau", "fenetre_inversee", "phrases_en_chaine"],
+)
+def test_cas_mal_forme_ignore_et_dit(client: TestClient, cas: dict, morceau: str) -> None:
+    _poser(*_trois_videos())
+    base.ecrire("cas", "cas-mal-forme", "cas.v1", cas)
+    reponse = client.get("/v1/radar")
+    assert reponse.status_code == 200
+    recits = reponse.json()["recits"]
+    assert len(recits) == 2  # repli sur les requêtes des vidéos
+    mentions = [s["texte"] for s in recits[0]["non_cherche"] if s["texte"].startswith("cas ignoré : ")]
+    assert len(mentions) == 1 and morceau in mentions[0]
+    assert client.get(f"/v1/recits/{recits[0]['identifiant']}").status_code == 200
