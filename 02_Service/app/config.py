@@ -14,6 +14,9 @@ MODES_DONNEES = ("auto", "enregistre")
 ORIANE_URL_PAR_DEFAUT = "https://connect.oriane.xyz"
 ORIANE_EN_TETE_PAR_DEFAUT = "Authorization"
 ORIANE_PREFIXE_PAR_DEFAUT = "Bearer "
+RESUME_MODES = ("gabarit", "modele")
+MODELE_LANGUE_URL_PAR_DEFAUT = "https://api.anthropic.com"
+MODELE_LANGUE_ID_PAR_DEFAUT = "claude-sonnet-5-5"
 
 
 class ErreurConfiguration(ValueError):
@@ -80,10 +83,11 @@ class Configuration:
     plafond_credits_jour: int = 600
     bascule: str = ""  # raison d'une bascule en mode enregistré décidée à l'exécution (S04) ; vide, aucune
     port: int = 8080
+    # Résumé de la fiche (S10, ADR-0002) : gabarit par défaut ; `modele` n'agit qu'avec une clé.
     resume_mode: str = "gabarit"
-    modele_langue_id: str = ""
-    scaleway_url: str = ""
-    scaleway_cle: str = field(default="", repr=False)
+    modele_langue_url: str = MODELE_LANGUE_URL_PAR_DEFAUT
+    modele_langue_cle: str = field(default="", repr=False)
+    modele_langue_id: str = MODELE_LANGUE_ID_PAR_DEFAUT
     chemin_comptes: Path | None = None  # liste des comptes à écarter d'une recherche (S13), hors Git
 
     @classmethod
@@ -93,6 +97,9 @@ class Configuration:
         mode_donnees = _texte(env, "MODE_DONNEES", "auto")
         if mode_donnees not in MODES_DONNEES:
             raise ErreurConfiguration("MODE_DONNEES vaut auto ou enregistre")
+        resume_mode = _texte(env, "RESUME_MODE", "gabarit")
+        if resume_mode not in RESUME_MODES:
+            raise ErreurConfiguration("RESUME_MODE vaut gabarit ou modele")
         return cls(
             oriane_cle=_texte(env, "ORIANE_API_KEY"),
             oriane_url=_texte(env, "ORIANE_URL", ORIANE_URL_PAR_DEFAUT).rstrip("/"),
@@ -106,10 +113,10 @@ class Configuration:
             chemin_cas=Path(_texte(env, "CHEMIN_CAS", str(CAS_PAR_DEFAUT))),
             plafond_credits_jour=_entier(env, "PLAFOND_CREDITS_JOUR", 600),
             port=_entier(env, "PORT", 8080),
-            resume_mode=_texte(env, "RESUME_MODE", "gabarit"),
-            modele_langue_id=_texte(env, "MODELE_LANGUE_ID"),
-            scaleway_url=_texte(env, "SCALEWAY_URL"),
-            scaleway_cle=_texte(env, "SCALEWAY_API_KEY"),
+            resume_mode=resume_mode,
+            modele_langue_url=_texte(env, "MODELE_LANGUE_URL", MODELE_LANGUE_URL_PAR_DEFAUT).rstrip("/"),
+            modele_langue_cle=_texte(env, "MODELE_LANGUE_API_KEY", _texte(env, "ANTHROPIC_API_KEY")),
+            modele_langue_id=_texte(env, "MODELE_LANGUE_ID", MODELE_LANGUE_ID_PAR_DEFAUT),
             chemin_comptes=Path(_texte(env, "CHEMIN_COMPTES")) if _texte(env, "CHEMIN_COMPTES") else None,
         )
 
