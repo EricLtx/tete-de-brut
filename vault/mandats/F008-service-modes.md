@@ -1,7 +1,7 @@
 ---
 mandat: F008
 titre: S04 — Modes direct et enregistré, actualisation du radar, état et journal, script d'enregistrement du cas avec la clé
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S04
 branche: feat/service-modes (part de main après fusion de S03, S05 et S07)
@@ -10,7 +10,7 @@ modele: sonnet
 effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T11:55Z
 rendu_a:
 go_a:
 allers_retours: 0

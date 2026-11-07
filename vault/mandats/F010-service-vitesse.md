@@ -1,7 +1,7 @@
 ---
 mandat: F010
 titre: S06 — Indicateur de vitesse de chaque récit sur deux fenêtres (48 h et 7 jours), méthode affichée, échantillon trop petit refusé
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S06
 branche: feat/service-vitesse (part de main après fusion de S05)
@@ -10,7 +10,7 @@ modele: sonnet
 effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T11:55Z
 rendu_a:
 go_a:
 allers_retours: 0
