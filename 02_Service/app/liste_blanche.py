@@ -35,6 +35,9 @@ FILTRE_TEXTE_ECRAN = "onScreenText"  # texte affiché à l'écran
 FILTRE_COMPTE = "profileHandle"  # identifiant public du compte
 FILTRE_DATE = "publishedAt"  # fenêtre de publication {after, before}
 FILTRE_PLATEFORME = "platform"  # {"includes": [...]}, relevé H01 (pas exactMatch)
+REQUETE_DIT = "dit"  # sous-requête sur la parole transcrite
+REQUETE_ECRIT = "ecrit"  # sous-requête sur le texte à l'écran
+REQUETE_DIT_OU_ECRIT = "dit_ou_ecrit"  # union des deux
 OPERATEUR_PHRASES = "includesExactly"  # la phrase doit apparaître telle quelle
 OPERATEUR_COMPTES = "exactMatch"  # le compte doit être exactement celui-là
 OPERATEUR_PLATEFORMES = "includes"  # la plateforme est l'une de celles-là
@@ -117,6 +120,17 @@ def _texte_ecran(resultat: dict[str, Any]) -> str:
         if isinstance(brut, list):
             morceaux.extend(t for t in (_texte(x) for x in brut) if t)
     return "\n".join(morceaux)
+
+
+def compter_origines(resultats: list[dict[str, Any]]) -> dict[str, int]:
+    """Résultats trouvés par la parole (`dits`) et par l'écran (`ecrits`), d'après `matchedQueries`."""
+
+    def trouves(nom: str) -> int:
+        return sum(
+            1 for r in resultats if isinstance(r.get("matchedQueries"), list) and nom in r["matchedQueries"]
+        )
+
+    return {"dits": trouves(REQUETE_DIT), "ecrits": trouves(REQUETE_ECRIT)}
 
 
 def projeter(resultat: dict[str, Any], *, lue_le: datetime | None = None) -> Video:

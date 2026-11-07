@@ -83,10 +83,7 @@ def construire_corps(
     if not nettoyees:
         raise RequeteInvalide("requête refusée : au moins une phrase est nécessaire")
     groupe = {liste_blanche.OPERATEUR_PHRASES: {"values": nettoyees, "operator": "or"}}
-    filtres: dict[str, Any] = {
-        liste_blanche.FILTRE_TRANSCRIPTION: groupe,
-        liste_blanche.FILTRE_TEXTE_ECRAN: groupe,
-    }
+    filtres: dict[str, Any] = {}
     if comptes:
         filtres[liste_blanche.FILTRE_COMPTE] = {liste_blanche.OPERATEUR_COMPTES: [c.strip() for c in comptes]}
     if plateformes:
@@ -95,7 +92,25 @@ def construire_corps(
         if fenetre.fin < fenetre.debut:
             raise RequeteInvalide("requête refusée : la fenêtre se termine avant de commencer")
         filtres[liste_blanche.FILTRE_DATE] = {"after": _date(fenetre.debut), "before": _date(fenetre.fin)}
-    return {"name": NOM_REQUETE, "operator": "and", "filters": filtres, "queries": []}
+    # Cadre (compte, plateforme, dates) à la racine en `and` ; « dit ou écrit » en sous-requête `or`.
+    # Un `or` racine s'appliquerait aussi aux filtres de cadre (relevé réel du 07/11).
+    dit_ou_ecrit = {
+        "name": liste_blanche.REQUETE_DIT_OU_ECRIT,
+        "operator": "or",
+        "queries": [
+            {
+                "name": liste_blanche.REQUETE_DIT,
+                "operator": "and",
+                "filters": {liste_blanche.FILTRE_TRANSCRIPTION: groupe},
+            },
+            {
+                "name": liste_blanche.REQUETE_ECRIT,
+                "operator": "and",
+                "filters": {liste_blanche.FILTRE_TEXTE_ECRAN: groupe},
+            },
+        ],
+    }
+    return {"name": NOM_REQUETE, "operator": "and", "filters": filtres, "queries": [dit_ou_ecrit]}
 
 
 def _raison_400(reponse: httpx.Response) -> str:
@@ -195,11 +210,13 @@ async def rechercher(
     lue_le = datetime.now(UTC)
     videos: list[Video] = []
     ecartees = 0
+    videos_brutes: list[dict[str, Any]] = []
     for element in elements:
         try:
             if not isinstance(element, dict):
                 raise liste_blanche.ResultatIllisible("résultat inattendu")
             videos.append(liste_blanche.projeter(element, lue_le=lue_le))
+            videos_brutes.append(element)
         except liste_blanche.ResultatIllisible:
             ecartees += 1
     total = total if isinstance(total, int) and not isinstance(total, bool) else None
@@ -211,7 +228,12 @@ async def rechercher(
         cible,
         debut,
         code,
-        {"retournes": len(videos), "ecartes": ecartees, "total_annonce": total},
+        {
+            "retournes": len(videos),
+            "ecartes": ecartees,
+            "total_annonce": total,
+            **liste_blanche.compter_origines(videos_brutes),
+        },
         credits,
     )
     if ecartees:

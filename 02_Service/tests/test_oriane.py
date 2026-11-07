@@ -90,14 +90,36 @@ def test_corps_de_requete_exact():
         "name": "tete-de-brut-recherche",
         "operator": "and",
         "filters": {
-            "transcript": groupe,
-            "onScreenText": groupe,
             "profileHandle": {"exactMatch": ["compte_simule_source"]},
             "platform": {"includes": ["tiktok"]},
             "publishedAt": {"after": "2026-11-01", "before": "2026-11-07"},
         },
-        "queries": [],
+        "queries": [
+            {
+                "name": "dit_ou_ecrit",
+                "operator": "or",
+                "queries": [
+                    {"name": "dit", "operator": "and", "filters": {"transcript": groupe}},
+                    {"name": "ecrit", "operator": "and", "filters": {"onScreenText": groupe}},
+                ],
+            }
+        ],
     }
+    assert "transcript" not in corps["filters"]
+    assert "onScreenText" not in corps["filters"]
+
+
+def test_corps_sans_cadre_n_a_que_la_sous_requete():
+    corps = construire_corps([PHRASE, " autre phrase "])
+    assert corps["operator"] == "and"
+    assert corps["filters"] == {}
+    (union,) = corps["queries"]
+    assert union["operator"] == "or"
+    assert [q["name"] for q in union["queries"]] == ["dit", "ecrit"]
+    assert union["queries"][0]["filters"]["transcript"]["includesExactly"]["values"] == [
+        PHRASE,
+        "autre phrase",
+    ]
 
 
 def test_requete_envoyee(config_oriane, transport_oriane_simule):
@@ -115,7 +137,7 @@ def test_requete_envoyee(config_oriane, transport_oriane_simule):
     }
     assert requete.headers["authorization"] == f"Bearer {CLE_TEST}"
     corps = json.loads(requete.content)
-    assert corps["filters"]["transcript"]["includesExactly"]["values"] == [PHRASE]
+    assert corps == construire_corps([PHRASE], ["compte_simule_source"], FENETRE)
     assert corps["filters"]["profileHandle"] == {"exactMatch": ["compte_simule_source"]}
     assert corps["filters"]["publishedAt"] == {"after": "2026-11-01", "before": "2026-11-07"}
 
@@ -192,7 +214,8 @@ def test_reponse_projetee_vers_video_v1(config_oriane, transport_oriane_simule):
     assert source.identifiant_plateforme == "7000000000000000010"
     assert source.vues_selon_oriane == 12000
     assert source.interactions_selon_oriane == 800
-    assert source.requetes_trouvees == ["query1"]
+    assert source.requetes_trouvees == ["dit", "dit_ou_ecrit", "tete-de-brut-recherche"]
+    assert reprise.requetes_trouvees[0] == "ecrit"
     assert source.transcription.texte == "Propos simulé : il faut dix mille postes si l'État paie"
     assert source.transcription.source == "Oriane"
     assert source.transcription.niveau == "default"
@@ -260,7 +283,7 @@ def test_resultat_incomplet_ecarte_sans_deviner(
     assert len(resultat.videos) == 1
     assert resultat.ecartees == 2
     ligne = base.lire_journal()[0]
-    assert ligne["resultats"] == {"retournes": 1, "ecartes": 2, "total_annonce": 2}
+    assert ligne["resultats"] == {"retournes": 1, "ecartes": 2, "total_annonce": 2, "dits": 1, "ecrits": 0}
 
 
 def test_206_est_un_succes_incomplet(config_oriane, transport_oriane_simule, reponse_oriane_simulee):
@@ -348,9 +371,10 @@ def test_un_appel_une_ligne_de_journal(config_oriane, transport_oriane_simule):
     assert ligne["projection"] == "default"
     assert ligne["credits_estimes"] == 15
     assert ligne["duree_ms"] >= 0
-    assert ligne["resultats"] == {"retournes": 2, "ecartes": 0, "total_annonce": 2}
+    assert ligne["resultats"] == {"retournes": 2, "ecartes": 0, "total_annonce": 2, "dits": 1, "ecrits": 1}
     # La requête envoyée est journalisée en clair, filtres compris.
-    assert ligne["filtres"]["filters"]["transcript"]["includesExactly"]["values"] == [PHRASE]
+    sous = ligne["filtres"]["queries"][0]["queries"]
+    assert sous[0]["filters"]["transcript"]["includesExactly"]["values"] == [PHRASE]
     assert ligne["filtres"]["filters"]["profileHandle"] == {"exactMatch": ["compte_simule_source"]}
 
 
@@ -453,6 +477,11 @@ def test_appel_reel_une_page_d_un_resultat(tmp_path):
     maintenant = datetime.now(UTC)
     fenetre = Fenetre(debut=maintenant - timedelta(days=7), fin=maintenant)
     resultat = asyncio.run(rechercher(["présidentielle"], config=config, fenetre=fenetre, limite=1))
+    ligne = base.lire_journal()[0]
+    print(  # noqa: T201 - compte rendu lisible avec `pytest -s`
+        f"REEL code={resultat.code} total={resultat.total} ecartees={resultat.ecartees} "
+        f"videos={len(resultat.videos)} duree_ms={ligne['duree_ms']}"
+    )
     assert resultat.code in (200, 206)
     assert len(resultat.videos) <= 1
     for video in resultat.videos:
