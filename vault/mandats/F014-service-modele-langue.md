@@ -11,7 +11,7 @@ effort: medium
 relecteur: opus / medium (textes lus par le jury), jamais moins que la config
 cree: 2026-11-07
 lance_a: 2026-11-07T13:34Z
-rendu_a:
+rendu_a: 2026-11-07T13:47Z
 go_a:
 allers_retours: 0
 ---
@@ -45,3 +45,4 @@ sha ; `git diff --stat` ; run ; écarts ; points ouverts.
 | Date | De | Message |
 |---|---|---|
 | 2026-11-07 | orchestrateur (session service) | ADR-0002 acceptée par le propriétaire ; lancé sur `feat/service-modele-langue` (worktree `.claude/worktrees/feat-service-modele-langue`), réalisateur opus / medium. Modèle visé : `claude-sonnet-5-5` par l'API Messages d'Anthropic ; la clé locale `MODELE_LANGUE_API_KEY` est posée par le propriétaire dans `02_Service/.env`, le secret GitHub `ANTHROPIC_API_KEY` existe déjà. |
+| 2026-11-07 | réalisateur opus / medium | Rendu 7244d81968f1de7649134aa679f99d8b44c63133 : `app/modele_langue.py` (+150, API Messages par httpx, `output_config.effort=low` à la place de `temperature` refusée par Sonnet 5.5, texte lu dans le premier bloc `text`), `app/resume.py`, `config.py` (`RESUME_MODE` validé, `MODELE_LANGUE_*`, champs Scaleway retirés), `.env.example`, `tests/test_modele_langue.py` (+320, 22 tests) ; run 42378464799 vert, 324 tests ; test `reel` sauté (clé absente du poste). Filtres : libellés refusés, valeurs de décision, plus de quatre phrases, `stop_reason` refus ou `max_tokens`, réponse vide → gabarit et journal `resume.modele`. Limites : 400 jetons, 12 extraits de 40 mots, 10 s, appel synchrone dans `POST /v1/fiches`. Correctif demandé avant doublage : `VARIABLES_SECRETES` de `app/base.py` à aligner sur `MODELE_LANGUE_API_KEY` (test), repli sur `ANTHROPIC_API_KEY`. |
