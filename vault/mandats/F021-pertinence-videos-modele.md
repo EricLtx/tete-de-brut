@@ -1,7 +1,7 @@
 ---
 mandat: F021
 titre: S18 — Pertinence des vidéos d'un récit jugée par le modèle de langue (brique Claude aval), route `POST /v1/recits/{id}/pertinence`, clé du modèle dans le job `reel`
-statut: lance
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S18
 branche: feat/service-pertinence-modele (part de main)
@@ -11,9 +11,9 @@ effort: high
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T16:55Z
-rendu_a:
-go_a:
-allers_retours: 0
+rendu_a: 2026-11-07T17:50Z
+go_a: 2026-11-07T18:10Z
+allers_retours: 1
 ---
 
 # F021 — S18, pertinence des vidéos jugée par le modèle
@@ -62,3 +62,7 @@ sha ; diff ; tests (dont `reel`) ; écarts ; exemple de réponse de la route et 
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur (sonnet / high) | Rendu 96bbcdb : `app/pertinence.py`, `app/routes/pertinence.py`, `Pertinence`, `Video.pertinence`, `ClassementPertinence`, configuration, `reel.yml` avec la clé, 564 tests verts, test `reel` vert (haiku : retraites forte, cuisine hors sujet, 2,3 s), run GitHub vert. Écarts : exemples du kit `video-source.json` et `video-reprise.json`, compte des routes, journal aussi en succès, niveau inconnu ignoré. |
+| 2026-11-07 | orchestrateur | Essai réel sur le Codespace : 60 vidéos classables, trois lots de 20 tronqués (`max_tokens` 1 500 partagé avec la réflexion du modèle), 0 classée. Correctif demandé : lots de 10, `max_tokens` 6 000, motifs de 80 caractères, lecture tolérante d'un JSON tronqué. |
+| 2026-11-07 | réalisateur (sonnet / high) | Correctif d58d42c : `TAILLE_LOT` 10, `MAX_TOKENS` 6000, `entrees_completes`, 567 tests verts, test `reel` à 12 vidéos (lots [2, 10], aucune troncature, 4,1 s), run GitHub vert. |
+| 2026-11-07 | orchestrateur | Déployé dans le Codespace : « le pouvoir d'achat », 60 classées (21 fortes, 33 faibles, 6 hors sujet) en 20,3 s. Doublage court GO (`vault/revues/F021-d58d42c.md`, deux mineurs) ; fusion dans `main`. Le mandat disait lots de 20 et 1 500 jetons : les valeurs retenues sont 10 et 6 000. |
