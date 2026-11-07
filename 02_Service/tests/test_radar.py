@@ -166,7 +166,8 @@ def test_fenetre_du_cas_reprise_sur_les_mesures(client: TestClient, tmp_path: Pa
     fenetre = {"debut": "2026-11-01T00:00:00+00:00", "fin": "2026-11-07T00:00:00+00:00"}
     base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A], "fenetre": fenetre})
     recit = client.get("/v1/radar").json()["recits"][0]
-    assert all(m["fenetre"]["debut"].startswith("2026-11-01") for m in recit["mesures"])
+    volumes = [m for m in recit["mesures"] if not m["nom"].startswith("vitesse")]  # la vitesse a ses fenêtres
+    assert volumes and all(m["fenetre"]["debut"].startswith("2026-11-01") for m in volumes)
 
 
 @pytest.mark.parametrize(
