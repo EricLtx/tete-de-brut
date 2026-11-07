@@ -1,7 +1,7 @@
 ---
 mandat: F013
 titre: Job GitHub « reel » à la demande — appel réel Oriane et parcours contre un service lancé
-statut: en-doublage
+statut: go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: hors fiche (vérification avant H07)
 branche: pipeline/ci-reel (part de main)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T13:30Z
 rendu_a: 2026-11-07T13:41Z
-go_a:
+go_a: 2026-11-07T14:02Z
 allers_retours: 1
 ---
 
@@ -49,3 +49,5 @@ sha ; `git diff --stat` ; run `pipeline` et run `reel` ; écarts ; points ouvert
 | 2026-11-07 | orchestrateur (session service) | Lancé sur `pipeline/ci-reel` (worktree `.claude/worktrees/pipeline-ci-reel`), réalisateur sonnet / medium. Le secret `ORIANE_API_KEY` du dépôt GitHub est à poser par le propriétaire (`gh secret set ORIANE_API_KEY`), jamais par un agent ; le run `reel` ne peut être vert qu'après. |
 | 2026-11-07 | réalisateur sonnet / medium | Rendu e063d16109af696207eba6ee253c860279999c6b : `.github/workflows/reel.yml` (104 lignes, `workflow_dispatch` seul ; test `reel` avec le secret dans l'environnement de l'étape ; `CLE_DEMO` généré et masqué ; cas minimal « réforme des retraites » sans vidéo dans un dossier temporaire ; service direct, actualisation, échec si `mode` n'est pas `direct`, parcours S09, arrêt par `trap`, ligne `REEL` affichée) et paragraphe dans `pipeline-cicd.md` ; run `pipeline` 42378000436 vert. Écart : type de commit `pipeline` (la garde refuse `ci`). Bloqué : GitHub n'enregistre un `workflow_dispatch` que sur la branche par défaut, le job ne peut être lancé qu'après fusion. Doublage sonnet / high lancé par lecture. |
 | 2026-11-07 | relecteur sonnet / high | NO-GO sur e063d16 (`vault/revues/F013-e063d16.md`) : 1 bloquant (`pytest … \| tee` sans `pipefail`, un échec du test `reel` reste vert), 4 mineurs (cas sur 7 jours peut rendre moins de 2 vidéos ; coût réel ≈ 30 crédits et non 15 ; deux commits ; port en dur). Étape service rejouée en local contre un faux Oriane : conforme. Correctif demandé au même réalisateur. |
+| 2026-11-07 | réalisateur sonnet / medium | Correctif rendu 67422178cf7cdf1f5443f2e85800a57a68b8deae : `shell: bash` (pipefail) sur les étapes du workflow, exécution de pytest hors `tee` ; run `pipeline` 42378799520 vert. Second doublage lancé. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 67422178cf7cdf1f5443f2e85800a57a68b8deae (`vault/revues/F013-6742217.md`) : bloquant levé (rejoué en local : pytest simulé en échec donne 1 sous pipefail ; étape service contre un faux Oriane, huit gestes OK), 0 majeur, 2 mineurs (phrase du cas minimal, trois commits). Fusionné sur `main` ; le job `reel` ne tourne qu'après la fusion (`workflow_dispatch` enregistré sur `main`). |
