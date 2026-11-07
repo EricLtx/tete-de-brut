@@ -2470,7 +2470,7 @@
                 }
               }
             },
-            "description": "oriane_injoignable ou credits_epuises : Oriane n'a pas répondu utilement ou n'a plus de crédits (le service bascule seul en mode enregistré après deux pannes de suite ou un 402)."
+            "description": "oriane_injoignable : Oriane n'a pas répondu utilement (première panne) ; après deux pannes de suite, un 402 ou le plafond de crédits du jour, le service passe en mode enregistré et répond depuis le cas (201 ou 409), sans 503."
           }
         },
         "summary": "Lancer une recherche : récit ajouté au radar (phrase) ou vidéo retrouvée (lien)",

@@ -12,7 +12,15 @@ routeur = APIRouter(tags=["recherches"])
 
 CODES_PREPARER = erreurs(401, 422, 501)
 CODES_LANCER = {
-    **erreurs(401, 404, 422, 501, 503),
+    **erreurs(401, 404, 422, 501),
+    503: {
+        "model": Erreur,
+        "description": (
+            "oriane_injoignable : Oriane n'a pas répondu utilement (première panne) ; après deux pannes "
+            "de suite, un 402 ou le plafond de crédits du jour, le service passe en mode enregistré et "
+            "répond depuis le cas (201 ou 409), sans 503."
+        ),
+    },
     409: {
         "model": Erreur,
         "description": (

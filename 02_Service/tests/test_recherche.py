@@ -246,6 +246,7 @@ def test_rg02_refuse_le_seul_nom_d_une_personne(config_traduction: Configuration
     assert recherche.refus.code == "nom_seul"
     assert recherche.refus.detail == DETAIL_NOM_SEUL
     assert recherche.cout_estime.credits_estimes == 0
+    assert recherche.requete_en_clair == "recherche refusée : rien n'est envoyé à Oriane"
 
 
 @pytest.mark.parametrize(
@@ -612,3 +613,56 @@ def test_corps_oriane_sans_phrase_ni_identifiant_reste_refuse() -> None:
 
     with pytest.raises(RequeteInvalide):
         construire_corps([])
+
+
+# --- phrases cherchées et radar (F016b) -----------------------------------------------------------------
+
+
+def _reponse_pour(reponse_oriane: dict[str, Any], phrase: str) -> dict[str, Any]:
+    """La réponse simulée, dont les deux vidéos sont trouvées par `phrase`."""
+    for resultat in reponse_oriane["data"]["results"]:
+        resultat["matchedQueries"] = [f"dit:{phrase}"]
+    return reponse_oriane
+
+
+def test_une_phrase_cherchee_apparait_au_radar_du_cas(
+    tmp_path: Path,
+    reponse_oriane_simulee: dict[str, Any],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+    cas_simule: Callable[..., Path],
+) -> None:
+    # Avec un cas chargé par l'actualisation, le radar ne lit que les documents de phrases surveillées :
+    # sans le document écrit par la recherche, la phrase cherchée n'y serait pas.
+    with _service(tmp_path, direct=True, transport=transport_oriane_simule()) as client:
+        cas_simule(client.app.state.config)
+        assert client.post("/v1/radar/actualiser").status_code == 200
+        client.app.state.transport_oriane = transport_oriane_simule(
+            corps=_reponse_pour(reponse_oriane_simulee, AUTRE_PHRASE)
+        )
+        assert _lancer(client, f"« {AUTRE_PHRASE} »").status_code == 201
+        recits = {r["phrase_surveillee"]: r for r in client.get("/v1/radar").json()["recits"]}
+        assert set(recits) == {CAS_PHRASE, AUTRE_PHRASE}
+        assert len(recits[AUTRE_PHRASE]["videos"]) == 2
+
+
+def test_apres_la_bascule_le_radar_n_a_pas_de_recit_vide(
+    tmp_path: Path,
+    reponse_oriane_simulee: dict[str, Any],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+    cas_simule: Callable[..., Path],
+) -> None:
+    with _service(tmp_path, direct=True, transport=transport_oriane_simule()) as client:
+        cas_simule(client.app.state.config)
+        assert client.post("/v1/radar/actualiser").status_code == 200
+        client.app.state.transport_oriane = transport_oriane_simule(
+            corps=_reponse_pour(reponse_oriane_simulee, AUTRE_PHRASE)
+        )
+        assert _lancer(client, f"« {AUTRE_PHRASE} »").status_code == 201
+        assert len(client.get("/v1/radar").json()["recits"]) == 2
+        # Un 402 bascule en mode enregistré : les vidéos lues en direct sont purgées du radar.
+        client.app.state.transport_oriane = transport_oriane_simule(statut=402, corps={})
+        assert _lancer(client, "« encore une autre phrase simulée »").status_code == 409
+        radar = client.get("/v1/radar").json()
+        assert radar["mode"] == "enregistre"
+        assert [r["phrase_surveillee"] for r in radar["recits"]] == [CAS_PHRASE]
+        assert all(r["videos"] for r in radar["recits"])

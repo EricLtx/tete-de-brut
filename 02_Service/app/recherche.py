@@ -316,6 +316,8 @@ def _refuser(code: str, detail: str) -> Traduction:
 
 def _requete_en_clair(traduction: Traduction) -> str:
     filtres = traduction.filtres
+    if traduction.refus is not None:
+        return "recherche refusée : rien n'est envoyé à Oriane"
     if traduction.type == "lien":
         if filtres.identifiant_plateforme is None:
             return "recherche refusée : rien n'est envoyé à Oriane"
