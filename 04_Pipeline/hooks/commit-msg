@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Garde du message de commit (canon harnais-pipeline) : type(portée): sujet d'au moins 8 caractères,
+# ou commit de fusion (seulement pendant une vraie fusion) / de retour ; signature optionnelle (config signature).
+# Pourquoi : un historique lisible par type est ce qui permet à l'orchestrateur et au relecteur de retrouver un changement
+# sans lire les diffs. Sur la branche protégée, un « git commit » qui achève une fusion exige aussi le rapport GO.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+. "$root/04_Pipeline/lib/common.sh"; . "$root/04_Pipeline/lib/go.sh"; . "$root/04_Pipeline/lib/events.sh"
+msg="$1"
+gd="$(git rev-parse --git-dir)"
+first="$(grep -vE '^\s*#' "$msg" | sed -n '1p')"
+types="$(cfg typesCommit | paste -sd'|' -)"
+[ -n "$types" ] || types='feat|fix|docs|test|pipeline|chore|refactor|perf|content|style'
+en_fusion=0
+[ -f "$gd/MERGE_HEAD" ] && en_fusion=1
+case "${GIT_REFLOG_ACTION:-}" in merge*|pull*) en_fusion=1 ;; esac
+ok_msg=0
+printf '%s' "$first" | grep -qE "^(Revert |fixup! |squash! |($types)(\([^)]+\))?!?: .{8,})" && ok_msg=1
+[ "$en_fusion" = 1 ] && printf '%s' "$first" | grep -qE '^Merge ' && ok_msg=1
+if [ "$ok_msg" = 0 ]; then
+  printf '✗ Message de commit non conforme : « %s »\n  Attendu : type(portée): sujet   — types : %s\n' "$first" "$types" >&2
+  [ "$en_fusion" = 0 ] && printf '%s' "$first" | grep -qE '^Merge ' && printf '  « Merge … » n'"'"'est admis que pendant une fusion (git merge, ou git commit avec MERGE_HEAD).\n' >&2
+  exit 1
+fi
+sig="$(cfg signature "")"
+if [ -n "$sig" ] && ! grep -qE "$sig" "$msg"; then
+  printf '✗ Signature attendue dans le message (motif « %s »)\n' "$sig" >&2; exit 1
+fi
+# Fusion commitée par « git commit » (conflit résolu, ou fusion laissée en suspens par pre-merge-commit) :
+# dans la branche protégée, chaque commit fusionné doit avoir son rapport GO.
+protected="$(cfg brancheProtegee main)"
+if [ "$(current_branch "$root")" = "$protected" ] && [ -f "$gd/MERGE_HEAD" ]; then
+  # shellcheck disable=SC2046
+  go_require_all "$protected" $(cat "$gd/MERGE_HEAD")
+fi
+exit 0

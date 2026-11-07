@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Garde avant un commit de fusion (canon harnais-pipeline) : dans la branche protégée, chaque commit fusionné
+# doit être couvert par un rapport de doublage GO portant exactement sur lui.
+# Pourquoi : la relecture indépendante est la condition de la fusion, pas une étape après coup.
+# Git n'écrit pas MERGE_HEAD pendant une fusion automatique : les références viennent de GIT_REFLOG_ACTION (lib/go.sh).
+# En cas de refus, git laisse la fusion en suspens (MERGE_HEAD) : « git commit » repasse alors par commit-msg, qui revérifie.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+. "$root/04_Pipeline/lib/common.sh"; . "$root/04_Pipeline/lib/go.sh"; . "$root/04_Pipeline/lib/events.sh"
+protected="$(cfg brancheProtegee main)"
+branch="$(current_branch "$root")"
+[ "$branch" = "$protected" ] || exit 0
+heads="$(merge_heads)"
+[ -n "$heads" ] || die "Fusion dans $protected refusée : impossible d'identifier le commit fusionné (ni MERGE_HEAD, ni GIT_REFLOG_ACTION). Fusionner avec « git merge --no-ff <branche> »."
+# shellcheck disable=SC2086
+go_require_all "$protected" $heads
+exit 0

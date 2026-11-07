@@ -1,0 +1,23 @@
+{
+  "projet": "tete-de-brut",
+  "canonVersion": "1.0.3",
+  "brancheProtegee": "main",
+  "docsSeulement": ["01_Docs/", "vault/", ".claude/", "!.claude/skills/", "!.claude/*.json", "CLAUDE.md", "README.md"],
+  "tailleMaxMo": 5,
+  "interdits": [".env", ".env.*", "!.env*.example", "*.pem", "*service-account*.json", "*.csv", "*.key", "*.sqlite", "*.sqlite3", "*.db", "02_Service/cas/*.json"],
+  "typesCommit": ["feat", "fix", "docs", "test", "pipeline", "chore", "refactor"],
+  "signature": "",
+  "pipeline": {
+    "ci": "04_Pipeline/ci.sh",
+    "build": [
+      "test ! -d 02_Service || (cd 02_Service && python -m ruff check . && python -m ruff format --check .)",
+      "test ! -d 02_Service || (cd 02_Service && python -m pytest -q -m 'not reel')"
+    ],
+    "controles": [
+      "! git grep -nIE '[[:alnum:]._%+-]+@[[:alnum:].-]+[.][[:alpha:]]{2,}' -- . ':(exclude)*.lock' || { echo 'adresse de courriel dans le dépôt' >&2; exit 1; }"
+    ],
+    "docs": true
+  },
+  "relecteur": { "modele": "sonnet", "effort": "high" },
+  "mandats": { "prefixe": "F", "dossier": "vault/mandats", "revues": "vault/revues", "journal": "vault/runtime/events.jsonl" }
+}
