@@ -1,7 +1,7 @@
 ---
 mandat: F004
 titre: S02 — Contrats JSON et OpenAPI api.v1, normalisation mots.v1, libellés refusés, routes présentes en 501
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S02
 branche: feat/service-contrats (part de feat/service-socle rendue ; fusion après celle de S01)
@@ -10,7 +10,7 @@ modele: opus
 effort: medium
 relecteur: opus / medium (conception du contrat que tous les mandats et les écrans suivent)
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T10:30Z
 rendu_a:
 go_a:
 allers_retours: 0
