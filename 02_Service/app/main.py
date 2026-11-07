@@ -62,7 +62,7 @@ def creer_application(config: Configuration | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=list(config.origines_autorisees),
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=[EN_TETE_CLE_DEMO, "Content-Type"],
     )
 

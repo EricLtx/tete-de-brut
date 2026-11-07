@@ -30,6 +30,7 @@ from app.modeles import (
     Modele,
     Radar,
     Recit,
+    SuppressionRecit,
     Video,
 )
 from app.mots import normaliser
@@ -45,6 +46,7 @@ MODELES_PAR_PREFIXE: dict[str, type[Modele]] = {
     "etat": Etat,
     "radar": Radar,
     "recit": Recit,
+    "suppression": SuppressionRecit,
     "video": Video,
     "comparaison": Ecart,
     "fiche": Fiche,

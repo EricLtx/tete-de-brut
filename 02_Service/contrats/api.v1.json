@@ -1390,6 +1390,78 @@
         "title": "Segment",
         "type": "object"
       },
+      "SuppressionRecit": {
+        "additionalProperties": false,
+        "description": "Compte rendu de la suppression d'un récit : la phrase retirée et ce qui est parti avec elle.",
+        "properties": {
+          "avertissement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Limite de la suppression, par exemple le retour de la phrase au redémarrage.",
+            "title": "Avertissement"
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "identifiant": {
+            "minLength": 1,
+            "title": "Identifiant",
+            "type": "string"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "phrase_surveillee": {
+            "description": "Phrase retirée des phrases surveillées.",
+            "minLength": 1,
+            "title": "Phrase Surveillee",
+            "type": "string"
+          },
+          "videos_conservees": {
+            "description": "Vidéos gardées : une autre phrase surveillée les a aussi trouvées.",
+            "minimum": 0.0,
+            "title": "Videos Conservees",
+            "type": "integer"
+          },
+          "videos_retirees": {
+            "description": "Vidéos supprimées : seule cette phrase les avait trouvées.",
+            "minimum": 0.0,
+            "title": "Videos Retirees",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mode",
+          "identifiant",
+          "phrase_surveillee",
+          "videos_retirees",
+          "videos_conservees"
+        ],
+        "title": "SuppressionRecit",
+        "type": "object"
+      },
       "TexteEcran": {
         "additionalProperties": false,
         "description": "Texte affiché à l'écran de la vidéo, lu chez Oriane.",
@@ -2542,6 +2614,77 @@
       }
     },
     "/v1/recits/{id}": {
+      "delete": {
+        "description": "Retire la phrase des phrases surveillées et des vidéos ; une vidéo d'une autre phrase reste.",
+        "operationId": "supprimer_un_recit_v1_recits__id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuppressionRecit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Supprimer un récit : sa phrase surveillée et les vidéos qu'elle seule avait trouvées",
+        "tags": [
+          "radar"
+        ]
+      },
       "get": {
         "description": "Récit `recit.v1` : phrase surveillée, requête en clair, plus ancienne version, non cherché.",
         "operationId": "lire_recit_v1_recits__id__get",
