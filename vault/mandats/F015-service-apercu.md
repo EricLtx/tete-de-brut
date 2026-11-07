@@ -1,7 +1,7 @@
 ---
 mandat: F015
 titre: S12 — Aperçu des vidéos : vignette et images clés d'Oriane relayées dans video.v1 (champ apercu), liste blanche amendée, cas enregistré et données d'essai
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S12
 branche: feat/service-apercu (part de main)
@@ -10,7 +10,7 @@ modele: sonnet
 effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T13:36Z
 rendu_a:
 go_a:
 allers_retours: 0
@@ -51,3 +51,4 @@ sha ; `git diff --stat origin/main...HEAD` ; run GitHub ; écarts ; adresses ré
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | orchestrateur (session service) | Lancé sur `feat/service-apercu` (worktree `.claude/worktrees/feat-service-apercu`), réalisateur sonnet / medium, en parallèle de F013 et F014 (aucun fichier commun). |
