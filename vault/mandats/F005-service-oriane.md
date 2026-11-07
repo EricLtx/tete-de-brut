@@ -1,7 +1,7 @@
 ---
 mandat: F005
 titre: S03 — Adaptateur Oriane : une seule fonction d'appel, liste blanche des champs vers video.v1, journal de chaque appel, GET /v1/videos/{id}
-statut: lance
+statut: realise
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S03
 branche: feat/service-oriane (part de feat/service-contrats à 407a5c7 ; fusion après S02)
@@ -11,9 +11,9 @@ effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T10:52Z
-rendu_a:
+rendu_a: 2026-11-07T11:07Z
 go_a:
-allers_retours: 0
+allers_retours: 1
 ---
 
 # F005 — S03, adaptateur Oriane
@@ -66,3 +66,5 @@ sha ; `git diff --stat feat/service-contrats...HEAD` ; run GitHub et nombre de t
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur sonnet / medium | Rendu 120183f : `app/oriane.py`, `app/liste_blanche.py`, `app/routes/videos.py`, `app/config.py`, `.env.example`, `tests/test_oriane.py`, `conftest.py` (+923), run 42366568938 vert, 152 tests, test `reel` sauté. Écarts : `tests/test_contrats.py` hors réserve (`ROUTES_IMPLEMENTEES`, commit séparé) ; 501 encore documenté sur la route ; pas de gestionnaire d'enveloppe pour `OrianeInjoignable`, `CreditsEpuises`, `RequeteInvalide` (`erreurs.py` hors réserve → S04) ; `rechercher` asynchrone, rend `ResultatRecherche` (videos, total, ecartees, code, credits_estimes, requete, incomplete) et écrit les vidéos en base ; mode `direct` seulement si config en direct et vidéo écrite en direct. Hypothèse déclarée : `operator: and` racine avec `transcript` et `onScreenText`. |
+| 2026-11-07 | orchestrateur | Hypothèse levée par appel réel (limit=1, « retraites ») : `and` racine = intersection (28), `or` racine casse plateforme et date (28 M), forme correcte = racine `and` + sous-requête `or` de deux requêtes nommées `dit` (transcript) et `ecrit` (onScreenText) → 142 (union), `matchedQueries` donne l'origine. Correctif demandé au réalisateur (forme du corps, test de forme, test `reel` lancé une fois avec la clé du poste) ; doublage après le correctif. |
