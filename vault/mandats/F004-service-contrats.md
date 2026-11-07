@@ -1,7 +1,7 @@
 ---
 mandat: F004
 titre: S02 — Contrats JSON et OpenAPI api.v1, normalisation mots.v1, libellés refusés, routes présentes en 501
-statut: fusionne
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S02
 branche: feat/service-contrats (part de feat/service-socle rendue ; fusion après celle de S01)
@@ -53,3 +53,4 @@ sha ; `git diff --stat feat/service-socle...HEAD` ; résultat du run GitHub et n
 | 2026-11-07 | relecteur opus / medium | GO conditionnel sur b90aaf6 : 0 bloquant, 1 majeur (`mots.py` supprime la virgule et le point entre deux chiffres : « 3,5 milliards » = « 35 milliards », contraire à « nombres gardés tels que transcrits », cas D), 10 mineurs ; run GitHub vert, 103 tests, export identique, 401/404/422 vérifiés en direct. |
 | 2026-11-07 | orchestrateur | Majeur non reporté : correctif sur la même branche par le réalisateur (constats 1, 2, 8, 11 : séparateur décimal gardé entre deux chiffres, libellés refusés aussi sans accent, règles de `mots.v1` décrites dans le contrat, double NFC retirée), nouveau sha, relecture du seul diff par le même relecteur. Constat 6 (deux fenêtres) tranché avant S06 ; constat 7 (liens et origine du récit) consigné au plan. |
 | 2026-11-07 | relecteur opus / medium | GO sur 407a5c7 (correctif relu sur le seul diff) : 0 bloquant, 0 majeur, 9 mineurs dont deux nouveaux (description de `normalisation` muette sur les symboles et les espaces Unicode ; « 3,5 » et « 3.5 » restent deux mots, « faux-semblant » refusé dans un libellé). 111 tests, run 42365615589 vert. Fusionné sur `main`. |
+| 2026-11-07 | orchestrateur | Fusion refusée par la garde `pre-merge-commit` : elle n'accepte qu'un rapport signé du relecteur de la config (`sonnet`), pas un relecteur plus fort imposé par le mandat. Garde laissée telle quelle ; relecture `sonnet` / high lancée sur 407a5c7 en complément des deux relectures `opus` ; limite du canon consignée dans les retours du plugin. |
