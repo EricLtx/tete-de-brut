@@ -1,7 +1,7 @@
 ---
 mandat: F002
 titre: S01 — Socle du service : configuration par l'environnement, santé, CORS, enveloppe d'erreur, clé de démonstration, magasin SQLite, journal, image de conteneur
-statut: realise
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S01
 branche: feat/service-socle
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T10:05Z
 rendu_a: 2026-11-07T10:18Z
-go_a:
+go_a: 2026-11-07T10:26Z
 allers_retours: 0
 ---
 
@@ -50,3 +50,4 @@ sha ; `git diff --stat origin/main...HEAD` ; résultat du run GitHub ; écarts �
 | Date | De | Message |
 |---|---|---|
 | 2026-11-07 | réalisateur sonnet / medium | Rendu a6f65b5 : 16 fichiers sous 02_Service/, 32 tests, run GitHub vert (34 s), docker build et /sante vérifiés. Écarts : 02_Service/.gitignore ajouté (egg-info) ; clé de démonstration en intergiciel sous CORS ; avertissement CLE_DEMO vide au journal et au log ; starlette juge httpx déprécié pour TestClient (httpx2 hors pile close, non ajouté). |
+| 2026-11-07 | relecteur sonnet / high | GO sur a6f65b5 : 0 bloquant, 0 majeur, 6 mineurs (`.dockerignore` sans `.env`, `startswith("/v1")`, 500 sans CORS ni test, motif `token` dans le filtre de secrets de `base.py`, état global du chemin de base) ; run GitHub vert, 32 tests, service lancé, image construite. Fusionné sur `main` (f2e0a0e). Mineurs transmis à S03 et S08. |
