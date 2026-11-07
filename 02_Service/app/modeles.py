@@ -73,7 +73,8 @@ class Erreur(Modele):
     erreur: str = Field(
         description=(
             "Code `snake_case` : validation (422), introuvable (404), cle_demo_invalide (401), "
-            "decision_manquante, version_non_tranchee, constat_manquant (409), non_implemente (501)."
+            "decision_manquante, version_non_tranchee, constat_manquant (409), non_implemente (501), "
+            "oriane_injoignable, credits_epuises (503)."
         )
     )
     detail: str = Field(description="Phrase lisible, à afficher telle quelle.")

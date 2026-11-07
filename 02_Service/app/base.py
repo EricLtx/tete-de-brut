@@ -131,6 +131,15 @@ def lire(type: str, identifiant: str, *, chemin: str | Path | None = None) -> An
     return json.loads(ligne["json"]) if ligne else None
 
 
+def purger(type: str, a_garder: set[str], *, chemin: str | Path | None = None) -> int:
+    """Supprime les documents d'un type dont l'identifiant n'est pas dans `a_garder` ; rend leur nombre."""
+    with _transaction(chemin) as connexion:
+        lignes = connexion.execute("SELECT identifiant FROM documents WHERE type = ?", (type,)).fetchall()
+        inutiles = [(type, ligne["identifiant"]) for ligne in lignes if ligne["identifiant"] not in a_garder]
+        connexion.executemany("DELETE FROM documents WHERE type = ? AND identifiant = ?", inutiles)
+    return len(inutiles)
+
+
 def lister(type: str, *, chemin: str | Path | None = None) -> list[Any]:
     """Rend les documents d'un type, du plus ancien au plus récent."""
     with _transaction(chemin) as connexion:

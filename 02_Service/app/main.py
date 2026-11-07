@@ -69,7 +69,19 @@ def creer_application(config: Configuration | None = None) -> FastAPI:
     @app.get("/sante", include_in_schema=False)
     async def sante() -> dict[str, str | None]:
         """Sonde de vie, hors contrat versionné."""
-        return {"etat": "ok", "version": __version__, "mode": app.state.config.mode, "enregistre_le": None}
+        courant = app.state.config
+        rejoue = None
+        if courant.mode == "enregistre":
+            try:
+                rejoue = cas.lire_cas(courant)
+            except cas.CasInvalide:
+                pass
+        return {
+            "etat": "ok",
+            "version": __version__,
+            "mode": courant.mode,
+            "enregistre_le": rejoue.enregistre_le.isoformat() if rejoue else None,
+        }
 
     app.include_router(routeur_v1)
     return app

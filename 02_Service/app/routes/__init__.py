@@ -20,6 +20,10 @@ CODES_ERREUR: dict[int, str] = {
         "un geste du journaliste manque avant l'export."
     ),
     422: "validation : la requête ne respecte pas le contrat.",
+    503: (
+        "oriane_injoignable ou credits_epuises : Oriane n'a pas répondu utilement ou n'a plus de crédits "
+        "(le service bascule seul en mode enregistré après deux pannes de suite ou un 402)."
+    ),
     501: "non_implemente : route prévue au contrat, pas encore implémentée.",
 }
 

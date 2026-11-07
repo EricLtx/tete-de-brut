@@ -384,3 +384,30 @@ def client_avec_cas(config_test, cas_simule) -> Iterator[TestClient]:
     cas_simule(config_test)
     with TestClient(creer_application(config_test)) as c:
         yield c
+
+
+def test_radar_enregistre_ne_compte_que_les_videos_du_cas(
+    service, reponse_oriane_simulee, transport_oriane_simule
+):
+    c = service()
+    for i, resultat in enumerate(reponse_oriane_simulee["data"]["results"]):
+        resultat["id"] = f"cnt_DIRECT00000000000000000000{i}"
+        resultat["platformId"] = f"71000000000000000{i}"
+    en_direct = transport_oriane_simule(corps=reponse_oriane_simulee)
+    c.app.state.transport_oriane = en_direct
+    radar = c.post("/v1/radar/actualiser").json()
+    assert radar["mode"] == "direct"
+    assert len(radar["recits"][0]["videos"]) == 2
+    c.app.state.transport_oriane = transport_oriane_simule(statut=402, corps={})
+    enregistre = c.post("/v1/radar/actualiser").json()
+    assert enregistre["mode"] == "enregistre"
+    videos = enregistre["recits"][0]["videos"]
+    assert sorted(videos) == [ID_VIDEO, ID_VIDEO.replace("1", "2")]
+    assert c.get("/v1/videos/cnt_DIRECT000000000000000000000").status_code == 404
+
+
+def test_rejeu_laisse_une_ligne_au_journal_et_sante_donne_la_date(service):
+    c = service(MODE_DONNEES="enregistre")
+    assert c.get("/sante").json()["enregistre_le"] == DATE_DU_CAS.replace("Z", "+00:00")
+    c.post("/v1/radar/actualiser")
+    assert c.get("/v1/journal").json()["entrees"][0]["route"] == "acquisition.rejeu"

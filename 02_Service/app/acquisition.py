@@ -34,6 +34,7 @@ ECHECS_AVANT_BASCULE = 2
 # Débuts de raison de `rechercher` qui disent « Oriane n'a pas répondu » (et non « la requête est fausse »).
 PANNES = ("expiration", "Oriane injoignable", "Oriane a répondu")
 ROUTE_BASCULE = "acquisition.bascule"
+ROUTE_REJEU = "acquisition.rejeu"
 METHODE_COUT = "15 crédits par page de 100 résultats au niveau default (estimation)"
 METHODE_SANS_APPEL = "aucun appel à Oriane : le cas enregistré est rejoué"
 
@@ -99,6 +100,9 @@ async def actualiser(app: FastAPI) -> Radar:
     """
     config: Configuration = app.state.config
     if config.mode == "enregistre":
+        base.consigner(
+            route=ROUTE_REJEU, cible="cas enregistré rejoué sans appel à Oriane", mode="enregistre"
+        )
         return _radar_enregistre(config)
 
     try:

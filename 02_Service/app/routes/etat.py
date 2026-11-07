@@ -60,7 +60,7 @@ async def lire_journal(
     "/radar/actualiser",
     response_model=Radar,
     summary="Actualiser le radar par une requête Oriane en direct",
-    responses=erreurs(401, 501),
+    responses=erreurs(401, 422, 501, 503),
 )
 async def actualiser_radar(request: Request) -> Radar:
     """Une requête Oriane en direct (coût affiché avant le geste) ; bascule en mode enregistré si besoin."""
