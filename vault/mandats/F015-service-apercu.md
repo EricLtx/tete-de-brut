@@ -1,7 +1,7 @@
 ---
 mandat: F015
 titre: S12 — Aperçu des vidéos : vignette et images clés d'Oriane relayées dans video.v1 (champ apercu), liste blanche amendée, cas enregistré et données d'essai
-statut: en-doublage
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S12
 branche: feat/service-apercu (part de main)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T13:36Z
 rendu_a: 2026-11-07T13:44Z
-go_a:
+go_a: 2026-11-07T14:40Z
 allers_retours: 1
 ---
 
@@ -55,3 +55,4 @@ sha ; `git diff --stat origin/main...HEAD` ; run GitHub ; écarts ; adresses ré
 | 2026-11-07 | réalisateur sonnet / medium | Rendu aa7f98a762721f52269577a76d1a65fc2115ef22 : `Apercu` facultatif sur `Video`, liste blanche amendée (`thumbnailMediaId` reste refusé), images clés depuis `frames[].url` en `https://` sans doublon, dix au plus ; contrats réexportés sans champ obligatoire ; exemples du kit et README § 7 ; run 42378207683 vert, 305 tests. Hors réserve déclaré : `app/cas.py` (exemption de `vignette` dans les champs refusés), `tests/test_regles_transverses.py` (listes de champs de tiers). Fait relevé par l'orchestrateur dans la spécification OpenAPI Oriane (dépôt privé) : `frames` est une liste d'objets `{id, position, timestampSeconds, url, …}` servie au niveau `full` seulement ; au niveau `default` de la démonstration, seule la vignette arrive. Doublage sonnet / high lancé. |
 | 2026-11-07 | relecteur sonnet / high | GO conditionnel sur aa7f98a (`vault/revues/F015-aa7f98a.md`) : 0 bloquant, 2 majeurs (le cas enregistré accepte une adresse arbitraire dans `apercu` : `vignette` exemptée par son nom, `images_cles` jamais contrôlées, `Apercu` n'impose pas `https://` ; `app/cas.py` et `tests/test_regles_transverses.py` hors réserve, déclarés), 4 mineurs (dédoublonnage non testé, fixture sans sous-champs des frames, README § 7 dit « absent » pour `null`, test « frames sans vignette » manquant). Au niveau `default`, `images_cles` restera vide sur un résultat réel : seule la vignette arrive. Décision de l'orchestrateur : correctif sur la même branche, relecture du diff. |
 | 2026-11-07 | orchestrateur (session service) | Correctif poussé par le réalisateur : 54d0aad151201c45c679f9d33b663d53454375b9 (`AdresseHttps` sur `Apercu`, `_verifier_apercu` dans `cas.py`, huit cas forgés refusés, dédoublonnage et « frames sans vignette » testés, contrats réexportés avec `pattern`), run 42380266874 vert, 316 tests. Relecture du diff relancée. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 54d0aad151201c45c679f9d33b663d53454375b9 (`vault/revues/F015-54d0aad.md`) : majeurs clos (https seulement au modèle, au contrat et au chargement du cas), 0 bloquant, 0 majeur, 3 mineurs (réalisateur ayant écrit dans le mandat ; `_verifier_apercu` redondante avec le modèle ; règle 1 transverse sans les sous-champs des frames). Rejoué : 316 tests, 64 exemples d'écrans valides sous le nouveau `pattern`, sept cas forgés refusés, mutation du dédoublonnage attrapée. Fusionné sur `main`. |
