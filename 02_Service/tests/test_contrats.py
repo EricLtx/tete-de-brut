@@ -391,8 +391,10 @@ def test_routes_toutes_sous_v1_sauf_sante(client):
     assert "/sante" not in client.app.openapi()["paths"]
 
 
-# Routes remplies par un mandat : elles quittent la liste des 501 (S05 radar, S07 comparaisons).
+# Routes remplies par un mandat : elles quittent la liste des 501 et ont leurs propres tests
+# (S03 : vidéos ; S05 : radar et récits ; S07 : comparaisons).
 ROUTES_IMPLEMENTEES = {
+    ("GET", "/v1/videos/v1"),
     ("GET", "/v1/radar"),
     ("GET", "/v1/recits/r1"),
     ("POST", "/v1/comparaisons"),

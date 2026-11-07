@@ -52,6 +52,8 @@ gh run list --branch feat/service-modes --limit 1   # completed success
 curl -s localhost:8080/v1/etat   # mode enregistre sans clé, raison, enregistre_le, credits_jour/plafond, version, contrat = api.v1
 ```
 
+Règle RG-02 de la fiche S03, reportée ici (majeur du doublage de F005) : une phrase surveillée réduite à un nom de personne est refusée ; en l'absence de détection de noms, la règle codée est « moins de trois mots → refusée avec raison », dans `enregistrer_cas.py` et dans `actualiser()`, testée.
+
 Tests exigés : deux expirations simulées → `mode` `enregistre`, raison « Oriane injoignable » ; plafond atteint → aucun appel parti ; 402 → bascule et raison ; le script refuse un cas contenant `popularComments` ; `MODE_DONNEES=enregistre` force le mode même avec clé ; `POST /v1/radar/actualiser` sans clé de démo → 401 quand `CLE_DEMO` est posée ; un résultat enregistré n'est jamais servi avec `mode` `direct`.
 
 ## Compte rendu attendu (cinq lignes)
