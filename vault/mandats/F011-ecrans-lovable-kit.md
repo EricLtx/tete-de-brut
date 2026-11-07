@@ -1,7 +1,7 @@
 ---
 mandat: F011
 titre: S11 — Kit des trois écrans Lovable : brief écran par écran sur le contrat api.v1, instructions de projet, exemples de réponses validés, prompts de construction
-statut: go
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S11
 branche: feat/ecrans-lovable-kit (part de main à 2269c83)
@@ -56,3 +56,4 @@ sha ; `git diff --stat origin/main...HEAD` ; dernière ligne de `ci.sh --ref` ; 
 |---|---|---|
 | 2026-11-07 | réalisateur (opus / high) | Rendu 156cc92 (deux commits : `docs(ecrans)`, `test(service)`), 19 fichiers, tous dans la réserve. ruff et format propres, 232 tests verts (64 ajoutés), `AGENTS.md` 7 736 caractères, check-docs OK, run GitHub 42370512571 vert. Écarts déclarés : deux exemples de vidéo (source, reprise) ; exemple 501 ajouté, données d'essai affichées seulement sur 501 avec bandeau « fictives » ; exemples produits avec le gabarit de `feat/service-fiche` (à régénérer si S08 change ses textes) ; règle des mots refusés dans les `.md` : admis seulement entre accents graves. Champs jugés manquants au contrat (contournés côté écran) : `Erreur` sans `enregistre_le` ; `Recit.videos[]` identifiants seuls ; `Ecart` sans listes de mots normalisés (découpe refaite en JS, risque d'écart) ; origine parole ou texte à l'écran absente de `Recit` ; `Mesure.nom` en code ; `journal.filtres` porte des noms Oriane dans le vrai journal. Questions : ordre des refus d'export de S08 ; pile Lovable par défaut écrite de mémoire dans `AGENTS.md` ; `POST /v1/fiches` répété non documenté. |
 | 2026-11-07 | orchestrateur | Vérifié sur le worktree : commits, diff dans la réserve, tests rejoués (232 verts), run GitHub vert. Statut `realise`, doublage lancé. Les champs manquants sont reportés au plan (journal d'alignement) pour décision après le hackathon ; aucun changement de contrat le 07/11. |
+| 2026-11-07 | orchestrateur | Doublage GO (rapport `vault/revues/F011-156cc92.md`, sept mineurs), fusion `--no-ff` dans `main` (96e1196), pipeline verte, poussé. Lien du registre posé (constat 6). Constats 1 et 2 (clé de démonstration dans `AGENTS.md`, position du `remplace` dans le prompt 02) à traiter dans un mandat ultérieur. Worktree et branche supprimés. |
