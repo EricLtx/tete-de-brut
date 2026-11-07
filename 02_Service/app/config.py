@@ -11,6 +11,9 @@ RACINE_SERVICE = Path(__file__).resolve().parent.parent
 BASE_PAR_DEFAUT = RACINE_SERVICE / "donnees" / "tete-de-brut.sqlite"
 CAS_PAR_DEFAUT = RACINE_SERVICE / "cas"
 MODES_DONNEES = ("auto", "enregistre")
+ORIANE_URL_PAR_DEFAUT = "https://connect.oriane.xyz"
+ORIANE_EN_TETE_PAR_DEFAUT = "Authorization"
+ORIANE_PREFIXE_PAR_DEFAUT = "Bearer "
 
 
 class ErreurConfiguration(ValueError):
@@ -42,6 +45,14 @@ def _nombre(env: Mapping[str, str], nom: str, defaut: float) -> float:
         raise ErreurConfiguration(f"{nom} doit être un nombre") from exc
 
 
+def _prefixe_auth(env: Mapping[str, str]) -> str:
+    """Préfixe devant la clé Oriane : « Bearer » et une espace par défaut, `aucun` pour n'en poser aucun."""
+    brut = _texte(env, "ORIANE_PREFIXE_AUTH")
+    if not brut:
+        return ORIANE_PREFIXE_PAR_DEFAUT
+    return "" if brut.lower() == "aucun" else brut + " "
+
+
 def _origines(brut: str) -> tuple[str, ...]:
     """Liste exacte d'origines séparées par des virgules ; l'origine `*` est refusée."""
     origines = tuple(o.strip().rstrip("/") for o in brut.split(",") if o.strip())
@@ -57,8 +68,9 @@ class Configuration:
     """Réglages du service. Les clés n'apparaissent jamais dans `repr`."""
 
     oriane_cle: str = field(default="", repr=False)
-    oriane_url: str = ""
-    oriane_en_tete_auth: str = ""
+    oriane_url: str = ORIANE_URL_PAR_DEFAUT
+    oriane_en_tete_auth: str = ORIANE_EN_TETE_PAR_DEFAUT
+    oriane_prefixe_auth: str = ORIANE_PREFIXE_PAR_DEFAUT
     oriane_delai_s: float = 20.0
     origines_autorisees: tuple[str, ...] = ()
     cle_demo: str = field(default="", repr=False)
@@ -81,8 +93,9 @@ class Configuration:
             raise ErreurConfiguration("MODE_DONNEES vaut auto ou enregistre")
         return cls(
             oriane_cle=_texte(env, "ORIANE_API_KEY"),
-            oriane_url=_texte(env, "ORIANE_URL"),
-            oriane_en_tete_auth=_texte(env, "ORIANE_EN_TETE_AUTH"),
+            oriane_url=_texte(env, "ORIANE_URL", ORIANE_URL_PAR_DEFAUT).rstrip("/"),
+            oriane_en_tete_auth=_texte(env, "ORIANE_EN_TETE_AUTH", ORIANE_EN_TETE_PAR_DEFAUT),
+            oriane_prefixe_auth=_prefixe_auth(env),
             oriane_delai_s=_nombre(env, "ORIANE_DELAI_S", 20.0),
             origines_autorisees=_origines(_texte(env, "ORIGINES_AUTORISEES")),
             cle_demo=_texte(env, "CLE_DEMO"),

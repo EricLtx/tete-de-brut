@@ -391,8 +391,13 @@ def test_routes_toutes_sous_v1_sauf_sante(client):
     assert "/sante" not in client.app.openapi()["paths"]
 
 
-# Routes remplies par un mandat : elles quittent la liste des 501 (S07 : comparaisons).
-ROUTES_IMPLEMENTEES = {("POST", "/v1/comparaisons"), ("GET", "/v1/comparaisons/c1")}
+# Routes remplies par un mandat : elles quittent la liste des 501 et ont leurs propres tests
+# (S03 : vidéos ; S07 : comparaisons).
+ROUTES_IMPLEMENTEES = {
+    ("GET", "/v1/videos/v1"),
+    ("POST", "/v1/comparaisons"),
+    ("GET", "/v1/comparaisons/c1"),
+}
 
 
 @pytest.mark.parametrize(

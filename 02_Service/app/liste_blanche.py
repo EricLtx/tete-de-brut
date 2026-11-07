@@ -1,0 +1,199 @@
+"""Liste blanche : seuls ces champs d'Oriane entrent dans `video.v1`, tout le reste est ignoré.
+
+C'est le seul fichier (avec `app/oriane.py`, qui y puise) où vivent les noms de champs d'Oriane.
+La projection lit chaque champ autorisé par son nom : elle ne parcourt jamais la réponse, donc un
+champ de tiers servi par Oriane ne peut ni entrer dans la vidéo ni être recopié ailleurs.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import Any
+
+from app.modeles import Video
+
+# --- table de correspondance : nom Oriane -> champ français de `video.v1` -------------------------
+
+CORRESPONDANCE: dict[str, str] = {
+    "id": "identifiant",  # identifiant du contenu chez Oriane
+    "platform": "plateforme",  # tiktok, instagram ou youtube
+    "platformId": "identifiant_plateforme",  # identifiant de la vidéo sur la plateforme
+    "profileHandle": "compte",  # identifiant public du compte (pas le nom affiché)
+    "publishedAt": "publie_le",  # date de publication
+    "viewsCount": "vues_selon_oriane",  # vues, telles que les compte Oriane
+    "interactionsCount": "interactions_selon_oriane",  # interactions, telles que les compte Oriane
+    "caption": "legende",  # légende du contenu
+    "matchedQueries": "requetes_trouvees",  # noms `dit:<phrase>` et `ecrit:<phrase>`, ramenés aux phrases
+    "media[].transcript": "transcription.texte",  # parole transcrite par Oriane (niveau default)
+    "media[].onScreenText": "texte_ecran.texte",  # liste de chaînes, jointe par des retours à la ligne
+}
+
+# Noms utilisés pour construire la requête (filtres de la recherche).
+CHEMIN_RECHERCHE = "/rest/contents/search"
+FILTRE_TRANSCRIPTION = "transcript"  # parole transcrite
+FILTRE_TEXTE_ECRAN = "onScreenText"  # texte affiché à l'écran
+FILTRE_COMPTE = "profileHandle"  # identifiant public du compte
+FILTRE_DATE = "publishedAt"  # fenêtre de publication {after, before}
+FILTRE_PLATEFORME = "platform"  # {"includes": [...]}, relevé H01 (pas exactMatch)
+REQUETE_DIT = "dit"  # préfixe des sous-requêtes sur la parole transcrite : « dit:<phrase> »
+REQUETE_ECRIT = "ecrit"  # préfixe des sous-requêtes sur le texte à l'écran : « ecrit:<phrase> »
+LONGUEUR_MAX_PHRASE = 256
+REQUETE_DIT_OU_ECRIT = "dit_ou_ecrit"  # union des deux
+OPERATEUR_PHRASES = "includesExactly"  # la phrase doit apparaître telle quelle
+OPERATEUR_COMPTES = "exactMatch"  # le compte doit être exactement celui-là
+OPERATEUR_PLATEFORMES = "includes"  # la plateforme est l'une de celles-là
+
+# Champs servis par Oriane qui ne doivent jamais entrer dans le service (jamais écrits, jamais journalisés).
+# La projection ne les lit pas ; cette liste sert aux tests et aux contrôles d'autres modules.
+CHAMPS_REFUSES = frozenset(
+    {
+        "profileDisplayName",
+        "profilePictureUrl",
+        "thumbnailMediaUrl",
+        "thumbnailMediaId",
+        "mentions",
+        "hashtags",
+        "coAuthors",
+        "audioAuthor",
+        "popularComments",
+        "profileBio",
+        "locationPlatformId",
+        "locationCompleteAddress",
+        "locationLatitude",
+        "locationLongitude",
+        "profileLocationPlatformId",
+        "profileLocationCompleteAddress",
+        "profileLocationLatitude",
+        "profileLocationLongitude",
+    }
+)
+CHAMPS_REFUSES_MEDIA = frozenset({"tags", "frames", "transcriptChunks"})
+PREFIXES_REFUSES = (
+    "coAuthors",
+    "audio",
+    "location",
+    "profileLocation",
+    "profileFollowers",
+    "profileFollowing",
+)
+
+
+class ResultatIllisible(ValueError):
+    """Un résultat d'Oriane ne porte pas ce que `video.v1` exige : il est écarté, pas deviné."""
+
+
+def lien_video(plateforme: str, compte: str, identifiant_plateforme: str) -> str:
+    """Lien public reconstruit (format à vérifier par H03) ; jamais lu dans la réponse d'Oriane."""
+    if plateforme == "tiktok":
+        return f"https://www.tiktok.com/@{compte}/video/{identifiant_plateforme}"
+    if plateforme == "instagram":
+        return f"https://www.instagram.com/reel/{identifiant_plateforme}/"
+    if plateforme == "youtube":
+        return f"https://www.youtube.com/watch?v={identifiant_plateforme}"
+    raise ResultatIllisible(f"plateforme non prise en charge : {plateforme}")
+
+
+def _texte(valeur: Any) -> str:
+    return valeur.strip() if isinstance(valeur, str) else ""
+
+
+def _compte(valeur: Any) -> int | None:
+    if isinstance(valeur, bool) or not isinstance(valeur, int | float) or valeur < 0:
+        return None
+    return int(valeur)
+
+
+def _media(resultat: dict[str, Any]) -> list[dict[str, Any]]:
+    media = resultat.get("media")
+    return [m for m in media if isinstance(m, dict)] if isinstance(media, list) else []
+
+
+def _transcription(resultat: dict[str, Any]) -> str:
+    return "\n".join(t for m in _media(resultat) if (t := _texte(m.get("transcript"))))
+
+
+def _texte_ecran(resultat: dict[str, Any]) -> str:
+    morceaux: list[str] = []
+    for m in _media(resultat):
+        brut = m.get("onScreenText")
+        if isinstance(brut, str):
+            brut = [brut]
+        if isinstance(brut, list):
+            morceaux.extend(t for t in (_texte(x) for x in brut) if t)
+    return "\n".join(morceaux)
+
+
+def nom_requete(origine: str, phrase: str) -> str:
+    """Nom d'une sous-requête : `dit:<phrase>` ou `ecrit:<phrase>` ; Oriane le rend dans `matchedQueries`."""
+    return f"{origine}:{phrase}"
+
+
+def _noms_trouves(resultat: dict[str, Any]) -> list[str] | None:
+    noms = resultat.get("matchedQueries")
+    return [n for n in noms if isinstance(n, str)] if isinstance(noms, list) else None
+
+
+def phrases_trouvees(resultat: dict[str, Any], phrases: Sequence[str]) -> list[str]:
+    """Phrases dont la sous-requête `dit:` ou `ecrit:` a trouvé le résultat, dans l'ordre de la recherche."""
+    noms = set(_noms_trouves(resultat) or [])
+    return [
+        p for p in phrases if nom_requete(REQUETE_DIT, p) in noms or nom_requete(REQUETE_ECRIT, p) in noms
+    ]
+
+
+def compter_origines(resultats: list[dict[str, Any]]) -> dict[str, int]:
+    """Résultats trouvés par la parole (`dits`), par l'écran (`ecrits`) ou sans origine connue."""
+    dits = ecrits = sans_origine = 0
+    for r in resultats:
+        noms = _noms_trouves(r)
+        if noms is None:
+            sans_origine += 1
+            continue
+        dits += any(n.startswith(REQUETE_DIT + ":") for n in noms)
+        ecrits += any(n.startswith(REQUETE_ECRIT + ":") for n in noms)
+    return {"dits": dits, "ecrits": ecrits, "sans_origine": sans_origine}
+
+
+def projeter(
+    resultat: dict[str, Any], *, lue_le: datetime | None = None, phrases: Sequence[str] = ()
+) -> Video:
+    """Projette un résultat d'Oriane (niveau `default`) vers `video.v1`, en mode direct.
+
+    Lève `ResultatIllisible` si un champ obligatoire manque ou si la plateforme est inconnue.
+    """
+    lue_le = lue_le or datetime.now(UTC)
+    identifiant = _texte(resultat.get("id"))
+    plateforme = _texte(resultat.get("platform")).lower()
+    identifiant_plateforme = _texte(resultat.get("platformId"))
+    compte = _texte(resultat.get("profileHandle"))
+    publie_le = _texte(resultat.get("publishedAt"))
+    if not (identifiant and identifiant_plateforme and compte and publie_le):
+        raise ResultatIllisible("identifiant, plateforme, compte ou date de publication manquant")
+    donnees: dict[str, Any] = {
+        "identifiant": identifiant,
+        "plateforme": plateforme,
+        "identifiant_plateforme": identifiant_plateforme,
+        "compte": compte,
+        "publie_le": publie_le,
+        "vues_selon_oriane": _compte(resultat.get("viewsCount")),
+        "interactions_selon_oriane": _compte(resultat.get("interactionsCount")),
+        "legende": _texte(resultat.get("caption")),
+        "requetes_trouvees": phrases_trouvees(resultat, phrases),
+        "transcription": {
+            "texte": _transcription(resultat),
+            "source": "Oriane",
+            "niveau": "default",
+            "lue_le": lue_le,
+        },
+        "texte_ecran": {"texte": _texte_ecran(resultat), "source": "Oriane", "lue_le": lue_le},
+        "lien": lien_video(plateforme, compte, identifiant_plateforme),
+        "mode": "direct",
+        "enregistre_le": None,
+    }
+    try:
+        return Video.model_validate(donnees)
+    except (
+        ValueError
+    ) as exc:  # la validation pydantic hérite de ValueError ; son détail peut citer des valeurs
+        raise ResultatIllisible("résultat non conforme à video.v1") from exc
