@@ -78,11 +78,25 @@ jobs:
             tail -n 20 "$RUNNER_TEMP/service.log"
             exit 1
           fi
-          code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+          code="$(curl -sS -o "$RUNNER_TEMP/radar.json" -w '%{http_code}' -X POST \
             -H "X-Cle-Demo: $CLE_DEMO" -H "Origin: http://localhost:5173" \
             http://127.0.0.1:8080/v1/radar/actualiser)"
           echo "actualisation du radar : code $code"
           [ "$code" = "200" ]
+          curl -sS -o "$RUNNER_TEMP/etat.json" -H "X-Cle-Demo: $CLE_DEMO" http://127.0.0.1:8080/v1/etat
+          # Une bascule (402, plafond) rejouerait le parcours sur le cas enregistré : on exige le mode direct.
+          # N'affiche que mode, raison et credits_du_jour, jamais le reste des réponses.
+          python - <<'PY'
+          import json, os, sys
+          tmp = os.environ["RUNNER_TEMP"]
+          radar = json.load(open(os.path.join(tmp, "radar.json"), encoding="utf-8"))
+          etat = json.load(open(os.path.join(tmp, "etat.json"), encoding="utf-8"))
+          print(f"radar mode={radar.get('mode')} raison={radar.get('raison')}")
+          print(f"etat mode={etat.get('mode')} raison={etat.get('raison')} credits_du_jour={etat.get('credits_du_jour')}")
+          if radar.get("mode") != "direct" or etat.get("mode") != "direct":
+              print("KO : le service n'est pas en mode direct (bascule vers le cas enregistré)")
+              sys.exit(1)
+          PY
           python scripts/verifier_parcours.py --adresse http://localhost:8080 --origine http://localhost:5173
 
       - name: Ligne REEL du test
