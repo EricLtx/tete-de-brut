@@ -32,5 +32,12 @@
     ],
     "source": "Oriane",
     "lue_le": "2026-11-07T07:55:00Z"
+  },
+  "pertinence": {
+    "niveau": "forte",
+    "motif": "parle des places de crèche et de l'objectif de 2027",
+    "question": "places de crèche en 2027",
+    "modele": "claude-haiku-5-5",
+    "calcule_le": "2026-11-07T08:00:00Z"
   }
 }
