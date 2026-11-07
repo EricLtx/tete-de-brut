@@ -40,7 +40,7 @@ Relevé H01 (07/11, orchestrateur) : vingt formes d'en-tête essayées contre `c
 
 ## Fichiers réservés
 
-`02_Service/app/oriane.py`, `app/liste_blanche.py`, `app/routes/videos.py` (remplir la route de S02), `tests/test_oriane.py` ; `tests/conftest.py` : ajout d'une fixture `transport_oriane_simule` (`httpx.MockTransport`) sans retirer les autres.
+`02_Service/app/oriane.py`, `app/liste_blanche.py`, `app/routes/videos.py` (remplir la route de S02), `tests/test_oriane.py` ; `tests/conftest.py` : ajout d'une fixture `transport_oriane_simule` (`httpx.MockTransport`) sans retirer les autres. `app/config.py` : ajout des seules clés `ORIANE_PREFIXE_AUTH` (défaut vide) et, si absente, `ORIANE_URL` par défaut `https://connect.oriane.xyz` ; `.env.example` : les deux lignes correspondantes, sans valeur.
 
 ## Règle des contrats
 
