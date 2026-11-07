@@ -16,6 +16,7 @@
 | 08_Plans | [plan-service-demonstration](../08_Plans/plan-service-demonstration.md) | Plan de construction du service : fiches S01 à S10, vagues, contrat d'API et compléments, ordre de renoncement | Équipe, orchestrateur | Vivant | ADR-0001, plan de construction du dépôt privé |
 | 03_Ecrans | [README](../../03_Ecrans/README.md) | Kit des trois écrans Lovable : brief écran par écran sur `api.v1`, `AGENTS.md`, exemples JSON validés, prompts de mode Plan (S11, mandat F011) | P2, orchestrateur | Vivant | Contrat `api.v1`, guide de branchement |
 | 07_Decisions | [README](../07_Decisions/README.md) | Règles et gabarit des ADR | Tous | Stable | — |
+| 07_Decisions | [0002-fournisseur-du-modele-de-langue](../07_Decisions/0002-fournisseur-du-modele-de-langue.md) | ADR-0002 : Claude comme fournisseur du résumé de fiche (S10) | Orchestrateur | Vivant | ADR-0001 |
 | 08_Plans | [README](../08_Plans/README.md) | Liste des plans | Tous | Vivant | `08_Plans/` |
 | 08_Plans | [modele-plan](../08_Plans/modele-plan.md) | Gabarit de plan | Tous | Stable | — |
 
