@@ -1,0 +1,8 @@
+.venv
+tests
+donnees
+__pycache__
+.pytest_cache
+.ruff_cache
+*.sqlite
+*.egg-info
