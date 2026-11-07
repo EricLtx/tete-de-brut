@@ -1,7 +1,7 @@
 ---
 mandat: F010
 titre: S06 — Indicateur de vitesse de chaque récit sur deux fenêtres (48 h et 7 jours), méthode affichée, échantillon trop petit refusé
-statut: en-doublage
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S06
 branche: feat/service-vitesse (part de main après fusion de S05)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T11:55Z
 rendu_a: 2026-11-07T12:01Z
-go_a:
+go_a: 2026-11-07T12:10Z
 allers_retours: 0
 ---
 
@@ -51,3 +51,4 @@ sha ; diff ; run et tests ; écarts ; points ouverts.
 | Date | De | Message |
 |---|---|---|
 | 2026-11-07 | réalisateur sonnet / medium | Rendu 66bd4eff68c02a96dd27f9f4a919b97df1d1bd45 : `app/vitesse.py` (+72), une ligne dans `app/recits.py`, `tests/test_vitesse.py` (+97) ; run GitHub 42370517720 vert, 201 tests. Mesures `vitesse_48h`, `vitesse_7j`, `vitesse` (rapport) ; seuil de 3 vidéos par fenêtre, rapport nul si l'une est nulle ; « au moins » sur page tronquée. Écart : `tests/test_radar.py` modifié hors réserve (test de la fenêtre du cas limité aux mesures de volume, les mesures de vitesse ayant leurs propres fenêtres) ; point ouvert : « au moins » déclenché par la page pleine même si les vidéos consultées sont hors fenêtre. Doublage sonnet / high lancé. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 66bd4eff68c02a96dd27f9f4a919b97df1d1bd45 (`vault/revues/F010-66bd4ef.md`) : 0 bloquant, 0 majeur, 7 mineurs (`test_radar.py` hors réserve acceptable ; rapport calculé sur valeurs arrondies ; bornes `debut < t <= fin` contre « bornes comprises » ; fenêtres glissantes en mode enregistré, vitesse d'un cas rejoué variable d'un jour à l'autre ; tri ascendant sur page tronquée ; méthode contradictoire tronqué + < 3 vidéos ; date sans fuseau → TypeError). Fusionné sur `main` (7ba7da7). |

@@ -1,7 +1,7 @@
 ---
 mandat: F008
 titre: S04 — Modes direct et enregistré, actualisation du radar, état et journal, script d'enregistrement du cas avec la clé
-statut: lance
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S04
 branche: feat/service-modes (part de main après fusion de S03, S05 et S07)
@@ -13,7 +13,7 @@ cree: 2026-11-07
 lance_a: 2026-11-07T11:55Z
 rendu_a: 2026-11-07T12:07Z
 go_a:
-allers_retours: 0
+allers_retours: 1
 ---
 
 # F008 — S04, modes et cas enregistré
@@ -65,3 +65,4 @@ sha ; diff ; run et tests ; écarts ; points ouverts pour H03 (commande exacte d
 | Date | De | Message |
 |---|---|---|
 | 2026-11-07 | réalisateur sonnet / medium | Rendu d528370d985d91a679cecc0e32f7f450e2f152e4 : `app/acquisition.py` (+155), `app/cas.py` (+271), `scripts/enregistrer_cas.py` (+121), `tests/test_acquisition.py` (+372), fixture `cas_simule`, `config.py` (champ `bascule`), `erreurs.py` (trois gestionnaires), `routes/etat.py` ; run GitHub 42370955029 vert, 215 tests. Écarts : 501 documenté gardé (comme S07, S08), 503 et 422 absents de `CODES_ERREUR` donc de l'OpenAPI ; `config.py` ne lit pas `.env` (le script lit le sien) ; cas chargé paresseusement au premier `/v1/etat` ou `actualiser` (radar vide avant) ; bascule irréversible avant redémarrage ; `/sante` sur le mode initial. H03 : `python scripts/enregistrer_cas.py requetes.json [--sortie] [--env]`, clé par `ORIANE_API_KEY` seulement ; `requetes.json` = `{phrases (≥ 3 mots), comptes, plateformes, fenetre{debut, fin}}` ; une page de 100 (≈ 15 crédits) ; sortie `CHEMIN_CAS/cas.json`. Décision de l'orchestrateur : correctif demandé avant doublage, chargement du cas dans le `lifespan` de `main.py` (hors réserve, déclaré) et test « radar en premier ». |
+| 2026-11-07 | réalisateur sonnet / medium | Correctif rendu 1464f2cef1aef389fe767c30ee48ab10ad840f2d : `app/main.py` (+9, hors réserve, déclaré) charge le cas au démarrage en mode enregistré (`CasInvalide` journalisé sans bloquer) et `/sante` lit le mode courant ; test « radar en premier » ajouté ; run GitHub 42371110667 vert, 216 tests. Doublage sonnet / high lancé sur ce sha. |
