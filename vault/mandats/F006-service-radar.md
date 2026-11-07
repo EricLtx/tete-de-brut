@@ -1,7 +1,7 @@
 ---
 mandat: F006
 titre: S05 — Radar des récits : regroupement par phrase surveillée, mesures de volume avec méthode et fenêtre, plus ancienne version, non cherché, GET /v1/radar et /v1/recits/{id}
-statut: en-doublage
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S05
 branche: feat/service-radar (part de feat/service-contrats à 407a5c7 ; fusion après S02)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T10:52Z
 rendu_a: 2026-11-07T11:04Z
-go_a:
+go_a: 2026-11-07T11:56Z
 allers_retours: 1
 ---
 
@@ -60,3 +60,4 @@ sha ; diff ; run et tests ; écarts ; points ouverts pour S06 (ligne d'appel de 
 | 2026-11-07 | relecteur sonnet / high | GO sur 18a2b97 : 0 bloquant, 1 majeur (conflit `ROUTES_IMPLEMENTEES` avec S07, à unir), 7 mineurs (requête et fenêtre reconstruites sans cas ; cas mal formé fait tomber le radar ; `enregistre_le` = heure du calcul sur base vide ; `vues_cumulees` sous-estime sans le dire ; `erreurs(501)` conservé ; origine et liens absents de `recit.v1` ; tests légers). 119 tests, `TestClient` (uvicorn refusé par le poste). |
 | 2026-11-07 | orchestrateur | S07 fusionné avant S05 : raccord demandé au réalisateur (fusion de `main` dans la branche, union de `ROUTES_IMPLEMENTEES`, garde contre un cas mal formé : radar vide avec `non_cherche` plutôt qu'une 500), nouveau sha relu sur le seul diff. |
 | 2026-11-07 | réalisateur sonnet / medium | Raccord : `origin/main` (ff08082, S03 et S07) fusionné dans la branche, conflit `ROUTES_IMPLEMENTEES` résolu (routes de S03, S07 et S05 réunies). Tête 0d013680c492fc243026b27957e16265276cb2e2, run GitHub 42369125823 vert, 179 tests, `exporter_contrats.py --verifier` à 0. Second doublage (sonnet / high) lancé sur ce sha. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 0d013680c492fc243026b27957e16265276cb2e2 (`vault/revues/F006-0d01368.md`) : 0 bloquant, 0 majeur, 8 mineurs (majeur du premier passage réglé ; nouveau mineur : base vide plus cas mal formé → `recits: []` sans la mention « cas ignoré »). Fusionné sur `main` (1b177fd). |
