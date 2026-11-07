@@ -6,10 +6,13 @@ Deux temps, deux fonctions :
 - `executer` rejoue cette traduction auprès d'Oriane (une page), écrit les vidéos, ajoute le récit de la
   phrase au radar, ou rend la vidéo du lien. En mode enregistré, il sert le cas sans appel.
 
-La traduction est déterministe et sans modèle de langue : guillemets, expressions de temps, exclusion de
-comptes, plateformes, liens. Une expression de temps ou de plateforme écrite hors guillemets est lue comme
-une consigne ; la phrase entre guillemets n'est jamais retouchée. Les filtres affichés sont ceux qui
-partent : `executer` les passe tels quels à `oriane.rechercher`.
+Deux traductions, jamais mêlées. Déterministe : guillemets, expressions de temps, exclusion de comptes,
+plateformes, liens ; une expression de temps ou de plateforme écrite hors guillemets est lue comme une
+consigne, la phrase entre guillemets n'est jamais retouchée. Par le modèle de langue (F018) : une question
+libre, sans guillemets ni lien, est reformulée en une à trois phrases exactes courtes, avec une fenêtre,
+des exclusions et des plateformes (`app/recherche_modele.py`) ; toute erreur du modèle ramène à la
+traduction déterministe. Les filtres affichés sont ceux qui partent : `executer` les passe tels quels à
+`oriane.rechercher`.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from fastapi import FastAPI
+from starlette.concurrency import run_in_threadpool
 
 from app import base, cas
 from app.acquisition import (
@@ -57,11 +61,12 @@ from app.oriane import (
     OrianeInjoignable,
     rechercher,
 )
+from app.recherche_modele import Reformulation, reformuler
 from app.recits import calculer_recits, cle_phrase, identifiant_recit
 
 journal = logging.getLogger("tete_de_brut")
 
-JOURS_PAR_DEFAUT = 7
+JOURS_PAR_DEFAUT = 30
 JOURS_MAXIMUM = 365
 MESSAGE_HORS_CAS = "Mode enregistré : seules les phrases du cas sont servies"
 DETAIL_NOM_SEUL = (
@@ -71,6 +76,9 @@ METHODE_SANS_APPEL = "aucun appel à Oriane : la recherche est refusée"
 METHODE_ENREGISTRE = METHODE_COUT + " ; en mode enregistré, aucun appel n'est fait : 0 crédit dépensé"
 ROUTE_REJEU = "recherche.rejeu"
 PREFIXE_DOCUMENT = "recherche-"
+PREFIXE_REFORMULATION = "reformulée par un modèle de langue : "
+REFORMULATION_MODELE = "modele"
+REFORMULATION_DETERMINISTE = "deterministe"
 
 # --- lecture de la question -----------------------------------------------------------------------
 
@@ -133,6 +141,7 @@ class Traduction:
     notes: list[str] = field(default_factory=list)
     plateforme_lien: str | None = None
     exclusion: str | None = None  # libellé de la liste de comptes écartée, s'il y en a une
+    reformulation: str | None = None  # `modele` ou `deterministe` pour une phrase libre, `None` pour un lien
 
 
 def lire_listes_de_comptes(config: Configuration) -> tuple[dict[str, list[str]], str | None]:
@@ -224,8 +233,22 @@ def _fenetre(jours: int | None, maintenant: datetime) -> Fenetre:
     return Fenetre(debut=debut, fin=maintenant.replace(microsecond=0))
 
 
-def traduire(question: str, config: Configuration, maintenant: datetime) -> Traduction:
-    """Traduit la question en filtres ; ne lit que la question et le fichier des listes de comptes."""
+def _phrases_du_modele(reformulation: Reformulation) -> list[str]:
+    """Phrases du modèle, RG-02 appliquée à chacune : un nom seul est écarté, jamais cherché."""
+    return [p for p in reformulation.phrases if not est_nom_seul(p)]
+
+
+def traduire(
+    question: str,
+    config: Configuration,
+    maintenant: datetime,
+    reformulation: Reformulation | None = None,
+) -> Traduction:
+    """Traduit la question en filtres ; ne lit que la question, la reformulation et la liste de comptes.
+
+    `reformulation` n'est prise en compte que pour une question sans lien ni guillemets, et seulement si
+    elle porte au moins une phrase qui n'est pas un nom seul ; sinon la traduction est déterministe.
+    """
     lien = _lire_lien(question)
     if lien is False:
         refus = RefusRecherche(code="lien_non_reconnu", detail=_DETAIL_LIEN)
@@ -253,50 +276,77 @@ def traduire(question: str, config: Configuration, maintenant: datetime) -> Trad
     reste = _PLATEFORMES.sub(lire_plateformes, reste)
     plateformes = list(dict.fromkeys(p.lower() for p in plateformes))
 
-    if entre_guillemets:
-        phrases = [p for p in entre_guillemets if p.strip()]
-        if not phrases:
-            return _refuser(
-                "aucune_phrase", "La phrase entre guillemets est vide : écris la phrase cherchée."
-            )
-        if len(phrases) > 1:
-            return _refuser(
-                "plusieurs_phrases",
-                "Une recherche porte sur une seule phrase : garde une phrase entre guillemets.",
-            )
-        phrase = phrases[0].strip()
+    phrases_modele = (
+        _phrases_du_modele(reformulation) if reformulation is not None and not entre_guillemets else []
+    )
+    if reformulation is not None and phrases_modele:
+        # Ce que la question dit en toutes lettres (« depuis hier », « sur TikTok », « hors comptes de
+        # partis ») prime ; le modèle complète ce qu'elle exprime autrement (« cette semaine »).
+        phrases, mode_reformulation = phrases_modele, REFORMULATION_MODELE
+        jours = jours if jours is not None else reformulation.jours
+        plateformes = plateformes or list(reformulation.plateformes)
+        categories = [categorie] if categorie is not None else list(reformulation.exclusions)
     else:
-        phrase = _phrase_libre(reste)
-    if not normaliser(phrase):
-        return _refuser(
-            "aucune_phrase", "Aucune phrase à chercher : écris la phrase, de préférence entre guillemets."
-        )
-    if len(phrase) > LONGUEUR_MAX_PHRASE:
-        return _refuser(
-            "phrase_trop_longue", f"La phrase dépasse {LONGUEUR_MAX_PHRASE} caractères : raccourcis-la."
-        )
+        mode_reformulation = REFORMULATION_DETERMINISTE
+        categories = [categorie] if categorie is not None else []
+        if entre_guillemets:
+            gardees = [p for p in entre_guillemets if p.strip()]
+            if not gardees:
+                return _refuser(
+                    "aucune_phrase", "La phrase entre guillemets est vide : écris la phrase cherchée."
+                )
+            if len(gardees) > 1:
+                return _refuser(
+                    "plusieurs_phrases",
+                    "Une recherche porte sur une seule phrase : garde une phrase entre guillemets.",
+                )
+            phrase = gardees[0].strip()
+        else:
+            phrase = _phrase_libre(reste)
+        if not normaliser(phrase):
+            return _refuser(
+                "aucune_phrase", "Aucune phrase à chercher : écris la phrase, de préférence entre guillemets."
+            )
+        if len(phrase) > LONGUEUR_MAX_PHRASE:
+            return _refuser(
+                "phrase_trop_longue", f"La phrase dépasse {LONGUEUR_MAX_PHRASE} caractères : raccourcis-la."
+            )
+        phrases = [phrase]
 
     notes: list[str] = []
     comptes_exclus: list[str] = []
-    exclusion: str | None = None
-    if categorie is not None:
+    exclusions: list[str] = []
+    if categories:
         listes, probleme = lire_listes_de_comptes(config)
-        liste = _chercher_liste(categorie, listes)
-        if liste is not None and liste[1]:
-            exclusion, comptes_exclus = liste[0], liste[1]
-        else:
-            pourquoi = probleme or f"aucune liste de comptes « {categorie} » n'est configurée"
-            notes.append(f"exclusion « comptes de {categorie} » non appliquée : {pourquoi}")
+        for demandee in dict.fromkeys(categories):
+            liste = _chercher_liste(demandee, listes)
+            if liste is not None and liste[1]:
+                exclusions.append(liste[0])
+                comptes_exclus.extend(c for c in liste[1] if c not in comptes_exclus)
+            else:
+                pourquoi = probleme or f"aucune liste de comptes « {demandee} » n'est configurée"
+                notes.append(f"exclusion « comptes de {demandee} » non appliquée : {pourquoi}")
 
     filtres = FiltresRecherche(
-        phrases=[phrase],
+        phrases=phrases,
         dans=DANS_PAROLE_OU_ECRAN,
         fenetre=_fenetre(jours, maintenant),
         comptes_exclus=comptes_exclus,
         plateformes=plateformes,  # type: ignore[arg-type]
     )
-    refus = RefusRecherche(code="nom_seul", detail=DETAIL_NOM_SEUL) if est_nom_seul(phrase) else None
-    return Traduction("phrase", filtres, refus, notes, exclusion=exclusion)
+    refus = (
+        RefusRecherche(code="nom_seul", detail=DETAIL_NOM_SEUL)
+        if any(est_nom_seul(p) for p in phrases)
+        else None
+    )
+    return Traduction(
+        "phrase",
+        filtres,
+        refus,
+        notes,
+        exclusion=", ".join(exclusions) or None,
+        reformulation=mode_reformulation,
+    )
 
 
 def _exclusion(texte: str) -> tuple[str, str | None]:
@@ -308,7 +358,12 @@ def _exclusion(texte: str) -> tuple[str, str | None]:
 
 
 def _refuser(code: str, detail: str) -> Traduction:
-    return Traduction("phrase", FiltresRecherche(), RefusRecherche(code=code, detail=detail))  # type: ignore[arg-type]
+    return Traduction(
+        "phrase",
+        FiltresRecherche(),
+        RefusRecherche(code=code, detail=detail),  # type: ignore[arg-type]
+        reformulation=REFORMULATION_DETERMINISTE,
+    )
 
 
 # --- préparation ----------------------------------------------------------------------------------
@@ -327,26 +382,48 @@ def _requete_en_clair(traduction: Traduction) -> str:
         )
     if not filtres.phrases or filtres.fenetre is None:
         return "recherche refusée : rien n'est envoyé à Oriane"
+    if len(filtres.phrases) == 1:
+        phrases = f"phrase exacte « {filtres.phrases[0]} », dite ou écrite à l'écran"
+    else:
+        citees = ", ".join(f"« {p} »" for p in filtres.phrases)
+        phrases = f"phrases exactes {citees}, dites ou écrites à l'écran"
     morceaux = [
-        f"phrase exacte « {filtres.phrases[0]} », dite ou écrite à l'écran, niveau default, "
+        f"{phrases}, niveau default, "
         f"du {filtres.fenetre.debut.date().isoformat()} au {filtres.fenetre.fin.date().isoformat()}"
     ]
     if filtres.plateformes:
         morceaux.append("sur " + ", ".join(filtres.plateformes))
     if filtres.comptes_exclus:
         morceaux.append(f"hors {len(filtres.comptes_exclus)} comptes de la liste « {traduction.exclusion} »")
-    return ", ".join(morceaux) + "".join(f" ; {note}" for note in traduction.notes)
+    en_clair = ", ".join(morceaux) + "".join(f" ; {note}" for note in traduction.notes)
+    if traduction.reformulation == REFORMULATION_MODELE:
+        return PREFIXE_REFORMULATION + en_clair
+    return en_clair
+
+
+def _a_reformuler(question: str, config: Configuration) -> bool:
+    """Vrai si la question libre part chez le modèle : mode actif, ni lien ni phrase entre guillemets."""
+    return (
+        config.reformulation_par_modele
+        and _lire_lien(question) is None
+        and _GUILLEMETS.search(question) is None
+    )
 
 
 def preparer(question: str, config: Configuration, *, maintenant: datetime | None = None) -> Recherche:
-    """Traduit la question en `recherche.v1` : filtres, requête en clair, coût estimé ; aucun appel Oriane."""
-    traduction = traduire(question, config, (maintenant or datetime.now(UTC)).astimezone(UTC))
+    """Traduit la question en `recherche.v1` : filtres, requête en clair, coût ; aucun appel Oriane.
+
+    Une question libre est reformulée par le modèle de langue quand sa clé est présente (appel bloquant,
+    8 s au plus, repli déterministe sur toute erreur) ; l'appelant asynchrone passe par un fil.
+    """
+    reformulation = reformuler(question, config) if _a_reformuler(question, config) else None
+    traduction = traduire(question, config, (maintenant or datetime.now(UTC)).astimezone(UTC), reformulation)
     if traduction.refus is not None:
         cout = CoutEstime(credits_estimes=0, methode=METHODE_SANS_APPEL)
     else:
-        pages = max(len(traduction.filtres.phrases), 1)
+        # Une seule requête, une page : toutes les phrases partent ensemble en sous-requête `or`.
         methode = METHODE_ENREGISTRE if config.mode == "enregistre" else METHODE_COUT
-        cout = CoutEstime(credits_estimes=pages * CREDITS_PAR_PAGE_DEFAULT, methode=methode)
+        cout = CoutEstime(credits_estimes=CREDITS_PAR_PAGE_DEFAULT, methode=methode)
     enregistre = config.mode == "enregistre"
     return Recherche(
         mode=config.mode,  # type: ignore[arg-type]
@@ -357,6 +434,7 @@ def preparer(question: str, config: Configuration, *, maintenant: datetime | Non
         requete_en_clair=_requete_en_clair(traduction),
         cout_estime=cout,
         refus=traduction.refus,
+        reformulation=traduction.reformulation,  # type: ignore[arg-type]
     )
 
 
@@ -370,11 +448,17 @@ def _couples(recherche: Recherche) -> list[tuple[str, str]]:
     return [(filtres.plateformes[0], filtres.identifiant_plateforme)]
 
 
-def _recit_de(phrase: str, mode: str) -> Any:
-    """Récit de la phrase tel que le radar le sert maintenant."""
+def _recits_de(phrases: list[str], mode: str) -> list[Any]:
+    """Récits des phrases tels que le radar les sert maintenant (un par phrase connue), dans l'ordre."""
     recits, _ = calculer_recits(mode)
-    cible = identifiant_recit(phrase)
-    return next((r for r in recits if r.identifiant == cible), None)
+    par_identifiant = {r.identifiant: r for r in recits}
+    trouves = (par_identifiant.get(identifiant_recit(p)) for p in dict.fromkeys(phrases))
+    return [r for r in trouves if r is not None]
+
+
+def _recit_le_plus_fourni(recits: list[Any]) -> Any:
+    """Le récit qui a le plus de vidéos ; à égalité, le premier (l'ordre des phrases est celui du modèle)."""
+    return max(recits, key=lambda r: len(r.videos), default=None)
 
 
 def _rejouer(config: Configuration, recherche: Recherche) -> ResultatRecherche:
@@ -401,8 +485,10 @@ def _rejouer(config: Configuration, recherche: Recherche) -> ResultatRecherche:
         recit = None
     else:
         recit = None
-        if rejoue is not None and cle_phrase(filtres.phrases[0]) in {cle_phrase(p) for p in rejoue.phrases}:
-            recit = _recit_de(filtres.phrases[0], "enregistre")
+        if rejoue is not None:
+            connues = {cle_phrase(p) for p in rejoue.phrases}
+            dans_le_cas = [p for p in filtres.phrases if cle_phrase(p) in connues]
+            recit = _recit_le_plus_fourni(_recits_de(dans_le_cas, "enregistre"))
         if recit is None:
             raise ErreurApi("recherche_indisponible", MESSAGE_HORS_CAS, 409)
         video = None
@@ -439,30 +525,39 @@ def _fusionner(avant: dict[str, list[str]], videos: list[Video]) -> list[Video]:
 
 
 def _surveiller(recherche: Recherche) -> None:
-    """Ajoute la phrase aux phrases surveillées : le radar sert ensuite son récit."""
-    phrase, fenetre = recherche.filtres.phrases[0], recherche.filtres.fenetre
+    """Ajoute chaque phrase aux phrases surveillées, même sans vidéo : le radar sert ensuite son récit."""
+    fenetre = recherche.filtres.fenetre
     assert fenetre is not None
-    base.ecrire(
-        cas.TYPE_CAS,
-        PREFIXE_DOCUMENT + identifiant_recit(phrase),
-        cas.CAS_V1,
-        {
-            "phrases": [phrase],
-            "requete": recherche.requete_en_clair,
-            "fenetre": fenetre.model_dump(mode="json"),
-        },
-    )
+    for phrase in dict.fromkeys(recherche.filtres.phrases):
+        base.ecrire(
+            cas.TYPE_CAS,
+            PREFIXE_DOCUMENT + identifiant_recit(phrase),
+            cas.CAS_V1,
+            {
+                "phrases": [phrase],
+                "requete": recherche.requete_en_clair,
+                "fenetre": fenetre.model_dump(mode="json"),
+            },
+        )
+
+
+async def _preparer_en_fil(question: str, config: Configuration) -> Recherche:
+    """`preparer` dans un fil : l'appel au modèle de langue bloque jusqu'à 8 s, pas la boucle d'événements."""
+    return await run_in_threadpool(preparer, question, config)
 
 
 async def executer(app: FastAPI, question: str) -> ResultatRecherche:
     """Prépare la question puis la lance : appel Oriane en direct, cas rejoué en mode enregistré.
+
+    Une question libre cherche toutes les phrases rendues en une page (sous-requête `or`) et rend le
+    récit qui a le plus de vidéos ; les autres récits sont aussi ajoutés au radar.
 
     Refus (RG-02 et autres) : 422 `validation` avec le libellé du refus, sans aucun appel. Mêmes
     bascules en mode enregistré que l'actualisation du radar : plafond de crédits du jour atteint,
     crédits épuisés (402), deux pannes d'Oriane de suite.
     """
     config: Configuration = app.state.config
-    recherche = preparer(question, config)
+    recherche = await _preparer_en_fil(question, config)
     if recherche.refus is not None:
         raise ErreurApi("validation", recherche.refus.detail, 422)
     if config.mode == "enregistre":
@@ -475,7 +570,7 @@ async def executer(app: FastAPI, question: str) -> ResultatRecherche:
             "le service rejoue le cas enregistré"
         )
         basculer(app, raison)
-        return _rejouer(app.state.config, preparer(question, app.state.config))
+        return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
 
     filtres = recherche.filtres
     avant = {d["identifiant"]: d.get("requetes_trouvees", []) for d in base.lister("video")}
@@ -493,7 +588,7 @@ async def executer(app: FastAPI, question: str) -> ResultatRecherche:
         )
     except CreditsEpuises:
         basculer(app, "crédits Oriane épuisés (402) : le service rejoue le cas enregistré")
-        return _rejouer(app.state.config, preparer(question, app.state.config))
+        return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
     except OrianeInjoignable as exc:
         if not exc.raison.startswith(PANNES):
             raise  # clé refusée, requête refusée : une panne de configuration, pas de bascule
@@ -506,7 +601,7 @@ async def executer(app: FastAPI, question: str) -> ResultatRecherche:
             "le service rejoue le cas enregistré",
         )
         suivi.pannes_de_suite = 0
-        return _rejouer(app.state.config, preparer(question, app.state.config))
+        return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
     suivi.pannes_de_suite = 0
 
     videos = _fusionner(avant, resultat.videos)
@@ -524,5 +619,5 @@ async def executer(app: FastAPI, question: str) -> ResultatRecherche:
             raise ErreurApi("introuvable", "Oriane n'a retrouvé aucune vidéo avec ce lien.", 404)
         return ResultatRecherche(mode="direct", recherche=recherche, video=video)
     _surveiller(recherche)
-    recit = _recit_de(filtres.phrases[0], "direct")
+    recit = _recit_le_plus_fourni(_recits_de(filtres.phrases, "direct"))
     return ResultatRecherche(mode="direct", recherche=recherche, recit=recit)
