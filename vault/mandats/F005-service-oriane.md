@@ -1,7 +1,7 @@
 ---
 mandat: F005
 titre: S03 — Adaptateur Oriane : une seule fonction d'appel, liste blanche des champs vers video.v1, journal de chaque appel, GET /v1/videos/{id}
-statut: realise
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S03
 branche: feat/service-oriane (part de feat/service-contrats à 407a5c7 ; fusion après S02)
@@ -70,3 +70,5 @@ sha ; `git diff --stat feat/service-contrats...HEAD` ; run GitHub et nombre de t
 | 2026-11-07 | orchestrateur | Hypothèse levée par appel réel (limit=1, « retraites ») : `and` racine = intersection (28), `or` racine casse plateforme et date (28 M), forme correcte = racine `and` + sous-requête `or` de deux requêtes nommées `dit` (transcript) et `ecrit` (onScreenText) → 142 (union), `matchedQueries` donne l'origine. Correctif demandé au réalisateur (forme du corps, test de forme, test `reel` lancé une fois avec la clé du poste) ; doublage après le correctif. |
 | 2026-11-07 | réalisateur sonnet / medium | Correctif 4bc3f14 : racine `and` + sous-requête `dit_ou_ecrit` (`or`) à deux enfants `dit`/`ecrit`, tests de forme, journal `dits`/`ecrits`, run 42366899362 vert, 153 tests. Test `reel` exécuté une fois avec la clé du poste : code 206, total 7, 0 écartée, 900 ms. Point ouvert : `requetes_trouvees` porte les noms de requêtes, pas les phrases. |
 | 2026-11-07 | orchestrateur | Second correctif demandé avant doublage : enfants nommés `dit:<phrase>` et `ecrit:<phrase>`, `requetes_trouvees` = phrases reconnues dans `matchedQueries` (jamais les noms techniques), pour que le regroupement de S05 fonctionne. |
+| 2026-11-07 | réalisateur sonnet / medium | Ajustement 7eec373 : enfants `dit:<phrase>` et `ecrit:<phrase>`, `requetes_trouvees` = phrases reconnues, journal `dits`/`ecrits`/`sans_origine`, phrase > 256 caractères refusée avant l'appel ; run 42367218515 vert, 157 tests. |
+| 2026-11-07 | orchestrateur | Vérifié par appel réel : Oriane accepte les noms de requêtes avec espaces, accents, apostrophe et deux-points et les renvoie tels quels dans `matchedQueries` (206). Doublage lancé sur 7eec373. |
