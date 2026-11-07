@@ -1,7 +1,7 @@
 ---
 mandat: F019
 titre: S16 — Suppression d'un récit : DELETE /v1/recits/{id} retire la phrase surveillée du radar, ses vidéos orphelines et le consigne au journal
-statut: lance
+statut: realise
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S16
 branche: feat/service-recit-suppression (part de main)
@@ -11,7 +11,7 @@ effort: high
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T15:40Z
-rendu_a:
+rendu_a: 2026-11-07T15:45Z
 go_a:
 allers_retours: 0
 ---
@@ -51,3 +51,5 @@ sha ; diff ; tests ; écarts ; réponse exacte de la route (exemple).
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur (sonnet / high) | Rendu 9b7fcf0 sur feat/service-recit-suppression : DELETE /v1/recits/{id}, SuppressionRecit, base.supprimer et lister_avec_identifiants, CORS DELETE ; 481 tests verts, run 42386285188 vert. Écarts : exemple suppression-recit.json et test_exemples_ecrans ajoutés (exigés par le test du kit) ; securite.py inchangé (DELETE déjà protégé). |
+| 2026-11-07 | orchestrateur | Rendu vérifié par le run GitHub vert et déployé dans le Codespace de démonstration (branche demo/enregistrement) ; doublage lancé. |

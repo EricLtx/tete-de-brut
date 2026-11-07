@@ -1,7 +1,7 @@
 ---
 mandat: F018
 titre: S15 — Recherche : reformulation de la question par le modèle de langue (phrases exactes, fenêtre, exclusions), fenêtre par défaut élargie, lien collé vérifié en réel
-statut: lance
+statut: realise
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S15
 branche: feat/service-recherche-modele (part de origin/feat/service-recherche)
@@ -11,7 +11,7 @@ effort: high
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T15:25Z
-rendu_a:
+rendu_a: 2026-11-07T15:45Z
 go_a:
 allers_retours: 0
 ---
@@ -54,3 +54,5 @@ sha ; diff ; tests (dont `reel`) ; écarts ; forme exacte du filtre de lien et e
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur (sonnet / high) | Rendu 5993112 sur feat/service-recherche-modele : reformulation par le modèle (sonnet-5-5, output_config.effort low, pas de temperature), repli déterministe, cache 5 min, fil dédié ; tests 498 verts, deux tests reel verts (question libre → « la réforme des retraites », « réforme des retraites », 71 et 90 vidéos ; liens TikTok et Instagram rendus) ; filtre de lien existant confirmé ; run GitHub vert. Écarts : coût estimé 15 quel que soit le nombre de phrases ; règles de tri des phrases ; précédence de la question sur le modèle. |
+| 2026-11-07 | orchestrateur | Rendu vérifié par le run GitHub vert et déployé dans le Codespace de démonstration (branche demo/enregistrement) ; doublage lancé. |
