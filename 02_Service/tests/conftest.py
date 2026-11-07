@@ -6,10 +6,12 @@ Les noms sont stables : les mandats suivants (S02 à S10) les réutilisent sans 
 from __future__ import annotations
 
 import copy
+import json
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -238,3 +240,34 @@ def reponse_oriane_simulee() -> dict[str, Any]:
     copie neuve à chaque test, valeurs fictives évidentes, aucun nom réel.
     """
     return copy.deepcopy(_REPONSE_ORIANE_SIMULEE)
+
+
+@pytest.fixture
+def transport_oriane_simule(reponse_oriane_simulee: dict[str, Any]) -> Callable[..., httpx.MockTransport]:
+    """Fabrique un `httpx.MockTransport` qui joue Oriane, sans réseau.
+
+    `transport_oriane_simule(statut=200, corps=None, exception=None)` : par défaut la réponse simulée en 200 ;
+    `corps` remplace le JSON rendu ; `exception` est levée à la place d'une réponse (expiration, coupure).
+    Le transport garde les requêtes reçues dans `transport.requetes` (méthode, adresse, en-têtes, corps).
+    """
+
+    def fabriquer(
+        statut: int = 200, corps: Any = None, exception: Exception | None = None
+    ) -> httpx.MockTransport:
+        requetes: list[httpx.Request] = []
+
+        def repondre(requete: httpx.Request) -> httpx.Response:
+            requete.read()
+            requetes.append(requete)
+            if exception is not None:
+                raise exception
+            contenu = reponse_oriane_simulee if corps is None else corps
+            return httpx.Response(
+                statut, content=json.dumps(contenu), headers={"content-type": "application/json"}
+            )
+
+        transport = httpx.MockTransport(repondre)
+        transport.requetes = requetes  # type: ignore[attr-defined]
+        return transport
+
+    return fabriquer
