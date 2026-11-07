@@ -370,3 +370,17 @@ def test_script_lit_la_cle_dans_le_env(tmp_path, monkeypatch):
     script.charger_env(env)
     assert os.environ["ORIANE_API_KEY"] == "cle-fictive-env"
     monkeypatch.delenv("ORIANE_API_KEY")
+
+
+def test_radar_en_premier_apres_demarrage_porte_les_recits(client_avec_cas):
+    radar = client_avec_cas.get("/v1/radar").json()
+    assert radar["mode"] == "enregistre"
+    assert [r["phrase_surveillee"] for r in radar["recits"]] == [CAS_PHRASE]
+    assert len(radar["recits"][0]["videos"]) == 2
+
+
+@pytest.fixture
+def client_avec_cas(config_test, cas_simule) -> Iterator[TestClient]:
+    cas_simule(config_test)
+    with TestClient(creer_application(config_test)) as c:
+        yield c
