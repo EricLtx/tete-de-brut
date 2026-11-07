@@ -83,9 +83,16 @@ def valeurs_tiers(reponse: dict[str, Any]) -> set[str]:
 # --- requête envoyée ---------------------------------------------------------------------------------
 
 
+def enfant(origine: str, filtre: str, phrase: str) -> dict:
+    return {
+        "name": f"{origine}:{phrase}",
+        "operator": "and",
+        "filters": {filtre: {"includesExactly": {"values": [phrase], "operator": "or"}}},
+    }
+
+
 def test_corps_de_requete_exact():
     corps = construire_corps([PHRASE], ["compte_simule_source"], FENETRE, ["tiktok"])
-    groupe = {"includesExactly": {"values": [PHRASE], "operator": "or"}}
     assert corps == {
         "name": "tete-de-brut-recherche",
         "operator": "and",
@@ -98,10 +105,7 @@ def test_corps_de_requete_exact():
             {
                 "name": "dit_ou_ecrit",
                 "operator": "or",
-                "queries": [
-                    {"name": "dit", "operator": "and", "filters": {"transcript": groupe}},
-                    {"name": "ecrit", "operator": "and", "filters": {"onScreenText": groupe}},
-                ],
+                "queries": [enfant("dit", "transcript", PHRASE), enfant("ecrit", "onScreenText", PHRASE)],
             }
         ],
     }
@@ -109,17 +113,73 @@ def test_corps_de_requete_exact():
     assert "onScreenText" not in corps["filters"]
 
 
-def test_corps_sans_cadre_n_a_que_la_sous_requete():
-    corps = construire_corps([PHRASE, " autre phrase "])
+def test_deux_phrases_quatre_enfants_nommes():
+    corps = construire_corps(["phrase A", " phrase B ", "phrase A"])
     assert corps["operator"] == "and"
     assert corps["filters"] == {}
     (union,) = corps["queries"]
     assert union["operator"] == "or"
-    assert [q["name"] for q in union["queries"]] == ["dit", "ecrit"]
-    assert union["queries"][0]["filters"]["transcript"]["includesExactly"]["values"] == [
-        PHRASE,
-        "autre phrase",
+    assert [q["name"] for q in union["queries"]] == [
+        "dit:phrase A",
+        "ecrit:phrase A",
+        "dit:phrase B",
+        "ecrit:phrase B",
     ]
+    assert union["queries"][2] == enfant("dit", "transcript", "phrase B")
+    assert union["queries"][3] == enfant("ecrit", "onScreenText", "phrase B")
+
+
+def test_phrase_trop_longue_refusee(config_oriane, transport_oriane_simule):
+    transport = transport_oriane_simule()
+    assert construire_corps(["x" * 256])
+    with pytest.raises(RequeteInvalide, match="256"):
+        chercher_phrases(config_oriane, transport, ["x" * 257])
+    assert transport.requetes == []
+
+
+def chercher_phrases(config, transport, phrases):
+    return asyncio.run(rechercher(phrases, config=config, transport=transport, fenetre=FENETRE))
+
+
+def test_requetes_trouvees_sont_les_phrases(config_oriane, transport_oriane_simule, reponse_oriane_simulee):
+    resultats = reponse_oriane_simulee["data"]["results"]
+    resultats[0]["matchedQueries"] = ["ecrit:phrase B", "dit_ou_ecrit", "tete-de-brut-recherche"]
+    resultats[1]["matchedQueries"] = [
+        "dit:phrase A",
+        "ecrit:phrase A",
+        "dit_ou_ecrit",
+        "tete-de-brut-recherche",
+    ]
+    transport = transport_oriane_simule(corps=reponse_oriane_simulee)
+    resultat = chercher_phrases(config_oriane, transport, ["phrase A", "phrase B"])
+    assert resultat.videos[0].requetes_trouvees == ["phrase B"]
+    assert resultat.videos[1].requetes_trouvees == ["phrase A"]
+    ligne = base.lire_journal()[0]
+    assert ligne["resultats"]["dits"] == 1
+    assert ligne["resultats"]["ecrits"] == 2
+    assert ligne["resultats"]["sans_origine"] == 0
+
+
+def test_requetes_trouvees_dans_l_ordre_des_phrases(
+    config_oriane, transport_oriane_simule, reponse_oriane_simulee
+):
+    reponse_oriane_simulee["data"]["results"][0]["matchedQueries"] = ["ecrit:phrase B", "dit:phrase A"]
+    resultat = chercher_phrases(
+        config_oriane, transport_oriane_simule(corps=reponse_oriane_simulee), ["phrase A", "phrase B"]
+    )
+    assert resultat.videos[0].requetes_trouvees == ["phrase A", "phrase B"]
+
+
+def test_sans_matched_queries_liste_vide_et_comptee(
+    config_oriane, transport_oriane_simule, reponse_oriane_simulee
+):
+    del reponse_oriane_simulee["data"]["results"][0]["matchedQueries"]
+    resultat = chercher_phrases(
+        config_oriane, transport_oriane_simule(corps=reponse_oriane_simulee), [PHRASE]
+    )
+    assert resultat.videos[0].requetes_trouvees == []
+    assert resultat.videos[1].requetes_trouvees == [PHRASE]
+    assert base.lire_journal()[0]["resultats"]["sans_origine"] == 1
 
 
 def test_requete_envoyee(config_oriane, transport_oriane_simule):
@@ -214,8 +274,8 @@ def test_reponse_projetee_vers_video_v1(config_oriane, transport_oriane_simule):
     assert source.identifiant_plateforme == "7000000000000000010"
     assert source.vues_selon_oriane == 12000
     assert source.interactions_selon_oriane == 800
-    assert source.requetes_trouvees == ["dit", "dit_ou_ecrit", "tete-de-brut-recherche"]
-    assert reprise.requetes_trouvees[0] == "ecrit"
+    assert source.requetes_trouvees == [PHRASE]
+    assert reprise.requetes_trouvees == [PHRASE]
     assert source.transcription.texte == "Propos simulé : il faut dix mille postes si l'État paie"
     assert source.transcription.source == "Oriane"
     assert source.transcription.niveau == "default"
@@ -283,7 +343,14 @@ def test_resultat_incomplet_ecarte_sans_deviner(
     assert len(resultat.videos) == 1
     assert resultat.ecartees == 2
     ligne = base.lire_journal()[0]
-    assert ligne["resultats"] == {"retournes": 1, "ecartes": 2, "total_annonce": 2, "dits": 1, "ecrits": 0}
+    assert ligne["resultats"] == {
+        "retournes": 1,
+        "ecartes": 2,
+        "total_annonce": 2,
+        "dits": 1,
+        "ecrits": 0,
+        "sans_origine": 0,
+    }
 
 
 def test_206_est_un_succes_incomplet(config_oriane, transport_oriane_simule, reponse_oriane_simulee):
@@ -371,10 +438,17 @@ def test_un_appel_une_ligne_de_journal(config_oriane, transport_oriane_simule):
     assert ligne["projection"] == "default"
     assert ligne["credits_estimes"] == 15
     assert ligne["duree_ms"] >= 0
-    assert ligne["resultats"] == {"retournes": 2, "ecartes": 0, "total_annonce": 2, "dits": 1, "ecrits": 1}
+    assert ligne["resultats"] == {
+        "retournes": 2,
+        "ecartes": 0,
+        "total_annonce": 2,
+        "dits": 2,
+        "ecrits": 1,
+        "sans_origine": 0,
+    }
     # La requête envoyée est journalisée en clair, filtres compris.
     sous = ligne["filtres"]["queries"][0]["queries"]
-    assert sous[0]["filters"]["transcript"]["includesExactly"]["values"] == [PHRASE]
+    assert sous[0] == enfant("dit", "transcript", PHRASE)
     assert ligne["filtres"]["filters"]["profileHandle"] == {"exactMatch": ["compte_simule_source"]}
 
 

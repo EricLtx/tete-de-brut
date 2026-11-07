@@ -167,7 +167,7 @@ _REPONSE_ORIANE_SIMULEE: dict[str, Any] = {
                 "viewsCount": 12000,
                 "interactionsCount": 800,
                 "caption": "Légende simulée de la source",
-                "matchedQueries": ["dit", "dit_ou_ecrit", "tete-de-brut-recherche"],
+                "matchedQueries": ["dit:dix mille postes", "dit_ou_ecrit", "tete-de-brut-recherche"],
                 "audioPlatformId": "audio-simule-1",
                 "media": [
                     {
@@ -207,7 +207,12 @@ _REPONSE_ORIANE_SIMULEE: dict[str, Any] = {
                 "viewsCount": 90000,
                 "interactionsCount": 5000,
                 "caption": "Légende simulée de la reprise",
-                "matchedQueries": ["ecrit", "dit_ou_ecrit", "tete-de-brut-recherche"],
+                "matchedQueries": [
+                    "dit:dix mille postes",
+                    "ecrit:dix mille postes",
+                    "dit_ou_ecrit",
+                    "tete-de-brut-recherche",
+                ],
                 "media": [
                     {
                         "type": "video",

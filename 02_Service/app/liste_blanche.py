@@ -7,6 +7,7 @@ champ de tiers servi par Oriane ne peut ni entrer dans la vidéo ni être recopi
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -23,7 +24,7 @@ CORRESPONDANCE: dict[str, str] = {
     "viewsCount": "vues_selon_oriane",  # vues, telles que les compte Oriane
     "interactionsCount": "interactions_selon_oriane",  # interactions, telles que les compte Oriane
     "caption": "legende",  # légende du contenu
-    "matchedQueries": "requetes_trouvees",  # requêtes de la recherche qui ont trouvé le contenu
+    "matchedQueries": "requetes_trouvees",  # noms `dit:<phrase>` et `ecrit:<phrase>`, ramenés aux phrases
     "media[].transcript": "transcription.texte",  # parole transcrite par Oriane (niveau default)
     "media[].onScreenText": "texte_ecran.texte",  # liste de chaînes, jointe par des retours à la ligne
 }
@@ -35,8 +36,9 @@ FILTRE_TEXTE_ECRAN = "onScreenText"  # texte affiché à l'écran
 FILTRE_COMPTE = "profileHandle"  # identifiant public du compte
 FILTRE_DATE = "publishedAt"  # fenêtre de publication {after, before}
 FILTRE_PLATEFORME = "platform"  # {"includes": [...]}, relevé H01 (pas exactMatch)
-REQUETE_DIT = "dit"  # sous-requête sur la parole transcrite
-REQUETE_ECRIT = "ecrit"  # sous-requête sur le texte à l'écran
+REQUETE_DIT = "dit"  # préfixe des sous-requêtes sur la parole transcrite : « dit:<phrase> »
+REQUETE_ECRIT = "ecrit"  # préfixe des sous-requêtes sur le texte à l'écran : « ecrit:<phrase> »
+LONGUEUR_MAX_PHRASE = 256
 REQUETE_DIT_OU_ECRIT = "dit_ou_ecrit"  # union des deux
 OPERATEUR_PHRASES = "includesExactly"  # la phrase doit apparaître telle quelle
 OPERATEUR_COMPTES = "exactMatch"  # le compte doit être exactement celui-là
@@ -122,18 +124,40 @@ def _texte_ecran(resultat: dict[str, Any]) -> str:
     return "\n".join(morceaux)
 
 
+def nom_requete(origine: str, phrase: str) -> str:
+    """Nom d'une sous-requête : `dit:<phrase>` ou `ecrit:<phrase>` ; Oriane le rend dans `matchedQueries`."""
+    return f"{origine}:{phrase}"
+
+
+def _noms_trouves(resultat: dict[str, Any]) -> list[str] | None:
+    noms = resultat.get("matchedQueries")
+    return [n for n in noms if isinstance(n, str)] if isinstance(noms, list) else None
+
+
+def phrases_trouvees(resultat: dict[str, Any], phrases: Sequence[str]) -> list[str]:
+    """Phrases dont la sous-requête `dit:` ou `ecrit:` a trouvé le résultat, dans l'ordre de la recherche."""
+    noms = set(_noms_trouves(resultat) or [])
+    return [
+        p for p in phrases if nom_requete(REQUETE_DIT, p) in noms or nom_requete(REQUETE_ECRIT, p) in noms
+    ]
+
+
 def compter_origines(resultats: list[dict[str, Any]]) -> dict[str, int]:
-    """Résultats trouvés par la parole (`dits`) et par l'écran (`ecrits`), d'après `matchedQueries`."""
+    """Résultats trouvés par la parole (`dits`), par l'écran (`ecrits`) ou sans origine connue."""
+    dits = ecrits = sans_origine = 0
+    for r in resultats:
+        noms = _noms_trouves(r)
+        if noms is None:
+            sans_origine += 1
+            continue
+        dits += any(n.startswith(REQUETE_DIT + ":") for n in noms)
+        ecrits += any(n.startswith(REQUETE_ECRIT + ":") for n in noms)
+    return {"dits": dits, "ecrits": ecrits, "sans_origine": sans_origine}
 
-    def trouves(nom: str) -> int:
-        return sum(
-            1 for r in resultats if isinstance(r.get("matchedQueries"), list) and nom in r["matchedQueries"]
-        )
 
-    return {"dits": trouves(REQUETE_DIT), "ecrits": trouves(REQUETE_ECRIT)}
-
-
-def projeter(resultat: dict[str, Any], *, lue_le: datetime | None = None) -> Video:
+def projeter(
+    resultat: dict[str, Any], *, lue_le: datetime | None = None, phrases: Sequence[str] = ()
+) -> Video:
     """Projette un résultat d'Oriane (niveau `default`) vers `video.v1`, en mode direct.
 
     Lève `ResultatIllisible` si un champ obligatoire manque ou si la plateforme est inconnue.
@@ -146,7 +170,6 @@ def projeter(resultat: dict[str, Any], *, lue_le: datetime | None = None) -> Vid
     publie_le = _texte(resultat.get("publishedAt"))
     if not (identifiant and identifiant_plateforme and compte and publie_le):
         raise ResultatIllisible("identifiant, plateforme, compte ou date de publication manquant")
-    requetes = resultat.get("matchedQueries")
     donnees: dict[str, Any] = {
         "identifiant": identifiant,
         "plateforme": plateforme,
@@ -156,9 +179,7 @@ def projeter(resultat: dict[str, Any], *, lue_le: datetime | None = None) -> Vid
         "vues_selon_oriane": _compte(resultat.get("viewsCount")),
         "interactions_selon_oriane": _compte(resultat.get("interactionsCount")),
         "legende": _texte(resultat.get("caption")),
-        "requetes_trouvees": [q for q in requetes if isinstance(q, str)]
-        if isinstance(requetes, list)
-        else [],
+        "requetes_trouvees": phrases_trouvees(resultat, phrases),
         "transcription": {
             "texte": _transcription(resultat),
             "source": "Oriane",

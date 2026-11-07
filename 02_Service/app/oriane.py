@@ -82,7 +82,11 @@ def construire_corps(
     nettoyees = [p.strip() for p in phrases if p and p.strip()]
     if not nettoyees:
         raise RequeteInvalide("requête refusée : au moins une phrase est nécessaire")
-    groupe = {liste_blanche.OPERATEUR_PHRASES: {"values": nettoyees, "operator": "or"}}
+    if any(len(p) > liste_blanche.LONGUEUR_MAX_PHRASE for p in nettoyees):
+        raise RequeteInvalide(
+            f"requête refusée : une phrase dépasse {liste_blanche.LONGUEUR_MAX_PHRASE} caractères"
+        )
+    nettoyees = list(dict.fromkeys(nettoyees))
     filtres: dict[str, Any] = {}
     if comptes:
         filtres[liste_blanche.FILTRE_COMPTE] = {liste_blanche.OPERATEUR_COMPTES: [c.strip() for c in comptes]}
@@ -92,25 +96,34 @@ def construire_corps(
         if fenetre.fin < fenetre.debut:
             raise RequeteInvalide("requête refusée : la fenêtre se termine avant de commencer")
         filtres[liste_blanche.FILTRE_DATE] = {"after": _date(fenetre.debut), "before": _date(fenetre.fin)}
-    # Cadre (compte, plateforme, dates) à la racine en `and` ; « dit ou écrit » en sous-requête `or`.
-    # Un `or` racine s'appliquerait aussi aux filtres de cadre (relevé réel du 07/11).
-    dit_ou_ecrit = {
-        "name": liste_blanche.REQUETE_DIT_OU_ECRIT,
-        "operator": "or",
-        "queries": [
-            {
-                "name": liste_blanche.REQUETE_DIT,
-                "operator": "and",
-                "filters": {liste_blanche.FILTRE_TRANSCRIPTION: groupe},
-            },
-            {
-                "name": liste_blanche.REQUETE_ECRIT,
-                "operator": "and",
-                "filters": {liste_blanche.FILTRE_TEXTE_ECRAN: groupe},
-            },
-        ],
-    }
+    # Cadre (compte, plateforme, dates) à la racine en `and` ; « dit ou écrit » en sous-requête `or`
+    # dont chaque enfant porte une phrase (`dit:<phrase>`, `ecrit:<phrase>`) : Oriane rend ces noms
+    # dans `matchedQueries`. Un `or` racine s'appliquerait aussi au cadre (relevé réel du 07/11).
+    enfants: list[dict[str, Any]] = []
+    for phrase in nettoyees:
+        groupe = {liste_blanche.OPERATEUR_PHRASES: {"values": [phrase], "operator": "or"}}
+        for origine, filtre in (
+            (liste_blanche.REQUETE_DIT, liste_blanche.FILTRE_TRANSCRIPTION),
+            (liste_blanche.REQUETE_ECRIT, liste_blanche.FILTRE_TEXTE_ECRAN),
+        ):
+            enfants.append(
+                {
+                    "name": liste_blanche.nom_requete(origine, phrase),
+                    "operator": "and",
+                    "filters": {filtre: groupe},
+                }
+            )
+    dit_ou_ecrit = {"name": liste_blanche.REQUETE_DIT_OU_ECRIT, "operator": "or", "queries": enfants}
     return {"name": NOM_REQUETE, "operator": "and", "filters": filtres, "queries": [dit_ou_ecrit]}
+
+
+def _phrases_du_corps(corps: dict[str, Any]) -> list[dict[str, Any]]:
+    """Phrases cherchées, dans l'ordre, lues dans les sous-requêtes `dit:` du corps."""
+    return [
+        q["filters"][liste_blanche.FILTRE_TRANSCRIPTION][liste_blanche.OPERATEUR_PHRASES]
+        for q in corps["queries"][0]["queries"]
+        if liste_blanche.FILTRE_TRANSCRIPTION in q["filters"]
+    ]
 
 
 def _raison_400(reponse: httpx.Response) -> str:
@@ -208,6 +221,7 @@ async def rechercher(
         raise OrianeInjoignable("réponse d'Oriane illisible") from exc
 
     lue_le = datetime.now(UTC)
+    phrases_cherchees = [f["values"][0] for f in _phrases_du_corps(corps)]
     videos: list[Video] = []
     ecartees = 0
     videos_brutes: list[dict[str, Any]] = []
@@ -215,7 +229,7 @@ async def rechercher(
         try:
             if not isinstance(element, dict):
                 raise liste_blanche.ResultatIllisible("résultat inattendu")
-            videos.append(liste_blanche.projeter(element, lue_le=lue_le))
+            videos.append(liste_blanche.projeter(element, lue_le=lue_le, phrases=phrases_cherchees))
             videos_brutes.append(element)
         except liste_blanche.ResultatIllisible:
             ecartees += 1
