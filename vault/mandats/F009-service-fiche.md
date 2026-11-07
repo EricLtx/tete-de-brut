@@ -1,7 +1,7 @@
 ---
 mandat: F009
 titre: S08 — Fiche de vérification par gabarit déterministe, gestes du journaliste, décision, export HTML verrouillé
-statut: lance
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S08
 branche: feat/service-fiche (part de main après fusion de S07)
@@ -11,7 +11,7 @@ effort: medium
 relecteur: sonnet / high (config ; la garde n'accepte que ce relecteur)
 cree: 2026-11-07
 lance_a: 2026-11-07T11:31Z
-rendu_a:
+rendu_a: 2026-11-07T11:43Z
 go_a:
 allers_retours: 0
 ---
@@ -53,3 +53,4 @@ sha ; diff ; run et tests ; écarts ; points ouverts pour S09 et S10 (parcours c
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur opus / medium | Rendu d44273a9bd2ed6a8d6cec3e99fa72816a346028a : `app/resume.py` (+120, `resumer(comparaison: Ecart) -> Resume`, `LIMITE_MOTS_EXTRAIT` 40), `app/fiche.py` (+148), `app/export.py` (+134), `app/routes/fiches.py`, `tests/test_fiche.py` (+285), fixture `comparaison_simulee` ; run GitHub 42369237424 vert, 183 tests. Écarts : contrats non réexportés (501 documenté gardé, comme S07) ; `POST /v1/fiches` idempotent (`fic-<hash>`) ; gestes inscrits au journal ; vidéo inconnue au PATCH → 422 ; `Fiche` sans date de création (journal et `enregistre_le`). Points ouverts : citations en mots normalisés `mots.v1` plutôt qu'en texte brut, à vérifier à l'œil sur le cas réel ; classes `citation` et `journaliste` dans l'export pour les tests transverses de S09 ; S10 peut brancher `RESUME_MODE=modele` dans `resumer`. Doublage sonnet / high lancé. |
