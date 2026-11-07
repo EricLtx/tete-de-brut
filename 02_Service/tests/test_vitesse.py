@@ -34,7 +34,7 @@ def _par_nom(mesures):
 
 def test_valeurs_et_rapport_exacts():
     # 4 vidéos dans les 48 h, 3 de plus entre 2 et 7 jours, 1 hors des 7 jours
-    videos = _videos(1, 10, 30, 47, 60, 100, 160, 200)
+    videos = _videos(0, 10, 30, 47, 60, 100, 160, 200)
     m = _par_nom(mesures_de_vitesse(videos, CALCULE_LE))
     assert m["vitesse_48h"].valeur == 2.0  # 4 / 2
     assert m["vitesse_7j"].valeur == 1.0  # 7 / 7
@@ -46,6 +46,52 @@ def test_valeurs_et_rapport_exacts():
         assert mesure.methode.strip() and mesure.raison is None
 
 
+def test_ancrage_sur_la_video_la_plus_recente():
+    # index vieux de deux semaines : le plus récent a 14 jours, les fenêtres suivent ce repère
+    ref = CALCULE_LE - timedelta(days=14)
+    videos = _videos(14 * 24, 14 * 24 + 5, 14 * 24 + 30, 14 * 24 + 100, 14 * 24 + 300)
+    m = _par_nom(mesures_de_vitesse(videos, CALCULE_LE))
+    assert m["vitesse_48h"].valeur == 1.5  # 3 / 2
+    assert m["vitesse_7j"].valeur == round(4 / 7, 2)
+    assert m["vitesse"].valeur == round(1.5 / round(4 / 7, 2), 2)
+    assert m["vitesse_48h"].fenetre.fin == ref
+    assert m["vitesse_48h"].fenetre.debut == ref - timedelta(days=2)
+    assert m["vitesse_7j"].fenetre.debut == ref - timedelta(days=7)
+    assert m["vitesse"].fenetre.fin == ref
+    assert (
+        "avant la vidéo la plus récente retrouvée (le 24/10/2026 à 12 h 00 UTC)" in m["vitesse_48h"].methode
+    )
+    assert "avant le calcul" not in m["vitesse_7j"].methode
+    assert m["vitesse_7j"].methode.count("24/10/2026") == 1
+
+
+def test_reference_plafonnee_a_la_date_du_calcul():
+    futur = fabriquer_video(
+        identifiant="v-futur",
+        identifiant_plateforme="700000000000099999",
+        publie_le=(CALCULE_LE + timedelta(days=3)).isoformat(),
+        requetes_trouvees=[PHRASE],
+    )
+    m = _par_nom(mesures_de_vitesse([*_videos(1, 2, 3), futur], CALCULE_LE))
+    assert m["vitesse_48h"].fenetre.fin == CALCULE_LE
+    assert "07/11/2026 à 12 h 00" in m["vitesse_48h"].methode
+
+
+def test_sans_video_reference_au_calcul():
+    m = _par_nom(mesures_de_vitesse([], CALCULE_LE))
+    assert m["vitesse_48h"].fenetre.fin == CALCULE_LE
+    assert m["vitesse_48h"].valeur is None
+    assert "avant le calcul" in m["vitesse_48h"].methode
+    assert "0 vidéo(s)" in (m["vitesse_48h"].raison or "")
+    assert m["vitesse"].valeur is None and m["vitesse"].raison
+
+
+def test_seuil_de_trois_videos_pile():
+    assert _par_nom(mesures_de_vitesse(_videos(0, 1, 2), CALCULE_LE))["vitesse_48h"].valeur == 1.5
+    deux = _par_nom(mesures_de_vitesse(_videos(0, 1), CALCULE_LE))["vitesse_48h"]
+    assert deux.valeur is None and "sous 3 vidéos, aucune valeur" in deux.methode
+
+
 def test_deux_videos_valeur_nulle_avec_raison():
     m = _par_nom(mesures_de_vitesse(_videos(1, 5), CALCULE_LE))
     for mesure in m.values():
@@ -54,9 +100,9 @@ def test_deux_videos_valeur_nulle_avec_raison():
 
 
 def test_fenetre_courte_vide_mais_longue_suffisante():
-    m = _par_nom(mesures_de_vitesse(_videos(80, 100, 120, 150), CALCULE_LE))
+    m = _par_nom(mesures_de_vitesse(_videos(0, 80, 100, 120, 150), CALCULE_LE))
     assert m["vitesse_48h"].valeur is None
-    assert m["vitesse_7j"].valeur == round(4 / 7, 2)
+    assert m["vitesse_7j"].valeur == round(5 / 7, 2)
     assert m["vitesse"].valeur is None and m["vitesse"].raison
 
 
