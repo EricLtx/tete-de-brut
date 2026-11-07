@@ -1,0 +1,6 @@
+# Liens de la documentation : fichiers Markdown suivis par Git. Hors ligne : seuls les liens relatifs vers des
+# fichiers du dépôt sont vérifiés ; les liens HTTP ne sont pas suivis (le poste et l'exécuteur n'en dépendent pas).
+offline = true
+exclude_path = ["node_modules", "dist", ".claude/worktrees"]
+exclude = ["^mailto:"]
+max_concurrency = 8

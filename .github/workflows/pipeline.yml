@@ -1,0 +1,39 @@
+# Intégration continue hébergée : rejoue exactement la pipeline locale du harnais (04_Pipeline/ci.sh).
+# Aucun contrôle propre à GitHub : ce que le poste vérifie avant un push, l'exécuteur le revérifie après.
+name: pipeline
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # ci.sh compare la branche à origin/main : il faut tout l'historique
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20" # markdownlint-cli2 par npx
+
+      - name: Dépendances du service (si le service existe)
+        run: |
+          if [ -f 02_Service/pyproject.toml ]; then
+            python -m pip install --upgrade pip
+            python -m pip install -e "02_Service[dev]"
+          fi
+
+      - name: Pipeline locale du harnais
+        env:
+          REF: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash 04_Pipeline/ci.sh --ref "$REF" # lychee tourne par Docker (lycheeverse/lychee), présent sur l'exécuteur

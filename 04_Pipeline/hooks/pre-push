@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Garde avant push (canon harnais-pipeline) :
+#   1. rejoue la pipeline locale (pipeline.ci) sur le dernier commit de chaque branche poussée ;
+#   2. sur la branche protégée (premier parent seulement) : chaque commit de fusion poussé est couvert par un rapport GO
+#      présent dans l'arbre poussé, et chaque commit simple ne touche que la documentation (docsSeulement).
+# Pourquoi : la branche protégée se déploie telle quelle ; elle ne reçoit que du relu ou de la documentation.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"; export HARNAIS_ROOT="$root"
+# Chemins lus tels quels (accents compris) : core.quotepath=off sur chaque commande qui liste des fichiers.
+. "$root/04_Pipeline/lib/common.sh"; . "$root/04_Pipeline/lib/go.sh"; . "$root/04_Pipeline/lib/events.sh"
+protected="$(cfg brancheProtegee main)"
+ci="$(cfg pipeline.ci 04_Pipeline/ci.sh)"
+zero='0000000000000000000000000000000000000000'
+while read -r lref lsha rref rsha; do
+  [ -n "$lref" ] || continue
+  [ "$lsha" = "$zero" ] && continue   # suppression de branche distante
+  lbranch="${lref#refs/heads/}"; rbranch="${rref#refs/heads/}"
+  if [ -n "$ci" ]; then
+    if [ -x "$root/$ci" ]; then
+      # </dev/null : la pipeline ne doit pas lire les références suivantes sur notre entrée standard
+      "$root/$ci" --ref "$lbranch" </dev/null || { harnais_event push ko "pipeline en échec sur $lbranch"; die "Push refusé : pipeline en échec sur $lbranch"; }
+    else
+      harnais_event push ko "pipeline $ci absente"
+      die "Push refusé : pipeline.ci = $ci est configurée mais absente ou non exécutable (corriger config/harnais.json ou restaurer le script ; une chaîne vide désactive ce contrôle)"
+    fi
+  fi
+  if [ "$rbranch" = "$protected" ]; then
+    if [ "$rsha" = "$zero" ]; then range="$lsha"; warn "Première publication de $protected : tout l'historique est contrôlé"; else range="$rsha..$lsha"; fi
+    while read -r c parents; do
+      [ -n "$c" ] || continue
+      set -- $parents
+      if [ "$#" -ge 2 ]; then
+        report="$(go_report_for "$2")" || { harnais_event push ko "merge ${c:0:7} sans GO"; die "Push vers $protected refusé : la fusion ${c:0:7} n'est couverte par aucun rapport GO (commit relu attendu : ${2:0:7})"; }
+        rel="${report#"$root"/}"
+        git cat-file -e "$lsha:$rel" 2>/dev/null || { harnais_event push ko "rapport $rel non commité"; die "Push vers $protected refusé : le rapport $rel couvre la fusion ${c:0:7} mais n'est pas commité dans la branche poussée"; }
+      else
+        bad=""
+        while IFS= read -r f; do [ -n "$f" ] || continue; is_docs_only_path "$f" || bad="$bad $f"; done <<EOF2
+$(git -c core.quotepath=off diff-tree --no-commit-id --name-only -r "$c")
+EOF2
+        [ -z "$bad" ] || { harnais_event push ko "commit direct ${c:0:7} hors documentation"; die "Push vers $protected refusé : le commit ${c:0:7} touche du code sans passer par une fusion relue :$bad"; }
+      fi
+    done <<EOF3
+$(git rev-list --first-parent --format='%H %P' --no-commit-header "$range" 2>/dev/null || git rev-list --first-parent "$range" | while read -r h; do echo "$h $(git rev-list --parents -n1 "$h" | cut -d' ' -f2-)"; done)
+EOF3
+  fi
+  harnais_event push ok "$lbranch → $rbranch"
+done
+exit 0

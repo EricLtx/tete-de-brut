@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Garde avant commit (canon harnais-pipeline) : taille des fichiers, fichiers interdits (secrets, exports),
+# marqueurs de conflit. Pourquoi : un secret ou un export de données commité ne se retire jamais vraiment
+# de l'historique ; mieux vaut refuser le commit que nettoyer après.
+# Motifs « interdits » : glob sur le nom de fichier ; « !motif » exclut (« !*.example » laisse passer .env.deploy.example).
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+. "$root/04_Pipeline/lib/common.sh"
+max_mo="$(cfg tailleMaxMo 5)"; max=$((max_mo * 1024 * 1024))
+interdits="$(cfg interdits)"   # lus une seule fois
+rc=0
+# Motifs insensibles à la casse : « *.pem » refuse aussi CLE.PEM (système de fichiers insensible sous Windows et macOS).
+shopt -s nocasematch
+is_forbidden() { # is_forbidden <nom de fichier> : exclusions d'abord, puis interdictions
+  local base="$1" pat
+  while IFS= read -r pat; do
+    [ -n "$pat" ] || continue
+    case "$pat" in !*) case "$base" in ${pat#!}) return 1 ;; esac ;; esac
+  done <<EOF
+$interdits
+EOF
+  while IFS= read -r pat; do
+    [ -n "$pat" ] || continue
+    case "$pat" in !*) continue ;; esac
+    case "$base" in $pat) printf '%s' "$pat"; return 0 ;; esac
+  done <<EOF
+$interdits
+EOF
+  return 1
+}
+# -z : noms séparés par NUL, jamais cités ni échappés (un chemin accentué cité échappait aux motifs et au plafond).
+while IFS= read -r -d '' f; do
+  [ -n "$f" ] || continue
+  if pat="$(is_forbidden "$(basename "$f")")"; then printf '✗ Fichier interdit au commit : %s (motif %s)\n' "$f" "$pat" >&2; rc=1; fi
+  size="$(git cat-file -s ":$f" 2>/dev/null || echo 0)"   # taille de la version indexée, pas du fichier de travail
+  [ "$size" -le "$max" ] || { printf '✗ %s pèse %s Mo (plafond %s Mo) : stocker hors Git\n' "$f" "$(awk "BEGIN{printf \"%.1f\", $size/1048576}")" "$max_mo" >&2; rc=1; }
+  if git diff --cached --numstat -- "$f" | grep -qv '^-'; then   # fichier texte
+    # grep -c lit tout le flux : pas de SIGPIPE sur git show sous pipefail
+    [ "$(git show ":$f" | grep -cE '^(<<<<<<< |>>>>>>> )')" = 0 ] || { printf '✗ Marqueur de conflit dans %s\n' "$f" >&2; rc=1; }
+  fi
+done < <(git diff --cached --name-only -z --diff-filter=ACMR)
+[ "$rc" = 0 ] || { printf '  Corriger la cause ; aucun contournement (--no-verify) n'"'"'est prévu.\n' >&2; exit 1; }
+exit 0
