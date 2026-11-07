@@ -1,7 +1,7 @@
 ---
 mandat: F008
 titre: S04 — Modes direct et enregistré, actualisation du radar, état et journal, script d'enregistrement du cas avec la clé
-statut: en-doublage
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S04
 branche: feat/service-modes (part de main après fusion de S03, S05 et S07)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T11:55Z
 rendu_a: 2026-11-07T12:07Z
-go_a:
+go_a: 2026-11-07T12:27Z
 allers_retours: 2
 ---
 
@@ -68,3 +68,4 @@ sha ; diff ; run et tests ; écarts ; points ouverts pour H03 (commande exacte d
 | 2026-11-07 | réalisateur sonnet / medium | Correctif rendu 1464f2cef1aef389fe767c30ee48ab10ad840f2d : `app/main.py` (+9, hors réserve, déclaré) charge le cas au démarrage en mode enregistré (`CasInvalide` journalisé sans bloquer) et `/sante` lit le mode courant ; test « radar en premier » ajouté ; run GitHub 42371110667 vert, 216 tests. Doublage sonnet / high lancé sur ce sha. |
 | 2026-11-07 | relecteur sonnet / high | GO conditionnel sur 1464f2c (`vault/revues/F008-1464f2c.md`) : 0 bloquant, 2 majeurs (503 et 422 de l'actualisation absents de `api.v1.json` lu par S11 ; après un succès en direct puis une bascule, le radar enregistré mélange cas et vidéos lues en direct), 8 mineurs. Décision de l'orchestrateur : pas de fusion avec majeurs, correctif sur la même branche. |
 | 2026-11-07 | réalisateur sonnet / medium | Correctif 9dc5d098e9e21dfc848252e8baf7e52b825d0286 : 503 dans `CODES_ERREUR`, `erreurs(401, 422, 501, 503)` sur l'actualisation, description de `Erreur` complétée, `contrats/api.v1.json` réexporté (schémas inchangés) ; `cas.charger(avec_videos=True)` purge les vidéos hors cas (`base.purger`, 9 lignes hors réserve), test à identifiants distincts ; mineurs pris : ligne `acquisition.rejeu` au journal, `/sante` avec `enregistre_le`. Run 42372182260 vert, 218 tests. Hors réserve déclaré : `main.py`, `base.py`, `modeles.py` (description), `routes/__init__.py`. Relecture du diff relancée. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 9dc5d098e9e21dfc848252e8baf7e52b825d0286 (`vault/revues/F008-9dc5d09.md`) : majeurs réglés, 0 bloquant, 0 majeur, 6 mineurs (nouveau : une vidéo lue en direct répond 404 après la bascule, un geste commencé dessus ne s'ouvre plus). Fusionné sur `main` (65ad909), suite complète verte. |
