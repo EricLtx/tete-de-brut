@@ -11,7 +11,7 @@ effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T11:55Z
-rendu_a:
+rendu_a: 2026-11-07T12:07Z
 go_a:
 allers_retours: 0
 ---
@@ -64,3 +64,4 @@ sha ; diff ; run et tests ; écarts ; points ouverts pour H03 (commande exacte d
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur sonnet / medium | Rendu d528370d985d91a679cecc0e32f7f450e2f152e4 : `app/acquisition.py` (+155), `app/cas.py` (+271), `scripts/enregistrer_cas.py` (+121), `tests/test_acquisition.py` (+372), fixture `cas_simule`, `config.py` (champ `bascule`), `erreurs.py` (trois gestionnaires), `routes/etat.py` ; run GitHub 42370955029 vert, 215 tests. Écarts : 501 documenté gardé (comme S07, S08), 503 et 422 absents de `CODES_ERREUR` donc de l'OpenAPI ; `config.py` ne lit pas `.env` (le script lit le sien) ; cas chargé paresseusement au premier `/v1/etat` ou `actualiser` (radar vide avant) ; bascule irréversible avant redémarrage ; `/sante` sur le mode initial. H03 : `python scripts/enregistrer_cas.py requetes.json [--sortie] [--env]`, clé par `ORIANE_API_KEY` seulement ; `requetes.json` = `{phrases (≥ 3 mots), comptes, plateformes, fenetre{debut, fin}}` ; une page de 100 (≈ 15 crédits) ; sortie `CHEMIN_CAS/cas.json`. Décision de l'orchestrateur : correctif demandé avant doublage, chargement du cas dans le `lifespan` de `main.py` (hors réserve, déclaré) et test « radar en premier ». |
