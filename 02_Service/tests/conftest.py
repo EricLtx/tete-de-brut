@@ -127,6 +127,24 @@ def deux_videos_comparables() -> tuple[Video, Video]:
     return source, reprise
 
 
+@pytest.fixture
+def comparaison_simulee(client: TestClient, deux_videos_comparables: tuple[Video, Video]) -> dict[str, Any]:
+    """Comparaison `ecart.v1` (S07) des deux vidéos comparables, posées en base puis comparées par la route.
+
+    Rend le JSON de la comparaison ; les deux vidéos restent en base pour la fiche (S08).
+    """
+    from app import base
+
+    for video in deux_videos_comparables:
+        base.ecrire("video", video.identifiant, "video.v1", video.model_dump(mode="json"))
+    source, reprise = deux_videos_comparables
+    reponse = client.post(
+        "/v1/comparaisons", json={"video_source": source.identifiant, "video_reprise": reprise.identifiant}
+    )
+    assert reponse.status_code == 200, reponse.text
+    return reponse.json()
+
+
 # Champs de tiers d'une réponse Oriane (relevé du 06/11) : aucun ne doit entrer en base ni au journal.
 CHAMPS_TIERS_ORIANE = (
     "popularComments",
