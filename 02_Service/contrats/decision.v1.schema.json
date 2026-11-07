@@ -1,0 +1,38 @@
+{
+  "$id": "decision.v1",
+  "additionalProperties": false,
+  "description": "Décision `decision.v1` : l'une des trois, prise par une personne, avec son rôle et l'heure.",
+  "properties": {
+    "heure": {
+      "format": "date-time",
+      "title": "Heure",
+      "type": "string"
+    },
+    "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+    },
+    "role": {
+      "minLength": 1,
+      "title": "Role",
+      "type": "string"
+    },
+    "valeur": {
+      "enum": [
+        "a_verifier",
+        "ne_pas_amplifier",
+        "pret_a_traiter"
+      ],
+      "title": "Valeur",
+      "type": "string"
+    }
+  },
+  "required": [
+    "valeur",
+    "role",
+    "heure"
+  ],
+  "title": "Decision",
+  "type": "object"
+}
