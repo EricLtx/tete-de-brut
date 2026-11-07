@@ -2,7 +2,7 @@
 
 Transposée de l'ADR-0005 du dépôt privé de cadrage ; ce dépôt public ne porte que le code du service.
 
-- **Statut** : Proposée — 07/11/2026
+- **Statut** : Acceptée — 07/11/2026 (équipe, à l'ouverture du hackathon)
 - **Portée** : ce qui se construit le 07/11/2026 et comment ; l'architecture de campagne, décidée dans le dépôt privé, reste la cible après le hackathon
 - **Dépend de** / **Remplace** : ne dépend d'aucune autre ADR de ce dépôt et ne remplace rien ; suspend pour la journée du 07/11 trois points de l'architecture de campagne (base dans Lovable Cloud, service de preuve avec transcription, tâche de nuit). Plan : [plan-service-demonstration](../08_Plans/plan-service-demonstration.md)
 

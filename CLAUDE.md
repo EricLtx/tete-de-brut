@@ -50,7 +50,7 @@ cd 02_Service && python -m uvicorn app.main:app --port 8080  # service local ; v
 
 ## 5. État courant (section vivante, mise à jour par les plans)
 
-Dépôt créé et équipé le 07/11/2026 (canon 1.0.3, workflow GitHub qui rejoue `ci.sh`). Plan actif : `01_Docs/08_Plans/plan-service-demonstration.md` ; ADR-0001 Proposée. Prochaine porte : acceptation de l'ADR-0001 par l'équipe, puis mandat S01 (`feat/service-socle`) ; jonction 1 à 12 h, jonction 2 et gel à 15 h 30.
+Dépôt créé et équipé le 07/11/2026 (canon 1.0.3, workflow GitHub qui rejoue `ci.sh`). Plan actif : `01_Docs/08_Plans/plan-service-demonstration.md` ; ADR-0001 acceptée le 07/11 ; licence commerciale « Tête de Brut. » (`LICENSE`). Construction lancée : mandat F002 (S01, `feat/service-socle`). Prochaine porte : S02 dès S01 rendu, jonction 1 à 12 h, jonction 2 et gel à 15 h 30.
 
 ## Harnais (ajouté par le plugin harnais-pipeline)
 

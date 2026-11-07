@@ -10,3 +10,5 @@ Ce dépôt ne contient que le code du service et son harnais de construction. La
 - `vault/` : mandats et rapports de relecture.
 
 Règles de confiance du service : aucun verdict automatique, aucune métrique sans méthode, aucune donnée de tiers (commentaires, lieux, visages), transcriptions attribuées à leur source, mode « en direct » ou « enregistré le … » affiché sur chaque réponse.
+
+Licence : licence commerciale « Tête de Brut. », droits réservés aux co-auteurs du projet (voir `LICENSE`). Le dépôt est public pour la lecture et l'intégration continue ; toute réutilisation demande l'accord écrit des co-auteurs.
