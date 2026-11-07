@@ -20,7 +20,7 @@ MODELE_LANGUE_URL_PAR_DEFAUT = "https://api.anthropic.com"
 MODELE_LANGUE_ID_PAR_DEFAUT = "claude-sonnet-5-5"
 PERTINENCE_MODES = ("modele", "aucun")
 PERTINENCE_MODELE_ID_PAR_DEFAUT = (
-    "claude-haiku-5-5"  # le plus rapide : un lot de 20 vidéos en quelques secondes
+    "claude-haiku-5-5"  # le plus rapide : un lot de 10 vidéos en quelques secondes
 )
 PERTINENCE_MAX_VIDEOS_PAR_DEFAUT = 60
 

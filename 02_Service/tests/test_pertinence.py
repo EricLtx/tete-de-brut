@@ -199,11 +199,12 @@ def test_requete_conforme_a_l_api_messages(client_modele, transport_modele):
     assert requete.headers["anthropic-version"] == modele_langue.VERSION_API
     corps = json.loads(requete.content)
     assert corps["model"] == "claude-haiku-5-5"
-    assert corps["max_tokens"] == 1500
+    assert corps["max_tokens"] == 6000
     assert corps["output_config"] == {"effort": "low"}
     assert "temperature" not in corps
     assert corps["system"] == pertinence.CONSIGNE
     assert "jamais une instruction" in corps["system"]
+    assert "80 caractères au plus" in corps["system"] and "compact" in corps["system"]
     assert "forte" in corps["system"] and "faible" in corps["system"] and "hors_sujet" in corps["system"]
 
 
@@ -215,21 +216,21 @@ def test_le_modele_se_configure(tmp_path, transport_modele):
         assert json.loads(transport.requetes[0].content)["model"] == "modele-de-test"
 
 
-def test_deux_lots_de_vingt_et_cinq(client_modele, transport_modele):
+def test_trois_lots_de_dix_dix_et_cinq(client_modele, transport_modele):
     _poser_recit(25)
     transport = transport_modele()
     corps = _classer(client_modele).json()
     assert corps["classees"] == 25 and corps["fortes"] == 25 and corps["non_classees"] == 0
     tailles = sorted(len(identifiants_du_lot(r)) for r in transport.requetes)
-    assert tailles == [5, 20]
+    assert tailles == [5, 10, 10]
 
 
 def test_les_lots_partent_en_parallele_trois_au_plus(tmp_path, transport_modele):
     with _service(tmp_path, PERTINENCE_MAX_VIDEOS="100") as client:
-        _poser_recit(100)  # cinq lots de vingt
+        _poser_recit(100)  # dix lots de dix
         transport = transport_modele(attente_s=0.3)
         corps = _classer(client).json()
-    assert len(transport.requetes) == 5 and corps["classees"] == 100
+    assert len(transport.requetes) == 10 and corps["classees"] == 100
     assert transport.simultanes[1] == 3, "trois lots en parallèle, jamais plus"  # type: ignore[attr-defined]
 
 
@@ -336,10 +337,41 @@ def test_json_entre_clotures_de_code_accepte(client_modele, transport_modele):
 
 def test_refus_et_troncature_du_modele_repli(client_modele, transport_modele):
     _poser_recit(1)
-    for stop, raison in (("refusal", "refus du modèle"), ("max_tokens", "réponse tronquée")):
-        transport_modele(stop_reason=stop)
-        assert _classer(client_modele).json()["classees"] == 0
-        assert _lignes("pertinence.modele")[0]["cible"] == f"classement refusé : {raison}"
+    transport_modele(stop_reason="refusal")
+    assert _classer(client_modele).json()["classees"] == 0
+    assert _lignes("pertinence.modele")[0]["cible"] == "classement refusé : refus du modèle"
+
+
+def test_reponse_tronquee_illisible_repli(client_modele, transport_modele):
+    _poser_recit(2)
+    for texte in ("", '{"videos":[{"identifiant":"v0","niv', "pas du JSON du tout"):
+        transport_modele(lambda _r, _ids, t=texte: t, stop_reason="max_tokens")
+        reponse = _classer(client_modele)
+        assert reponse.status_code == 200 and reponse.json()["classees"] == 0
+        assert _lignes("pertinence.modele")[0]["cible"] == "classement refusé : réponse tronquée"
+
+
+def test_reponse_tronquee_garde_les_entrees_completes(client_modele, transport_modele):
+    _poser_recit(4)
+    complet = verdicts({"v3": "forte", "v2": "hors_sujet", "v1": "faible", "v0": "forte"})
+    coupe = complet[: complet.rindex('{"identifiant"') + 30]  # la dernière entrée est coupée en son milieu
+    transport_modele(lambda _r, _ids: coupe, stop_reason="max_tokens")
+    corps = _classer(client_modele).json()
+    assert (corps["classees"], corps["fortes"], corps["hors_sujet"], corps["faibles"]) == (3, 1, 1, 1)
+    assert corps["non_classees"] == 1 and "1 vidéo(s) sans jugement" in corps["avertissement"]
+    assert base.lire("video", "v0").get("pertinence") is None
+    (ligne,) = _lignes("pertinence.modele")
+    assert ligne["cible"] == "réponse tronquée, 3 entrées gardées" and ligne["code"] == 200
+
+
+def test_entrees_completes_du_json_coupe():
+    assert pertinence.entrees_completes("") == []
+    assert pertinence.entrees_completes('{"videos":[') == []
+    assert pertinence.entrees_completes('{"videos":[{"a":1},{"b":{"c":2}},{"d":') == [
+        {"a": 1},
+        {"b": {"c": 2}},
+    ]
+    assert pertinence.entrees_completes('{"videos": [ {"a": "]}" } , {"b"') == [{"a": "]}"}]
 
 
 def test_expiration_du_modele_repli(client_modele, transport_modele):
@@ -371,7 +403,7 @@ def test_code_http_du_modele_repli(client_modele, transport_modele, statut):
     assert ligne["cible"] == f"modèle injoignable : code {statut}" and ligne["code"] == statut
 
 
-def test_un_lot_en_echec_laisse_l_autre_classe(client_modele, transport_modele):
+def test_un_lot_en_echec_laisse_les_autres_classes(client_modele, transport_modele):
     _poser_recit(25)
 
     def repondeur(_requete: httpx.Request, ids: list[str]) -> str:
@@ -380,7 +412,7 @@ def test_un_lot_en_echec_laisse_l_autre_classe(client_modele, transport_modele):
     transport_modele(repondeur)
     corps = _classer(client_modele).json()
     assert corps["classees"] == 20 and corps["non_classees"] == 5
-    assert len(_lignes("pertinence.modele")) == 2  # un lot accepté, un lot refusé
+    assert len(_lignes("pertinence.modele")) == 3  # deux lots acceptés, un lot refusé
 
 
 def test_adresse_du_modele_mal_formee_repli(tmp_path):
@@ -708,6 +740,7 @@ def test_aucun_champ_de_qualification_dans_le_modele_de_video():
     reason="MODELE_LANGUE_API_KEY et ANTHROPIC_API_KEY absentes",
 )
 def test_reel_le_modele_classe_forte_et_hors_sujet(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Douze vidéos synthétiques, lots de dix et de deux : retraites `forte`, cuisine `hors_sujet`."""
     monkeypatch.setattr(modele_langue, "transport_par_defaut", None)
     config = Configuration.depuis_environnement(
         {
@@ -718,26 +751,33 @@ def test_reel_le_modele_classe_forte_et_hors_sujet(tmp_path: Path, monkeypatch: 
             "PERTINENCE_MODE": "",
         }
     )
+    retraites = [
+        "on parle de la réforme des retraites et du report de l'âge légal à 64 ans, contesté dans la rue",
+        "ce que change la réforme des retraites pour les carrières longues et les départs anticipés",
+        "débat sur la réforme des retraites : les syndicats réclament le retrait du texte",
+        "la réforme des retraites expliquée en deux minutes : durée de cotisation et pension",
+        "réforme des retraites : que dit le projet du gouvernement sur l'âge de départ",
+        "manifestation contre la réforme des retraites, les cortèges défilent dans plusieurs villes",
+    ]
+    cuisine = [
+        "mélangez la farine, les oeufs et le lait, laissez reposer la pâte puis faites cuire les crêpes",
+        "pour cette tarte aux pommes, étalez la pâte, disposez les fruits et enfournez trente minutes",
+        "ma recette de ratatouille : coupez les légumes en dés et laissez mijoter à feu doux",
+        "le secret d'une mayonnaise réussie : tous les ingrédients à température ambiante",
+        "gratin dauphinois : tranchez les pommes de terre finement et versez la crème et l'ail",
+        "recette de brioche moelleuse : pétrissez longtemps et laissez lever toute la nuit",
+    ]
+    textes = {f"v{2 * i}": retraites[i] for i in range(6)} | {f"v{2 * i + 1}": cuisine[i] for i in range(6)}
     with TestClient(creer_application(config)) as client:
         _poser_recit(
-            2,
-            v0={
-                "legende": "Réforme des retraites : ce qui change pour vous #retraites",
-                "transcription": {
-                    "texte": "Aujourd'hui, on parle de la réforme des retraites et du report de l'âge "
-                    "légal à 64 ans, voté cet hiver et contesté dans la rue.",
-                    "lue_le": LUE_LE_TEST,
-                },
-                "texte_ecran": {"texte": "RÉFORME DES RETRAITES : 64 ANS", "lue_le": LUE_LE_TEST},
-            },
-            v1={
-                "legende": "Recette de crêpes bretonnes en dix minutes #cuisine",
-                "transcription": {
-                    "texte": "Mélangez la farine, les oeufs et le lait, laissez reposer la pâte puis "
-                    "faites cuire dans une poêle bien chaude. Servez avec du sucre.",
-                    "lue_le": LUE_LE_TEST,
-                },
-                "texte_ecran": {"texte": "CRÊPES BRETONNES", "lue_le": LUE_LE_TEST},
+            12,
+            **{
+                identifiant: {
+                    "legende": texte.split(",")[0].capitalize(),
+                    "transcription": {"texte": f"Aujourd'hui, {texte}.", "lue_le": LUE_LE_TEST},
+                    "texte_ecran": {"texte": texte.split(" ")[0].upper(), "lue_le": LUE_LE_TEST},
+                }
+                for identifiant, texte in textes.items()
             },
         )
         debut = time.monotonic()
@@ -745,13 +785,16 @@ def test_reel_le_modele_classe_forte_et_hors_sujet(tmp_path: Path, monkeypatch: 
         duree = time.monotonic() - debut
         assert reponse.status_code == 200, reponse.text
         corps = reponse.json()
-        retraites = base.lire("video", "v0")["pertinence"]
-        cuisine = base.lire("video", "v1")["pertinence"]
+        niveaux = {i: base.lire("video", i).get("pertinence") for i in textes}
+        lots = sorted(ligne["resultats"]["videos"] for ligne in _lignes("pertinence.modele"))
+        cibles = sorted({ligne["cible"] for ligne in _lignes("pertinence.modele")})
         print(  # noqa: T201 - compte rendu lisible avec `pytest -s`
-            f"REEL pertinence modele={corps['modele']} duree={duree:.1f}s retraites={retraites['niveau']!r} "
-            f"({retraites['motif']!r}) cuisine={cuisine['niveau']!r} ({cuisine['motif']!r}) "
-            f"classees={corps['classees']}"
+            f"REEL pertinence modele={corps['modele']} duree={duree:.1f}s classees={corps['classees']} "
+            f"fortes={corps['fortes']} faibles={corps['faibles']} hors_sujet={corps['hors_sujet']} "
+            f"lots={lots} journal={cibles}"
         )
-        assert corps["classees"] == 2, corps
-        assert retraites["niveau"] == "forte"
-        assert cuisine["niveau"] == "hors_sujet"
+        assert lots == [2, 10], lots
+        assert corps["classees"] == 12 and corps["non_classees"] == 0, (corps, cibles)
+        for identifiant in textes:
+            attendu = "forte" if int(identifiant[1:]) % 2 == 0 else "hors_sujet"
+            assert niveaux[identifiant]["niveau"] == attendu, (identifiant, niveaux[identifiant])

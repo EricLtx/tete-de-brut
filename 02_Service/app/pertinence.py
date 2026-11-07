@@ -36,14 +36,16 @@ from app.mots import normaliser
 journal = logging.getLogger("tete_de_brut")
 
 ROUTE_JOURNAL = "pertinence.modele"
-TAILLE_LOT = 20
+TAILLE_LOT = 10  # 20 entrées dépassaient le plafond de jetons en réel : réponse tronquée
 LOTS_PARALLELES = 3
 DELAI_S = 12.0  # plafond global de l'appel d'un lot entier, pas par phase
-MAX_TOKENS = 1500
+# La réflexion adaptative compte dans `max_tokens` : 1 500 laissaient trop peu de place au JSON.
+MAX_TOKENS = 6000
 EFFORT = "low"
 LIMITE_LEGENDE = 300
 LIMITE_TEXTE_ECRAN = 300
 LIMITE_TRANSCRIPTION = 1200
+LIMITE_MOTIF_CONSIGNE = 80  # demandé au modèle ; le service coupe à 120 caractères
 MOTIF_RETIRE = "motif retiré"
 NIVEAUX = ("forte", "faible", "hors_sujet")
 
@@ -56,11 +58,12 @@ CONSIGNE = (
     "Pour chaque vidéo, dis si elle parle du sujet de la question. Le niveau vaut exactement l'une de ces "
     "trois valeurs : « forte » (la vidéo parle du sujet), « faible » (le sujet n'est qu'évoqué, en passant) "
     "ou « hors_sujet » (la vidéo traite d'autre chose : mots communs par hasard, autre sens, autre thème).\n"
-    f"Le motif est une phrase factuelle de {LIMITE_MOTIF_PERTINENCE - 40} caractères au plus qui dit ce que "
+    f"Le motif est une phrase factuelle de {LIMITE_MOTIF_CONSIGNE} caractères au plus qui dit ce que "
     "la vidéo contient par rapport à la question. Ne qualifie jamais une vidéo, un compte ni une personne : "
     "aucun jugement, aucune intention prêtée, aucune conclusion.\n"
-    "Réponds par un unique objet JSON, sans texte autour et sans balise de code : "
-    '{"videos": [{"identifiant": "…", "niveau": "forte", "motif": "…"}]}, avec une entrée par vidéo '
+    "Réponds par un unique objet JSON compact, sans texte autour, sans balise de code, sans espace ni "
+    "saut de ligne superflus : "
+    '{"videos":[{"identifiant":"…","niveau":"forte","motif":"…"}]}, avec une entrée par vidéo '
     "et l'identifiant tel qu'il est donné."
 )
 
@@ -149,8 +152,35 @@ def construire_corps(question: str, videos: Sequence[Video], modele: str) -> dic
     }
 
 
-def _json_de(reponse: httpx.Response) -> object:
-    """Objet JSON du premier bloc `text` ; refus, troncature ou forme inattendue lèvent l'erreur."""
+def entrees_completes(texte: str) -> list[object]:
+    """Entrées déjà complètes du tableau `videos` d'un JSON coupé en route (parse tolérant).
+
+    Lit les objets un à un à partir de `"videos":[` et s'arrête au premier objet qui ne se ferme pas :
+    tout ce qui précède est gardé, la fin coupée est abandonnée.
+    """
+    debut = re.search(r'"videos"\s*:\s*\[', texte)
+    if debut is None:
+        return []
+    decodeur = json.JSONDecoder()
+    position, entrees = debut.end(), []
+    while True:
+        while position < len(texte) and texte[position] in " \n\r\t,":
+            position += 1
+        if position >= len(texte) or texte[position] != "{":
+            return entrees
+        try:
+            entree, position = decodeur.raw_decode(texte, position)
+        except ValueError:
+            return entrees
+        entrees.append(entree)
+
+
+def _json_de(reponse: httpx.Response) -> tuple[object, int | None]:
+    """Objet JSON du premier bloc `text` et, si la réponse était coupée, le nombre d'entrées gardées.
+
+    Refus, réponse vide ou forme inattendue lèvent l'erreur. Une réponse coupée (`max_tokens`) dont le tableau
+    `videos` contient au moins une entrée complète est gardée jusqu'à cette entrée ; sinon, erreur.
+    """
     try:
         donnees = reponse.json()
         stop = donnees.get("stop_reason")
@@ -160,15 +190,18 @@ def _json_de(reponse: httpx.Response) -> object:
         raise ErreurPertinence("classement refusé : réponse illisible", reponse.status_code) from exc
     if stop == "refusal":
         raise ErreurPertinence("classement refusé : refus du modèle", reponse.status_code)
-    if stop == "max_tokens":
-        raise ErreurPertinence("classement refusé : réponse tronquée", reponse.status_code)
     texte = " ".join(t.strip() for t in textes if isinstance(t, str) and t.strip())
-    if not texte:
-        raise ErreurPertinence("classement refusé : réponse vide", reponse.status_code)
     # Tolère une clôture de code autour de l'objet, rien d'autre : le reste doit être un JSON.
     texte = re.sub(r"^```(?:json)?\s*|\s*```$", "", texte)
+    if stop == "max_tokens":
+        gardees = entrees_completes(texte)
+        if not gardees:
+            raise ErreurPertinence("classement refusé : réponse tronquée", reponse.status_code)
+        return {"videos": gardees}, len(gardees)
+    if not texte:
+        raise ErreurPertinence("classement refusé : réponse vide", reponse.status_code)
     try:
-        return json.loads(texte)
+        return json.loads(texte), None
     except ValueError as exc:
         raise ErreurPertinence("classement refusé : JSON invalide", reponse.status_code) from exc
 
@@ -206,8 +239,11 @@ def lire_verdicts(reponse: object, attendus: set[str]) -> dict[str, tuple[str, s
 
 def _appeler(
     question: str, videos: Sequence[Video], config: Configuration, transport: httpx.BaseTransport | None
-) -> dict[str, tuple[str, str]]:
-    """Un appel au modèle pour un lot ; lève `ErreurPertinence` pour toute cause d'échec."""
+) -> tuple[dict[str, tuple[str, str]], int | None]:
+    """Un appel au modèle pour un lot : les verdicts et, si la réponse était coupée, les entrées gardées.
+
+    Lève `ErreurPertinence` pour toute cause d'échec.
+    """
     en_tetes = {
         "x-api-key": config.modele_langue_cle,
         "anthropic-version": modele_langue.VERSION_API,
@@ -235,7 +271,8 @@ def _appeler(
         executeur.shutdown(wait=False, cancel_futures=True)
     if reponse.status_code != 200:
         raise ErreurPertinence(f"modèle injoignable : code {reponse.status_code}", reponse.status_code)
-    return lire_verdicts(_json_de(reponse), {v.identifiant for v in videos})
+    objet, gardees = _json_de(reponse)
+    return lire_verdicts(objet, {v.identifiant for v in videos}), gardees
 
 
 def _consigner(cible: str, config: Configuration, debut: float, code: int | None, videos: int) -> None:
@@ -262,7 +299,7 @@ def _classer_lot(
     """Classe un lot ; toute erreur est consignée et rend un lot vide, jamais une exception."""
     debut = time.monotonic()
     try:
-        verdicts = _appeler(question, videos, config, transport)
+        verdicts, gardees = _appeler(question, videos, config, transport)
     except ErreurPertinence as exc:
         _consigner(exc.raison, config, debut, exc.code, len(videos))
         return {}
@@ -270,7 +307,10 @@ def _classer_lot(
         raison = f"classement refusé : erreur inattendue ({type(exc).__name__})"
         _consigner(raison, config, debut, None, len(videos))
         return {}
-    _consigner("classement par le modèle accepté", config, debut, 200, len(videos))
+    if gardees is None:
+        _consigner("classement par le modèle accepté", config, debut, 200, len(videos))
+    else:
+        _consigner(f"réponse tronquée, {gardees} entrées gardées", config, debut, 200, len(videos))
     resultat: dict[str, Pertinence] = {}
     for identifiant, (niveau, motif) in verdicts.items():
         try:
