@@ -1,7 +1,7 @@
 ---
 mandat: F009
 titre: S08 — Fiche de vérification par gabarit déterministe, gestes du journaliste, décision, export HTML verrouillé
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S08
 branche: feat/service-fiche (part de main après fusion de S07)
@@ -10,7 +10,7 @@ modele: opus
 effort: medium
 relecteur: sonnet / high (config ; la garde n'accepte que ce relecteur)
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T11:31Z
 rendu_a:
 go_a:
 allers_retours: 0
