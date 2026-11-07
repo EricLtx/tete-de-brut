@@ -41,6 +41,7 @@ TypeOperation = Literal["retire", "ajoute", "remplace"]
 EtatVersion = Literal["a_trancher", "confirmee", "ecartee"]
 ValeurDecision = Literal["a_verifier", "ne_pas_amplifier", "pret_a_traiter"]
 TexteNonVide = Annotated[str, Field(min_length=1)]
+AdresseHttps = Annotated[str, Field(pattern=r"^https://\S+$")]  # aperçu : https seulement
 Position = Annotated[int, Field(ge=0)]
 Compte = Annotated[int, Field(ge=0)]
 
@@ -120,8 +121,8 @@ class TexteEcran(Modele):
 class Apercu(Modele):
     """Vignette et images clés de la vidéo, adresses relayées telles que servies par Oriane."""
 
-    vignette: TexteNonVide | None = Field(default=None, description="Adresse de la vignette, si servie.")
-    images_cles: list[TexteNonVide] = Field(
+    vignette: AdresseHttps | None = Field(default=None, description="Adresse de la vignette, si servie.")
+    images_cles: list[AdresseHttps] = Field(
         default_factory=list,
         max_length=LIMITE_IMAGES_CLES,
         description="Adresses des images clés, dix au plus.",

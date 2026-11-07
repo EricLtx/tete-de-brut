@@ -115,6 +115,24 @@ def champs_refuses(document: Any) -> list[str]:
     return sorted(set(trouves))
 
 
+def _verifier_apercu(indice: int, brute: Any) -> None:
+    """Aperçu d'une vidéo : vignette et images clés en https seulement (ni http, ni javascript, ni data)."""
+    apercu = brute.get("apercu") if isinstance(brute, dict) else None
+    if apercu is None:
+        return
+    if not isinstance(apercu, dict):
+        raise CasInvalide(f"vidéo {indice} refusée : apercu n'est pas un objet")
+    adresses = [apercu.get("vignette")]
+    images = apercu.get("images_cles", [])
+    if not isinstance(images, list):
+        raise CasInvalide(f"vidéo {indice} refusée : images_cles n'est pas une liste")
+    for adresse in [*adresses, *images]:
+        if adresse is None:
+            continue
+        if not isinstance(adresse, str) or not re.fullmatch(r"https://\S+", adresse):
+            raise CasInvalide(f"vidéo {indice} refusée : adresse d'aperçu non https")
+
+
 def _liste_de_textes(document: dict[str, Any], nom: str) -> list[str]:
     valeur = document.get(nom, [])
     if not isinstance(valeur, list) or not all(isinstance(t, str) and t.strip() for t in valeur):
@@ -157,6 +175,7 @@ def valider(document: Any) -> CasEnregistre:
         raise CasInvalide("videos n'est pas une liste")
     videos: list[Video] = []
     for i, brute in enumerate(brutes):
+        _verifier_apercu(i, brute)
         try:
             videos.append(
                 Video.model_validate({**brute, "mode": "enregistre", "enregistre_le": enregistre_le})

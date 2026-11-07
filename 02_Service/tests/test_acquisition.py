@@ -133,6 +133,34 @@ def test_cas_avec_image_ou_champ_inconnu_est_refuse(config_test, cas_simule):
         cas.valider(document)
 
 
+def test_cas_avec_apercu_https_est_accepte(config_test, cas_simule):
+    chemin = cas_simule(config_test)
+    document = json.loads(chemin.read_text(encoding="utf-8"))
+    document["videos"][0]["apercu"] = {
+        "vignette": "https://exemple.invalid/vignette.jpg",
+        "images_cles": ["https://exemple.invalid/image.jpg"],
+        "source": "Oriane",
+        "lue_le": "2026-11-07T09:00:00+00:00",
+    }
+    enregistre = cas.valider(document)
+    assert enregistre.videos[0].apercu is not None
+    assert enregistre.videos[0].apercu.images_cles == ["https://exemple.invalid/image.jpg"]
+
+
+@pytest.mark.parametrize(
+    "adresse", ["http://exemple.invalid/p.gif", "javascript:alert(1)", "data:text/plain,x", "texte libre"]
+)
+@pytest.mark.parametrize("champ", ["vignette", "images_cles"])
+def test_cas_avec_apercu_non_https_est_refuse(config_test, cas_simule, champ, adresse):
+    chemin = cas_simule(config_test)
+    document = json.loads(chemin.read_text(encoding="utf-8"))
+    apercu = {"vignette": None, "images_cles": [], "source": "Oriane", "lue_le": "2026-11-07T09:00:00+00:00"}
+    apercu[champ] = adresse if champ == "vignette" else ["https://exemple.invalid/ok.jpg", adresse]
+    document["videos"][0]["apercu"] = apercu
+    with pytest.raises(cas.CasInvalide):
+        cas.valider(document)
+
+
 def test_fichier_du_cas_en_mode_direct_est_rejoue_en_enregistre(config_test, cas_simule):
     chemin = cas_simule(config_test)
     document = json.loads(chemin.read_text(encoding="utf-8"))

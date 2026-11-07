@@ -8,7 +8,7 @@
           "images_cles": {
             "description": "Adresses des images clés, dix au plus.",
             "items": {
-              "minLength": 1,
+              "pattern": "^https://\\S+$",
               "type": "string"
             },
             "maxItems": 10,
@@ -29,7 +29,7 @@
           "vignette": {
             "anyOf": [
               {
-                "minLength": 1,
+                "pattern": "^https://\\S+$",
                 "type": "string"
               },
               {

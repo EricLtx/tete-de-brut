@@ -607,6 +607,27 @@ def test_apercu_dix_images_cles_au_plus_et_aucune_adresse_deduite(
     assert video.apercu.images_cles == [f"https://exemple.invalid/image-{i}.jpg" for i in range(10)]
 
 
+def test_apercu_dedoublonne_les_images_cles(config_oriane, transport_oriane_simule, reponse_oriane_simulee):
+    resultat0 = reponse_oriane_simulee["data"]["results"][0]
+    resultat0["media"][0]["frames"] = [
+        {"url": "https://exemple.invalid/a.jpg"},
+        {"url": "https://exemple.invalid/b.jpg"},
+        {"url": "https://exemple.invalid/a.jpg"},
+    ]
+    video = chercher(config_oriane, transport_oriane_simule(corps=reponse_oriane_simulee)).videos[0]
+    assert video.apercu is not None
+    assert video.apercu.images_cles == ["https://exemple.invalid/a.jpg", "https://exemple.invalid/b.jpg"]
+
+
+def test_apercu_images_cles_sans_vignette(config_oriane, transport_oriane_simule, reponse_oriane_simulee):
+    resultat0 = reponse_oriane_simulee["data"]["results"][0]
+    del resultat0["thumbnailMediaUrl"]
+    video = chercher(config_oriane, transport_oriane_simule(corps=reponse_oriane_simulee)).videos[0]
+    assert video.apercu is not None
+    assert video.apercu.vignette is None
+    assert video.apercu.images_cles == ["https://exemple.invalid/image-simulee.jpg"]
+
+
 def test_apercu_ne_porte_aucun_nom_oriane():
     schema = json.dumps(Video.model_json_schema())
     for nom in ("thumbnailMediaUrl", "frames", "thumbnailMediaId"):
