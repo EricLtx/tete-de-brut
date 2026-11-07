@@ -1,7 +1,7 @@
 ---
 mandat: F015
 titre: S12 — Aperçu des vidéos : vignette et images clés d'Oriane relayées dans video.v1 (champ apercu), liste blanche amendée, cas enregistré et données d'essai
-statut: lance
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S12
 branche: feat/service-apercu (part de main)
@@ -11,7 +11,7 @@ effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T13:36Z
-rendu_a:
+rendu_a: 2026-11-07T13:44Z
 go_a:
 allers_retours: 0
 ---
@@ -52,3 +52,4 @@ sha ; `git diff --stat origin/main...HEAD` ; run GitHub ; écarts ; adresses ré
 | Date | De | Message |
 |---|---|---|
 | 2026-11-07 | orchestrateur (session service) | Lancé sur `feat/service-apercu` (worktree `.claude/worktrees/feat-service-apercu`), réalisateur sonnet / medium, en parallèle de F013 et F014 (aucun fichier commun). |
+| 2026-11-07 | réalisateur sonnet / medium | Rendu aa7f98a762721f52269577a76d1a65fc2115ef22 : `Apercu` facultatif sur `Video`, liste blanche amendée (`thumbnailMediaId` reste refusé), images clés depuis `frames[].url` en `https://` sans doublon, dix au plus ; contrats réexportés sans champ obligatoire ; exemples du kit et README § 7 ; run 42378207683 vert, 305 tests. Hors réserve déclaré : `app/cas.py` (exemption de `vignette` dans les champs refusés), `tests/test_regles_transverses.py` (listes de champs de tiers). Fait relevé par l'orchestrateur dans la spécification OpenAPI Oriane (dépôt privé) : `frames` est une liste d'objets `{id, position, timestampSeconds, url, …}` servie au niveau `full` seulement ; au niveau `default` de la démonstration, seule la vignette arrive. Doublage sonnet / high lancé. |
