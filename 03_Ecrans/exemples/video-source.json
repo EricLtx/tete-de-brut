@@ -1,0 +1,27 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "identifiant": "vid-fictive-0001",
+  "plateforme": "tiktok",
+  "identifiant_plateforme": "7000000000000000101",
+  "compte": "compte_fictif_ville",
+  "publie_le": "2026-11-04T08:00:00Z",
+  "vues_selon_oriane": 4200,
+  "interactions_selon_oriane": 310,
+  "legende": "Exemple fictif : budget des crèches de la ville, 300 places si le budget annexe est voté",
+  "requetes_trouvees": [
+    "places de crèche en 2027"
+  ],
+  "transcription": {
+    "texte": "La ville ouvrira trois cents places de crèche en 2027 si le budget annexe est voté en décembre.",
+    "source": "Oriane",
+    "niveau": "default",
+    "lue_le": "2026-11-07T07:55:00Z"
+  },
+  "texte_ecran": {
+    "texte": "300 places de crèche en 2027, si le budget est voté",
+    "source": "Oriane",
+    "lue_le": "2026-11-07T07:55:00Z"
+  },
+  "lien": "https://www.tiktok.com/@compte_fictif_ville/video/7000000000000000101"
+}

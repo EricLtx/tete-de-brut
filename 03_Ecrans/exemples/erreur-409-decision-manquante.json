@@ -1,0 +1,5 @@
+{
+  "erreur": "decision_manquante",
+  "detail": "La fiche n'a pas encore de décision : export refusé.",
+  "mode": "enregistre"
+}

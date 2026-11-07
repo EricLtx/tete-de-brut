@@ -1,0 +1,92 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "identifiant": "recit-9294d15af483",
+  "phrase_surveillee": "places de crèche en 2027",
+  "requete_en_clair": "phrase exacte « places de crèche en 2027 », dite ou écrite à l'écran, tous comptes, niveau default, du 2026-10-31 au 2026-11-07",
+  "videos": [
+    "vid-fictive-0001",
+    "vid-fictive-0002"
+  ],
+  "mesures": [
+    {
+      "nom": "videos_trouvees",
+      "valeur": 2,
+      "unite": "vidéos",
+      "methode": "nombre de vidéos rendues par la requête, chaque vidéo comptée une fois",
+      "fenetre": {
+        "debut": "2026-10-31T00:00:00Z",
+        "fin": "2026-11-07T00:00:00Z"
+      },
+      "echantillon": {
+        "resultats_consultes": 2,
+        "limite_page": 100,
+        "tronque": false
+      },
+      "source": "Oriane (niveau default), vidéos consultées",
+      "raison": null
+    },
+    {
+      "nom": "comptes_distincts",
+      "valeur": 2,
+      "unite": "comptes",
+      "methode": "nombre de comptes distincts (plateforme et compte) parmi les vidéos rendues",
+      "fenetre": {
+        "debut": "2026-10-31T00:00:00Z",
+        "fin": "2026-11-07T00:00:00Z"
+      },
+      "echantillon": {
+        "resultats_consultes": 2,
+        "limite_page": 100,
+        "tronque": false
+      },
+      "source": "Oriane (niveau default), vidéos consultées",
+      "raison": null
+    },
+    {
+      "nom": "vues_cumulees",
+      "valeur": 42200,
+      "unite": "vues selon Oriane",
+      "methode": "somme des vues annoncées par Oriane pour les vidéos rendues, non vérifiées",
+      "fenetre": {
+        "debut": "2026-10-31T00:00:00Z",
+        "fin": "2026-11-07T00:00:00Z"
+      },
+      "echantillon": {
+        "resultats_consultes": 2,
+        "limite_page": 100,
+        "tronque": false
+      },
+      "source": "Oriane (niveau default), vidéos consultées",
+      "raison": null
+    }
+  ],
+  "plus_ancienne_version": {
+    "video": "vid-fictive-0001",
+    "publie_le": "2026-11-04T08:00:00Z",
+    "libelle": "plus ancienne version retrouvée dans les sources consultées"
+  },
+  "non_cherche": [
+    {
+      "type": "libelle",
+      "texte": "autres plateformes que instagram, tiktok et youtube"
+    },
+    {
+      "type": "libelle",
+      "texte": "vidéos supprimées"
+    },
+    {
+      "type": "libelle",
+      "texte": "comptes privés"
+    },
+    {
+      "type": "libelle",
+      "texte": "résultats hors de la fenêtre de la requête"
+    },
+    {
+      "type": "libelle",
+      "texte": "résultats au-delà des résultats consultés"
+    }
+  ],
+  "calcule_le": "2026-11-07T08:05:00Z"
+}

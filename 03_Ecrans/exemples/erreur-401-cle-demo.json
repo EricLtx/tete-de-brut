@@ -1,0 +1,5 @@
+{
+  "erreur": "cle_demo_invalide",
+  "detail": "L'en-tête X-Cle-Demo est absent ou incorrect.",
+  "mode": "enregistre"
+}

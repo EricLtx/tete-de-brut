@@ -1,0 +1,27 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "identifiant": "vid-fictive-0002",
+  "plateforme": "instagram",
+  "identifiant_plateforme": "CFICTIFREPRISE02",
+  "compte": "compte_fictif_reprise",
+  "publie_le": "2026-11-06T18:00:00Z",
+  "vues_selon_oriane": 38000,
+  "interactions_selon_oriane": 2100,
+  "legende": "Exemple fictif : budget des crèches de la ville, 500 places",
+  "requetes_trouvees": [
+    "places de crèche en 2027"
+  ],
+  "transcription": {
+    "texte": "La ville ouvrira cinq cents places de crèche en 2027.",
+    "source": "Oriane",
+    "niveau": "default",
+    "lue_le": "2026-11-07T07:55:00Z"
+  },
+  "texte_ecran": {
+    "texte": "500 places de crèche en 2027",
+    "source": "Oriane",
+    "lue_le": "2026-11-07T07:55:00Z"
+  },
+  "lien": "https://www.instagram.com/reel/CFICTIFREPRISE02/"
+}
