@@ -1,7 +1,7 @@
 ---
 mandat: F016
 titre: S13 — Recherche à la demande : question ou lien collé traduits en filtres affichés avant lancement, coût estimé, exécution chez Oriane, récit ajouté au radar (POST /v1/recherches/preparer, POST /v1/recherches)
-statut: en-doublage
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S13
 branche: feat/service-recherche (part de main)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T13:58Z
 rendu_a: 2026-11-07T14:20Z
-go_a:
+go_a: 2026-11-07T15:40Z
 allers_retours: 1
 ---
 
@@ -31,7 +31,7 @@ Traduction déterministe (aucun modèle de langue ; H à confirmer par l'usage) 
 
 ## Fichiers réservés
 
-Réserve élargie par l'orchestrateur au doublage (07/11) : `app/oriane.py` (`comptes_exclus`, `identifiants_plateforme`, rétrocompatible), `app/main.py` (une ligne), `tests/test_exemples_ecrans.py` (exemption provisoire de quatre lignes, à retirer par F017).
+Réserve élargie par l'orchestrateur au doublage (07/11) : `app/oriane.py` (`comptes_exclus`, `identifiants_plateforme`, rétrocompatible), `app/main.py` (une ligne), `tests/test_exemples_ecrans.py` (exemption provisoire de quatre lignes, à retirer par F017), `app/cas.py` (purge des documents de recherche à la bascule, F016b).
 
 `app/recherche.py` (traduction, préparation, exécution), `app/routes/recherches.py` (deux routes, branchées dans `app/main.py` : une ligne), `app/modeles.py` (classes `FiltresRecherche`, `CoutEstime`, `RefusRecherche`, `Recherche`, `ResultatRecherche`, constante `RECHERCHE_V1`), `app/config.py` (`CHEMIN_COMPTES`), `app/liste_blanche.py` (si le filtre `platformId` manque : l'ajouter à la table, un commentaire), `contrats/recherche.v1.schema.json` (export), `contrats/api.v1.json` (réexport), `tests/test_recherche.py`, `tests/test_contrats.py` (`ROUTES_IMPLEMENTEES` et schéma), `tests/test_regles_transverses.py` (deux routes couvertes : mode partout, clé de démo, aucun libellé refusé), `scripts/verifier_parcours.py` (un geste « je cherche » ajouté, phrase du cas), `.env.example` (`CHEMIN_COMPTES`), `01_Docs/05_Integration/branchement-lovable-et-oriane.md` § 2 (ligne « Je cherche »). Rien dans `app/ecart.py`, `app/fiche.py`, `app/resume.py`.
 
@@ -62,3 +62,4 @@ sha ; diff ; run ; écarts ; exemples JSON à transmettre au kit (une préparati
 | 2026-11-07 | orchestrateur (session service) | Doublage sonnet / high lancé sur 4e3d2f2052a233d6ebf7ec9725207227a681c8a1 (code ad67937) avec, en plus de la grille, le point de l'analyse de sécurité automatique (lecture du plafond de crédits puis appel non atomiques, même motif que `acquisition.actualiser`). Puis fusion de `main` (F014) par le réalisateur : tête c701be20653f0e76de19a35af629f8606e93a2e8, conflits dans `config.py` et `.env.example` seulement, 468 tests, run 42382200473 vert ; le rapport portera ce sha. |
 | 2026-11-07 | relecteur sonnet / high | GO sur c701be20653f0e76de19a35af629f8606e93a2e8 (`vault/revues/F016-c701be2.md`) : 0 bloquant, 2 majeurs (récit fantôme après bascule : `cas.charger` purge les vidéos mais pas les documents `recherche-*`, le radar rend un récit vide ; fichiers hors réserve `oriane.py` et `test_exemples_ecrans.py`, acceptés et réserve élargie), 6 mineurs (`_surveiller` sans test ; plafond non atomique, borné à (N−1)×15 crédits, verrou `asyncio.Lock` suggéré ; `requete_en_clair` d'un refus ; guide § 2 : 503 `credits_epuises` jamais rendu ; `exactMatch` en liste ; choix RG-02). Vérifications rejouées sans écart, cinq mutations attrapées. Décision de l'orchestrateur : correctif F016b (majeur 1 et mineur 3) sur la même branche avant fusion, relecture du diff. |
 | 2026-11-07 | réalisateur sonnet / high | Correctif F016b ce0f471ab2b0679d6d68c2b99867e29dc86277c2 : `cas.charger(avec_videos=True)` purge aussi les documents de recherche à la bascule (`cas.py`, 3 lignes hors réserve) ; deux tests gardent `_surveiller` et l'absence de récit vide après bascule (vus échouer sans les correctifs) ; `requete_en_clair` d'un refus ne décrit plus de requête ; 503 de `POST /v1/recherches` sans `credits_epuises` (route, `api.v1.json`, guide § 2). Run 42383261291 vert, 470 tests. Relecture du diff relancée. |
+| 2026-11-07 | relecteur sonnet / high | GO sur ce0f471ab2b0679d6d68c2b99867e29dc86277c2 (`vault/revues/F016-ce0f471.md`) : quatre constats clos (récit fantôme rejoué sans récit vide, par recherche et par actualisation ; `_surveiller` gardé ; refus sans requête ; 503 exact), 0 bloquant, 0 majeur, 3 mineurs (purge à l'échelle du type `cas`, plafond non atomique, `exactMatch` en liste). 470 tests, trois mutations attrapées. Fusionné sur `main`. |
