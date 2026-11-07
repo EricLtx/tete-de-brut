@@ -1,6 +1,6 @@
 # ADR-0002 — Fournisseur du modèle de langue du résumé de fiche : Claude (API Anthropic) à la place de Scaleway
 
-- **Statut** : Proposée — 07/11/2026
+- **Statut** : Acceptée — 07/11/2026 (par le propriétaire, clé Claude fournie à l'équipe, Sonnet 5.5)
 - **Portée** : fiche S10 du plan (résumé de la fiche rédigé par un modèle de langue) et tout appel à un modèle de langue par le service
 - **Dépend de** / **Remplace** : [ADR-0001](0001-perimetre-et-pile-du-service.md), qui nommait Scaleway pour S10 ; ne remplace pas l'ADR-0001, en amende un point
 

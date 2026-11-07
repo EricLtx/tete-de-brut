@@ -1,7 +1,7 @@
 ---
 mandat: F014
 titre: S10 — Résumé de fiche par modèle de langue (Claude), filtré, enregistré avec le cas
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S10
 branche: feat/service-modele-langue (part de main)
@@ -10,7 +10,7 @@ modele: opus
 effort: medium
 relecteur: opus / medium (textes lus par le jury), jamais moins que la config
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T13:34Z
 rendu_a:
 go_a:
 allers_retours: 0
@@ -44,3 +44,4 @@ sha ; `git diff --stat` ; run ; écarts ; points ouverts.
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | orchestrateur (session service) | ADR-0002 acceptée par le propriétaire ; lancé sur `feat/service-modele-langue` (worktree `.claude/worktrees/feat-service-modele-langue`), réalisateur opus / medium. Modèle visé : `claude-sonnet-5-5` par l'API Messages d'Anthropic ; la clé locale `MODELE_LANGUE_API_KEY` est posée par le propriétaire dans `02_Service/.env`, le secret GitHub `ANTHROPIC_API_KEY` existe déjà. |
