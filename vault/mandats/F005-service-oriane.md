@@ -1,7 +1,7 @@
 ---
 mandat: F005
 titre: S03 — Adaptateur Oriane : une seule fonction d'appel, liste blanche des champs vers video.v1, journal de chaque appel, GET /v1/videos/{id}
-statut: en-doublage
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S03
 branche: feat/service-oriane (part de feat/service-contrats à 407a5c7 ; fusion après S02)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T10:52Z
 rendu_a: 2026-11-07T11:07Z
-go_a:
+go_a: 2026-11-07T11:21Z
 allers_retours: 2
 ---
 
@@ -72,3 +72,5 @@ sha ; `git diff --stat feat/service-contrats...HEAD` ; run GitHub et nombre de t
 | 2026-11-07 | orchestrateur | Second correctif demandé avant doublage : enfants nommés `dit:<phrase>` et `ecrit:<phrase>`, `requetes_trouvees` = phrases reconnues dans `matchedQueries` (jamais les noms techniques), pour que le regroupement de S05 fonctionne. |
 | 2026-11-07 | réalisateur sonnet / medium | Ajustement 7eec373 : enfants `dit:<phrase>` et `ecrit:<phrase>`, `requetes_trouvees` = phrases reconnues, journal `dits`/`ecrits`/`sans_origine`, phrase > 256 caractères refusée avant l'appel ; run 42367218515 vert, 157 tests. |
 | 2026-11-07 | orchestrateur | Vérifié par appel réel : Oriane accepte les noms de requêtes avec espaces, accents, apostrophe et deux-points et les renvoie tels quels dans `matchedQueries` (206). Doublage lancé sur 7eec373. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 7eec373 : 0 bloquant, 1 majeur (règle RG-02 de la fiche, requête réduite à un nom de personne, ni codée ni testée : reportée à S04, côté préparation des phrases du cas), 3 mineurs (phrase d'allure secrète → `ErreurJournal` hors famille `ErreurOriane` ; expiration rejouée contre un serveur lent, correcte ; écarts déclarés acceptés). Appel réel unique : 206, total 7, 635 ms, vidéo en base aux seules clés de `video.v1`. 157 tests. |
+| 2026-11-07 | orchestrateur | Majeur accepté avec mandat de suite : F008 (S04) code et teste le refus d'une phrase réduite à un nom (moins de trois mots) dans `enregistrer_cas.py` et `actualiser()`. Fusionné sur `main` ; conflit de `ROUTES_IMPLEMENTEES` avec S07 résolu par union des deux ensembles (résolution mécanique, attestée par le run GitHub sur `main`). |
