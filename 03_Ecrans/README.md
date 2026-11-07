@@ -118,6 +118,7 @@ Le bouton d'export reste actif : c'est le service qui refuse tant qu'une décisi
 - L'enveloppe d'erreur ne porte pas `enregistre_le` : la date du cas vient de la barre d'état (`GET /v1/etat`).
 - Un récit ne donne que les identifiants de ses vidéos (`recits[].videos[]`) : compte, date et lien viennent d'un `GET /v1/videos/{id}` par vidéo (trois au plus sur la carte).
 - Une comparaison ne porte ni les textes ni les listes de mots normalisés : l'écran lit les deux vidéos et refait la découpe `mots.v1`, avec la vérification décrite au § 4.
+- `apercu` (vidéo) est facultatif : `vignette` (adresse ou nul), `images_cles` (dix adresses au plus), `source` (toujours Oriane), `lue_le`. Il est absent quand Oriane ne sert rien : l'écran n'affiche alors aucune image et ne devine aucune adresse. Les adresses viennent d'Oriane, jamais construites par l'écran ; elles peuvent expirer, l'écran garde un repli sans image.
 - `mesures[].nom` est un code (`videos_trouvees`, `comptes_distincts`, `vues_cumulees`) : l'écran affiche `unite` à côté de la valeur et `nom` en petit.
 
 ## 8. Mode d'emploi

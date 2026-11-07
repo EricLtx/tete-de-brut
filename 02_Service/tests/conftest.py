@@ -164,9 +164,8 @@ CHAMPS_TIERS_ORIANE = (
     "mentions",
     "coAuthors",
     "audioAuthor",
-    "thumbnailMediaUrl",
 )
-CHAMPS_TIERS_MEDIA_ORIANE = ("tags", "frames", "transcriptChunks")
+CHAMPS_TIERS_MEDIA_ORIANE = ("tags", "transcriptChunks")
 
 _REPONSE_ORIANE_SIMULEE: dict[str, Any] = {
     "metadata": {

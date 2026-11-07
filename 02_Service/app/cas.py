@@ -108,7 +108,9 @@ def champs_refuses(document: Any) -> list[str]:
     for nom, valeur in _parcourir(document):
         if nom in CHAMPS_REFUSES or nom in CHAMPS_REFUSES_MEDIA or nom.startswith(PREFIXES_REFUSES):
             trouves.append(nom)
-        elif isinstance(valeur, str) and _MEDIA_URL.search(valeur):
+        elif (
+            nom != "vignette" and isinstance(valeur, str) and _MEDIA_URL.search(valeur)
+        ):  # aperçu admis (S12)
             trouves.append(f"{nom} (image ou vidéo)")
     return sorted(set(trouves))
 

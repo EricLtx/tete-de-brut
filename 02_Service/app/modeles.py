@@ -31,6 +31,7 @@ SOURCE_ORIANE = "Oriane"
 NIVEAU_DEFAULT = "default"
 LIBELLE_PLUS_ANCIENNE_VERSION = "plus ancienne version retrouvée dans les sources consultées"
 LIBELLE_HEURE_NON_FOURNIE = "non fournie au niveau default"
+LIMITE_IMAGES_CLES = 10
 LIMITE_TRANSCRIPTIONS = "transcriptions lues chez Oriane, non refaites sur la vidéo"
 METHODE_GABARIT_V1 = "gabarit v1"
 
@@ -116,6 +117,19 @@ class TexteEcran(Modele):
     lue_le: datetime
 
 
+class Apercu(Modele):
+    """Vignette et images clés de la vidéo, adresses relayées telles que servies par Oriane."""
+
+    vignette: TexteNonVide | None = Field(default=None, description="Adresse de la vignette, si servie.")
+    images_cles: list[TexteNonVide] = Field(
+        default_factory=list,
+        max_length=LIMITE_IMAGES_CLES,
+        description="Adresses des images clés, dix au plus.",
+    )
+    source: Literal["Oriane"] = SOURCE_ORIANE
+    lue_le: datetime
+
+
 class Video(Reponse):
     """Vidéo `video.v1` : seuls les champs de la liste blanche, sans aucune donnée de tiers."""
 
@@ -131,6 +145,9 @@ class Video(Reponse):
     transcription: Transcription
     texte_ecran: TexteEcran
     lien: TexteNonVide
+    apercu: Apercu | None = Field(
+        default=None, description="Aperçu relayé par Oriane ; absent quand Oriane n'en sert aucun."
+    )
 
 
 # --- mesure et recit.v1 ------------------------------------------------------------------------

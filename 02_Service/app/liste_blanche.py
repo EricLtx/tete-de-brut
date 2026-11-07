@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from app.modeles import Video
+from app.modeles import LIMITE_IMAGES_CLES, Video
 
 # --- table de correspondance : nom Oriane -> champ français de `video.v1` -------------------------
 
@@ -27,6 +27,8 @@ CORRESPONDANCE: dict[str, str] = {
     "matchedQueries": "requetes_trouvees",  # noms `dit:<phrase>` et `ecrit:<phrase>`, ramenés aux phrases
     "media[].transcript": "transcription.texte",  # parole transcrite par Oriane (niveau default)
     "media[].onScreenText": "texte_ecran.texte",  # liste de chaînes, jointe par des retours à la ligne
+    "thumbnailMediaUrl": "apercu.vignette",  # adresse de la vignette, relayée telle que servie
+    "media[].frames[].url": "apercu.images_cles",  # images clés, dix adresses au plus, telles que servies
 }
 
 # Noms utilisés pour construire la requête (filtres de la recherche).
@@ -50,7 +52,6 @@ CHAMPS_REFUSES = frozenset(
     {
         "profileDisplayName",
         "profilePictureUrl",
-        "thumbnailMediaUrl",
         "thumbnailMediaId",
         "mentions",
         "hashtags",
@@ -68,7 +69,7 @@ CHAMPS_REFUSES = frozenset(
         "profileLocationLongitude",
     }
 )
-CHAMPS_REFUSES_MEDIA = frozenset({"tags", "frames", "transcriptChunks"})
+CHAMPS_REFUSES_MEDIA = frozenset({"tags", "transcriptChunks"})
 PREFIXES_REFUSES = (
     "coAuthors",
     "audio",
@@ -122,6 +123,32 @@ def _texte_ecran(resultat: dict[str, Any]) -> str:
         if isinstance(brut, list):
             morceaux.extend(t for t in (_texte(x) for x in brut) if t)
     return "\n".join(morceaux)
+
+
+def _adresse(valeur: Any) -> str | None:
+    """Adresse https servie par Oriane, telle quelle ; tout le reste est écarté, rien n'est construit."""
+    texte = _texte(valeur)
+    return texte if texte.startswith("https://") else None
+
+
+def _apercu(resultat: dict[str, Any], lue_le: datetime) -> dict[str, Any] | None:
+    """Vignette et images clés servies par Oriane ; `None` quand elle n'en sert aucune."""
+    vignette = _adresse(resultat.get("thumbnailMediaUrl"))
+    images: list[str] = []
+    for m in _media(resultat):
+        frames = m.get("frames")
+        for frame in frames if isinstance(frames, list) else []:
+            adresse = _adresse(frame.get("url")) if isinstance(frame, dict) else None
+            if adresse and adresse not in images:
+                images.append(adresse)
+    if vignette is None and not images:
+        return None
+    return {
+        "vignette": vignette,
+        "images_cles": images[:LIMITE_IMAGES_CLES],
+        "source": "Oriane",
+        "lue_le": lue_le,
+    }
 
 
 def nom_requete(origine: str, phrase: str) -> str:
@@ -191,6 +218,9 @@ def projeter(
         "mode": "direct",
         "enregistre_le": None,
     }
+    apercu = _apercu(resultat, lue_le)
+    if apercu is not None:
+        donnees["apercu"] = apercu
     try:
         return Video.model_validate(donnees)
     except (
