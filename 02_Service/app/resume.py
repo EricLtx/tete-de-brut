@@ -3,13 +3,30 @@
 Le gabarit v1 n'écrit que des phrases fixes (segments `libelle`, passés au filtre des libellés
 refusés) et rapporte les mots qui diffèrent en extraits (segments `citation`, jamais filtrés,
 40 mots au plus). Il décrit ce qui diffère, jamais ce que cela veut dire : le constat et la
-décision reviennent au journaliste. S10 pourra aiguiller ici vers un résumé rédigé par un modèle
-de langue (`RESUME_MODE=modele`) sans changer la signature.
+décision reviennent au journaliste.
+
+S10 (ADR-0002) : avec `RESUME_MODE=modele` et `MODELE_LANGUE_API_KEY`, `resumer` demande le résumé
+à un modèle de langue (`app/modele_langue.py`), n'envoie que les extraits `citation`, passe la
+sortie au filtre des libellés refusés et la marque « rédigé par un modèle de langue, à relire ».
+Échec, refus ou libellé refusé : le gabarit v1 est servi et une ligne part au journal. Sans
+configuration, le gabarit seul, comme en S08. La fiche enregistre le résumé : il n'est pas
+recalculé à chaque lecture.
 """
 
 from __future__ import annotations
 
+import logging
+import re
+import time
+
+from app import base, modele_langue
+from app.config import Configuration, ErreurConfiguration
+from app.libelles import contient_libelle_refuse
+from app.modele_langue import ErreurModele, ExtraitModele
 from app.modeles import METHODE_GABARIT_V1, Ecart, Operation, Resume, Segment
+from app.mots import normaliser
+
+journal = logging.getLogger("tete_de_brut")
 
 LIMITE_MOTS_EXTRAIT = 40
 
@@ -94,7 +111,7 @@ def indices_de_transformation(comparaison: Ecart) -> list[Segment]:
     return segments
 
 
-def resumer(comparaison: Ecart) -> Resume:
+def resumer_par_gabarit(comparaison: Ecart) -> Resume:
     """Résumé `gabarit v1` d'une comparaison : décompte par canal et écart rencontré d'abord."""
     segments = [
         libelle(
@@ -118,3 +135,91 @@ def resumer(comparaison: Ecart) -> Resume:
             segments.append(citation(mots))
     segments.append(libelle("Le constat et la décision reviennent au journaliste."))
     return Resume(segments=segments, methode=METHODE_GABARIT_V1)
+
+
+# --- S10 : résumé rédigé par un modèle de langue, toujours filtré, gabarit en repli ---------------
+
+ROUTE_JOURNAL_MODELE = "resume.modele"
+METHODE_MODELE = "rédigé par un modèle de langue ({modele}), à relire"
+LIMITE_PHRASES_MODELE = 4
+# Valeurs de décision (`decision.v1`) qu'un résumé du modèle ne doit jamais écrire.
+DECISIONS_INTERDITES = (("ne", "pas", "amplifier"), ("prêt", "à", "traiter"))
+_FIN_DE_PHRASE = re.compile(r"[.!?…]+(?:\s|$)")
+
+
+def extraits_pour_modele(comparaison: Ecart) -> list[ExtraitModele]:
+    """Les seuls extraits `citation` de la comparaison (40 mots au plus), avec leur contexte fixe."""
+    extraits: list[ExtraitModele] = []
+    for champ, canal in CANAUX:
+        for operation in getattr(comparaison, champ):
+            for version, mots in (("source", operation.mots_source), ("reprise", operation.mots_reprise)):
+                if mots:
+                    texte = citation(mots).texte
+                    extraits.append(ExtraitModele(canal, version, operation.type, texte))
+    return extraits
+
+
+def _configuration() -> Configuration | None:
+    """Réglages du modèle lus dans l'environnement au moment du résumé ; invalides, aucun modèle."""
+    try:
+        return Configuration.depuis_environnement()
+    except ErreurConfiguration as exc:
+        journal.warning("résumé par modèle ignoré : %s", exc)
+        return None
+
+
+def _raison_de_refus(texte: str) -> str | None:
+    """Pourquoi un texte du modèle ne peut pas être servi, ou `None` s'il passe le filtre."""
+    if contient_libelle_refuse(texte) is not None:
+        return "résumé du modèle refusé : libellé"
+    mots = normaliser(texte)
+    for interdite in DECISIONS_INTERDITES:
+        n = len(interdite)
+        if any(tuple(mots[i : i + n]) == interdite for i in range(len(mots) - n + 1)):
+            return "résumé du modèle refusé : décision"
+    if len(_FIN_DE_PHRASE.findall(texte.strip())) > LIMITE_PHRASES_MODELE:
+        return "résumé du modèle refusé : plus de quatre phrases"
+    return None
+
+
+def _consigner_modele(cible: str, config: Configuration, debut: float, code: int | None) -> None:
+    """Ligne au journal des appels : raison en clair, modèle, code et durée ; jamais la réponse ni la clé."""
+    base.consigner(
+        route=ROUTE_JOURNAL_MODELE,
+        cible=cible,
+        resultats={"modele": config.modele_langue_id},
+        duree_ms=round((time.monotonic() - debut) * 1000, 1),
+        code=code,
+    )
+
+
+def resumer(comparaison: Ecart) -> Resume:
+    """Résumé de la fiche : par le modèle si configuré et accepté par le filtre, sinon gabarit v1."""
+    gabarit = resumer_par_gabarit(comparaison)
+    config = _configuration()
+    if config is None or config.resume_mode != "modele" or not config.modele_langue_cle:
+        return gabarit
+    extraits = extraits_pour_modele(comparaison)
+    if not extraits:
+        return gabarit  # aucun écart au mot : rien à rédiger, le gabarit le dit déjà
+    debut = time.monotonic()
+    try:
+        texte = modele_langue.rediger(extraits, config=config)
+    except ErreurModele as exc:
+        _consigner_modele(exc.raison, config, debut, exc.code)
+        return gabarit
+    raison = _raison_de_refus(texte)
+    if raison is not None:
+        _consigner_modele(raison, config, debut, 200)
+        return gabarit
+    _consigner_modele("résumé du modèle accepté", config, debut, 200)
+    return Resume(
+        segments=[
+            libelle(
+                "Résumé rédigé par un modèle de langue, à relire, d'après les extraits lus chez Oriane :"
+            ),
+            libelle(texte),
+            libelle("Le constat et la décision reviennent au journaliste."),
+        ],
+        methode=METHODE_MODELE.format(modele=config.modele_langue_id),
+    )
