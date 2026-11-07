@@ -118,6 +118,15 @@ def test_mots_nombres_gardes_tels_que_transcrits():
     assert normaliser("dix mille") != normaliser("10 000")
 
 
+def test_mots_separateur_decimal_garde_entre_deux_chiffres():
+    assert normaliser("3,5 milliards") == ["3,5", "milliards"]
+    assert normaliser("3,5 milliards") != normaliser("35 milliards")
+    assert normaliser("3.5 %") == ["3.5"]
+    assert normaliser("1 000") == ["1", "000"]
+    assert normaliser("Rendez-vous en 2027.") == ["rendez", "vous", "en", "2027"]
+    assert normaliser("oui, 3, non.") == ["oui", "3", "non"]
+
+
 def test_mots_forme_composee_et_apostrophe_typographique():
     decompose = "État"  # É en forme décomposée
     assert normaliser(decompose) == ["état"]
@@ -130,6 +139,15 @@ def test_mots_forme_composee_et_apostrophe_typographique():
 @pytest.mark.parametrize("texte", ["version originale", "Fausse", "premières", "Un récit MANIPULÉ"])
 def test_libelles_refuses(texte):
     assert contient_libelle_refuse(texte) is not None
+
+
+@pytest.mark.parametrize("texte", ["PREMIERE", "première", "déformé", "deforme", "manipule", "coordonne"])
+def test_libelles_refuses_avec_ou_sans_accent(texte):
+    assert contient_libelle_refuse(texte) is not None
+
+
+def test_desaccentuation_ne_change_pas_mots_v1():
+    assert normaliser("première") == ["première"]
 
 
 def test_libelles_six_racines_et_accords():

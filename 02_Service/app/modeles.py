@@ -269,7 +269,15 @@ class Ecart(Reponse):
     operations: list[Operation] = Field(default_factory=list)
     ecart_legende: list[Operation] = Field(default_factory=list)
     ecart_texte_ecran: list[Operation] = Field(default_factory=list)
-    normalisation: Literal["mots.v1"] = NORMALISATION_MOTS_V1
+    normalisation: Literal["mots.v1"] = Field(
+        default=NORMALISATION_MOTS_V1,
+        description=(
+            "Normalisation mots.v1 : forme Unicode composée (NFC) et minuscules, ponctuation supprimée "
+            "sauf la virgule ou le point entre deux chiffres (séparateur décimal), apostrophe et trait "
+            "d'union changés en espace, accents et nombres gardés tels que transcrits, découpage sur "
+            "les espaces."
+        ),
+    )
     transcriptions: TranscriptionsComparees
     heure_dans_la_video: HeureDansLaVideo = Field(default_factory=HeureDansLaVideo)
 

@@ -170,6 +170,7 @@
     "normalisation": {
       "const": "mots.v1",
       "default": "mots.v1",
+      "description": "Normalisation mots.v1 : forme Unicode composée (NFC) et minuscules, ponctuation supprimée sauf la virgule ou le point entre deux chiffres (séparateur décimal), apostrophe et trait d'union changés en espace, accents et nombres gardés tels que transcrits, découpage sur les espaces.",
       "title": "Normalisation",
       "type": "string"
     },
