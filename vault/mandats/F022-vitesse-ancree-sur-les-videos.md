@@ -1,7 +1,7 @@
 ---
 mandat: F022
 titre: S19 — Compteurs de vitesse ancrés sur la vidéo la plus récente retrouvée (plus de « Non mesuré » quand l'index date de quelques semaines)
-statut: lance
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S19
 branche: feat/service-vitesse-ancree (part de main)
@@ -11,8 +11,8 @@ effort: medium
 relecteur: sonnet / medium (doublage allégé sur demande du propriétaire du 07/11, 17 h 50)
 cree: 2026-11-07
 lance_a: 2026-11-07T17:05Z
-rendu_a:
-go_a:
+rendu_a: 2026-11-07T17:25Z
+go_a: 2026-11-07T17:45Z
 allers_retours: 0
 ---
 
@@ -58,3 +58,5 @@ sha ; diff ; tests ; écarts ; exemple de mesure rendue sur un récit dont les v
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur (sonnet / medium) | Rendu a965139 : `vitesse.py` et `test_vitesse.py` seuls (+79/−11), référence = publication la plus récente plafonnée au calcul, 513 tests verts, run GitHub vert. Écarts : date de la méthode en UTC et dite telle ; aucun contrat à réexporter. Exemple : 5 vidéos d'octobre, `vitesse_7j` = 0,43 vidéo par jour, fenêtre du 16/10 au 23/10/2026. |
+| 2026-11-07 | orchestrateur | Déployé dans le Codespace de démonstration dès le rendu ; doublage court GO (`vault/revues/F022-a965139.md`, deux mineurs : UTC dit, méthode du rapport sans la référence) ; fusion dans `main`. |
