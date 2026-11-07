@@ -56,6 +56,8 @@ MOTS_INTERDITS_KIT = frozenset(
     {"tendance", "tendances", "viral", "virale", "viraux", "virales", "sentiment", "sentiments"}
 )
 ENREGISTRE_LE = "2026-11-07T08:00:00Z"
+# Réponses de S13 (recherche) : leurs exemples viennent de S14 (F017), qui retire cette exemption.
+SANS_EXEMPLE_JUSQU_A_S14 = frozenset({"Recherche", "ResultatRecherche"})
 
 FICHIERS_EXEMPLES = sorted(DOSSIER_EXEMPLES.glob("*.json"))
 TEXTES_KIT = [
@@ -119,6 +121,8 @@ def test_chaque_reponse_du_contrat_a_son_exemple() -> None:
                 ref = schema.get("$ref", "")
                 if statut.startswith("2") and ref:
                     nom = ref.rsplit("/", 1)[-1]
+                    if nom in SANS_EXEMPLE_JUSQU_A_S14:
+                        continue
                     assert nom in modeles_exemples, f"{methode.upper()} {chemin} : aucun exemple {nom}"
 
 

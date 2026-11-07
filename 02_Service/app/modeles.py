@@ -463,3 +463,107 @@ def schema_contrat(nom: str) -> dict[str, Any]:
     """JSON Schema du contrat nommé (`video.v1`, …), tel qu'exporté dans `contrats/`."""
     schema = CONTRATS[nom].model_json_schema()
     return {"$id": nom, **schema}
+
+
+# --- recherche.v1 : recherche à la demande (S13) -----------------------------------------------
+
+RECHERCHE_V1 = "recherche.v1"
+DANS_PAROLE_OU_ECRAN = "parole ou texte à l'écran"
+TypeRecherche = Literal["phrase", "lien"]
+CodeRefus = Literal[
+    "nom_seul", "plusieurs_phrases", "phrase_trop_longue", "aucune_phrase", "lien_non_reconnu"
+]
+
+
+class FiltresRecherche(Modele):
+    """Filtres tels qu'ils seront envoyés à Oriane : ce que l'écran affiche est ce qui part."""
+
+    phrases: list[str] = Field(
+        default_factory=list, description="Phrases exactes cherchées (une seule pour le type `phrase`)."
+    )
+    dans: str | None = Field(
+        default=None,
+        description="Où la phrase est cherchée : « parole ou texte à l'écran ». Vide pour un lien.",
+    )
+    fenetre: Fenetre | None = Field(
+        default=None,
+        description="Fenêtre de publication (7 jours par défaut). Vide pour un lien : pas de fenêtre.",
+    )
+    comptes: list[str] = Field(
+        default_factory=list,
+        description="Comptes cherchés ; vide tant que la question ne peut pas en nommer.",
+    )
+    comptes_exclus: list[str] = Field(
+        default_factory=list,
+        description="Comptes écartés, lus dans la liste de configuration (« hors comptes de partis »).",
+    )
+    plateformes: list[Plateforme] = Field(
+        default_factory=list, description="Plateformes cherchées ; vide, les trois."
+    )
+    identifiant_plateforme: str | None = Field(
+        default=None, description="Pour un lien : identifiant de la vidéo sur sa plateforme."
+    )
+
+
+class CoutEstime(Modele):
+    """Coût estimé de la recherche, affiché avant le geste."""
+
+    credits_estimes: Compte
+    methode: TexteNonVide
+
+
+class RefusRecherche(Modele):
+    """Pourquoi la recherche est refusée ; `detail` s'affiche tel quel."""
+
+    code: CodeRefus = Field(
+        description=(
+            "`nom_seul` (RG-02 : le seul nom d'une personne), `plusieurs_phrases`, `phrase_trop_longue`, "
+            "`aucune_phrase` ou `lien_non_reconnu`."
+        )
+    )
+    detail: TexteNonVide
+
+
+class Recherche(Reponse):
+    """Recherche `recherche.v1` : la question, les filtres compris, la requête en clair et le coût."""
+
+    question: TexteNonVide = Field(description="La question ou le lien collé, tel que reçu.")
+    type: TypeRecherche = Field(description="`phrase` (texte libre) ou `lien` (vidéo collée par son lien).")
+    filtres: FiltresRecherche
+    requete_en_clair: TexteNonVide = Field(
+        description="Ce qui sera envoyé à Oriane, lisible, y compris ce qui n'a pas pu être appliqué."
+    )
+    cout_estime: CoutEstime
+    refus: RefusRecherche | None = Field(
+        default=None, description="Renseigné si la recherche est refusée : rien n'est alors envoyé à Oriane."
+    )
+
+
+class DemandeRecherche(Modele):
+    """Corps de `POST /v1/recherches/preparer` et de `POST /v1/recherches`."""
+
+    question: str = Field(
+        min_length=1,
+        max_length=1000,
+        description="Question libre (phrase entre guillemets de préférence) ou lien d'une vidéo.",
+    )
+
+    @field_validator("question")
+    @classmethod
+    def _non_vide(cls, question: str) -> str:
+        if not question.strip():
+            raise ValueError("la question est vide")
+        return question.strip()
+
+
+class ResultatRecherche(Reponse):
+    """Réponse de `POST /v1/recherches` : la recherche exécutée et ce qu'elle a trouvé."""
+
+    recherche: Recherche
+    recit: Recit | None = Field(
+        default=None, description="Pour le type `phrase` : le récit de la phrase, ajouté au radar."
+    )
+    video: Video | None = Field(default=None, description="Pour le type `lien` : la vidéo retrouvée.")
+
+
+CONTRATS[RECHERCHE_V1] = Recherche

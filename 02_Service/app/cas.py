@@ -287,6 +287,9 @@ def charger(config: Configuration, *, avec_videos: bool) -> CasEnregistre | None
         document["enregistre_le"] = cas.enregistre_le.isoformat()
         # Mode enregistré pur : seules les vidéos du cas restent en base, jamais celles lues en direct.
         base.purger("video", {v.identifiant for v in cas.videos})
+        # Les phrases ajoutées par une recherche en direct (S13) n'ont plus de vidéos ici : sans leur
+        # document, le radar enregistré ne montre pas de récit vide.
+        base.purger(TYPE_CAS, {IDENTIFIANT_CAS})
         for video in cas.videos:
             base.ecrire("video", video.identifiant, VIDEO_V1, video.model_dump(mode="json"))
     base.ecrire(TYPE_CAS, IDENTIFIANT_CAS, CAS_V1, document)

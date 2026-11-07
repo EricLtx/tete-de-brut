@@ -38,6 +38,9 @@ FILTRE_TEXTE_ECRAN = "onScreenText"  # texte affiché à l'écran
 FILTRE_COMPTE = "profileHandle"  # identifiant public du compte
 FILTRE_DATE = "publishedAt"  # fenêtre de publication {after, before}
 FILTRE_PLATEFORME = "platform"  # {"includes": [...]}, relevé H01 (pas exactMatch)
+FILTRE_IDENTIFIANT = (
+    "platformId"  # {"includes": [{"platform", "platformId"}]} : couples, lien d'une vidéo (S13)
+)
 REQUETE_DIT = "dit"  # préfixe des sous-requêtes sur la parole transcrite : « dit:<phrase> »
 REQUETE_ECRIT = "ecrit"  # préfixe des sous-requêtes sur le texte à l'écran : « ecrit:<phrase> »
 LONGUEUR_MAX_PHRASE = 256
@@ -45,6 +48,10 @@ REQUETE_DIT_OU_ECRIT = "dit_ou_ecrit"  # union des deux
 OPERATEUR_PHRASES = "includesExactly"  # la phrase doit apparaître telle quelle
 OPERATEUR_COMPTES = "exactMatch"  # le compte doit être exactement celui-là
 OPERATEUR_PLATEFORMES = "includes"  # la plateforme est l'une de celles-là
+OPERATEUR_COMPTES_EXCLUS = (
+    "excludesExactly"  # le compte n'est aucun de ceux-là : {"values", "operator"} (S13)
+)
+OPERATEUR_IDENTIFIANTS = "includes"  # l'identifiant est l'un de ces couples plateforme et identifiant (S13)
 
 # Champs servis par Oriane qui ne doivent jamais entrer dans le service (jamais écrits, jamais journalisés).
 # La projection ne les lit pas ; cette liste sert aux tests et aux contrôles d'autres modules.

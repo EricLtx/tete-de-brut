@@ -1,0 +1,237 @@
+{
+  "$defs": {
+    "CoutEstime": {
+      "additionalProperties": false,
+      "description": "Coût estimé de la recherche, affiché avant le geste.",
+      "properties": {
+        "credits_estimes": {
+          "minimum": 0,
+          "title": "Credits Estimes",
+          "type": "integer"
+        },
+        "methode": {
+          "minLength": 1,
+          "title": "Methode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "credits_estimes",
+        "methode"
+      ],
+      "title": "CoutEstime",
+      "type": "object"
+    },
+    "Fenetre": {
+      "additionalProperties": false,
+      "description": "Fenêtre de temps sur laquelle porte une mesure (bornes comprises).",
+      "properties": {
+        "debut": {
+          "format": "date-time",
+          "title": "Debut",
+          "type": "string"
+        },
+        "fin": {
+          "format": "date-time",
+          "title": "Fin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "debut",
+        "fin"
+      ],
+      "title": "Fenetre",
+      "type": "object"
+    },
+    "FiltresRecherche": {
+      "additionalProperties": false,
+      "description": "Filtres tels qu'ils seront envoyés à Oriane : ce que l'écran affiche est ce qui part.",
+      "properties": {
+        "comptes": {
+          "description": "Comptes cherchés ; vide tant que la question ne peut pas en nommer.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Comptes",
+          "type": "array"
+        },
+        "comptes_exclus": {
+          "description": "Comptes écartés, lus dans la liste de configuration (« hors comptes de partis »).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Comptes Exclus",
+          "type": "array"
+        },
+        "dans": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Où la phrase est cherchée : « parole ou texte à l'écran ». Vide pour un lien.",
+          "title": "Dans"
+        },
+        "fenetre": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Fenetre"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fenêtre de publication (7 jours par défaut). Vide pour un lien : pas de fenêtre."
+        },
+        "identifiant_plateforme": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pour un lien : identifiant de la vidéo sur sa plateforme.",
+          "title": "Identifiant Plateforme"
+        },
+        "phrases": {
+          "description": "Phrases exactes cherchées (une seule pour le type `phrase`).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Phrases",
+          "type": "array"
+        },
+        "plateformes": {
+          "description": "Plateformes cherchées ; vide, les trois.",
+          "items": {
+            "enum": [
+              "instagram",
+              "tiktok",
+              "youtube"
+            ],
+            "type": "string"
+          },
+          "title": "Plateformes",
+          "type": "array"
+        }
+      },
+      "title": "FiltresRecherche",
+      "type": "object"
+    },
+    "RefusRecherche": {
+      "additionalProperties": false,
+      "description": "Pourquoi la recherche est refusée ; `detail` s'affiche tel quel.",
+      "properties": {
+        "code": {
+          "description": "`nom_seul` (RG-02 : le seul nom d'une personne), `plusieurs_phrases`, `phrase_trop_longue`, `aucune_phrase` ou `lien_non_reconnu`.",
+          "enum": [
+            "nom_seul",
+            "plusieurs_phrases",
+            "phrase_trop_longue",
+            "aucune_phrase",
+            "lien_non_reconnu"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "detail": {
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "detail"
+      ],
+      "title": "RefusRecherche",
+      "type": "object"
+    }
+  },
+  "$id": "recherche.v1",
+  "additionalProperties": false,
+  "description": "Recherche `recherche.v1` : la question, les filtres compris, la requête en clair et le coût.",
+  "properties": {
+    "cout_estime": {
+      "$ref": "#/$defs/CoutEstime"
+    },
+    "enregistre_le": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+      "title": "Enregistre Le"
+    },
+    "filtres": {
+      "$ref": "#/$defs/FiltresRecherche"
+    },
+    "mode": {
+      "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+      "enum": [
+        "direct",
+        "enregistre"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "question": {
+      "description": "La question ou le lien collé, tel que reçu.",
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    },
+    "refus": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RefusRecherche"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Renseigné si la recherche est refusée : rien n'est alors envoyé à Oriane."
+    },
+    "requete_en_clair": {
+      "description": "Ce qui sera envoyé à Oriane, lisible, y compris ce qui n'a pas pu être appliqué.",
+      "minLength": 1,
+      "title": "Requete En Clair",
+      "type": "string"
+    },
+    "type": {
+      "description": "`phrase` (texte libre) ou `lien` (vidéo collée par son lien).",
+      "enum": [
+        "phrase",
+        "lien"
+      ],
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "mode",
+    "question",
+    "type",
+    "filtres",
+    "requete_en_clair",
+    "cout_estime"
+  ],
+  "title": "Recherche",
+  "type": "object"
+}

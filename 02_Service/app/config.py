@@ -88,6 +88,7 @@ class Configuration:
     modele_langue_url: str = MODELE_LANGUE_URL_PAR_DEFAUT
     modele_langue_cle: str = field(default="", repr=False)
     modele_langue_id: str = MODELE_LANGUE_ID_PAR_DEFAUT
+    chemin_comptes: Path | None = None  # liste des comptes à écarter d'une recherche (S13), hors Git
 
     @classmethod
     def depuis_environnement(cls, environnement: Mapping[str, str] | None = None) -> Configuration:
@@ -116,6 +117,7 @@ class Configuration:
             modele_langue_url=_texte(env, "MODELE_LANGUE_URL", MODELE_LANGUE_URL_PAR_DEFAUT).rstrip("/"),
             modele_langue_cle=_texte(env, "MODELE_LANGUE_API_KEY", _texte(env, "ANTHROPIC_API_KEY")),
             modele_langue_id=_texte(env, "MODELE_LANGUE_ID", MODELE_LANGUE_ID_PAR_DEFAUT),
+            chemin_comptes=Path(_texte(env, "CHEMIN_COMPTES")) if _texte(env, "CHEMIN_COMPTES") else None,
         )
 
     @property

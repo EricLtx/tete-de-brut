@@ -96,6 +96,28 @@
         "title": "CoutActualisation",
         "type": "object"
       },
+      "CoutEstime": {
+        "additionalProperties": false,
+        "description": "Coût estimé de la recherche, affiché avant le geste.",
+        "properties": {
+          "credits_estimes": {
+            "minimum": 0.0,
+            "title": "Credits Estimes",
+            "type": "integer"
+          },
+          "methode": {
+            "minLength": 1,
+            "title": "Methode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credits_estimes",
+          "methode"
+        ],
+        "title": "CoutEstime",
+        "type": "object"
+      },
       "Decision": {
         "additionalProperties": false,
         "description": "Décision `decision.v1` : l'une des trois, prise par une personne, avec son rôle et l'heure.",
@@ -200,6 +222,24 @@
           "comparaison"
         ],
         "title": "DemandeFiche",
+        "type": "object"
+      },
+      "DemandeRecherche": {
+        "additionalProperties": false,
+        "description": "Corps de `POST /v1/recherches/preparer` et de `POST /v1/recherches`.",
+        "properties": {
+          "question": {
+            "description": "Question libre (phrase entre guillemets de préférence) ou lien d'une vidéo.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "DemandeRecherche",
         "type": "object"
       },
       "Ecart": {
@@ -638,6 +678,86 @@
         "title": "Fiche",
         "type": "object"
       },
+      "FiltresRecherche": {
+        "additionalProperties": false,
+        "description": "Filtres tels qu'ils seront envoyés à Oriane : ce que l'écran affiche est ce qui part.",
+        "properties": {
+          "comptes": {
+            "description": "Comptes cherchés ; vide tant que la question ne peut pas en nommer.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Comptes",
+            "type": "array"
+          },
+          "comptes_exclus": {
+            "description": "Comptes écartés, lus dans la liste de configuration (« hors comptes de partis »).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Comptes Exclus",
+            "type": "array"
+          },
+          "dans": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Où la phrase est cherchée : « parole ou texte à l'écran ». Vide pour un lien.",
+            "title": "Dans"
+          },
+          "fenetre": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fenetre"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fenêtre de publication (7 jours par défaut). Vide pour un lien : pas de fenêtre."
+          },
+          "identifiant_plateforme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pour un lien : identifiant de la vidéo sur sa plateforme.",
+            "title": "Identifiant Plateforme"
+          },
+          "phrases": {
+            "description": "Phrases exactes cherchées (une seule pour le type `phrase`).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Phrases",
+            "type": "array"
+          },
+          "plateformes": {
+            "description": "Plateformes cherchées ; vide, les trois.",
+            "items": {
+              "enum": [
+                "instagram",
+                "tiktok",
+                "youtube"
+              ],
+              "type": "string"
+            },
+            "title": "Plateformes",
+            "type": "array"
+          }
+        },
+        "title": "FiltresRecherche",
+        "type": "object"
+      },
       "GesteFiche": {
         "additionalProperties": false,
         "description": "Ligne du journal de la fiche : un geste, son heure.",
@@ -971,6 +1091,82 @@
         "title": "Radar",
         "type": "object"
       },
+      "Recherche": {
+        "additionalProperties": false,
+        "description": "Recherche `recherche.v1` : la question, les filtres compris, la requête en clair et le coût.",
+        "properties": {
+          "cout_estime": {
+            "$ref": "#/components/schemas/CoutEstime"
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "filtres": {
+            "$ref": "#/components/schemas/FiltresRecherche"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "question": {
+            "description": "La question ou le lien collé, tel que reçu.",
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "refus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RefusRecherche"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Renseigné si la recherche est refusée : rien n'est alors envoyé à Oriane."
+          },
+          "requete_en_clair": {
+            "description": "Ce qui sera envoyé à Oriane, lisible, y compris ce qui n'a pas pu être appliqué.",
+            "minLength": 1,
+            "title": "Requete En Clair",
+            "type": "string"
+          },
+          "type": {
+            "description": "`phrase` (texte libre) ou `lien` (vidéo collée par son lien).",
+            "enum": [
+              "phrase",
+              "lien"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "question",
+          "type",
+          "filtres",
+          "requete_en_clair",
+          "cout_estime"
+        ],
+        "title": "Recherche",
+        "type": "object"
+      },
       "Recit": {
         "additionalProperties": false,
         "description": "Récit `recit.v1` : une phrase surveillée, ses vidéos, ses mesures et ce qui n'a pas été cherché.",
@@ -1059,6 +1255,94 @@
           "calcule_le"
         ],
         "title": "Recit",
+        "type": "object"
+      },
+      "RefusRecherche": {
+        "additionalProperties": false,
+        "description": "Pourquoi la recherche est refusée ; `detail` s'affiche tel quel.",
+        "properties": {
+          "code": {
+            "description": "`nom_seul` (RG-02 : le seul nom d'une personne), `plusieurs_phrases`, `phrase_trop_longue`, `aucune_phrase` ou `lien_non_reconnu`.",
+            "enum": [
+              "nom_seul",
+              "plusieurs_phrases",
+              "phrase_trop_longue",
+              "aucune_phrase",
+              "lien_non_reconnu"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "detail"
+        ],
+        "title": "RefusRecherche",
+        "type": "object"
+      },
+      "ResultatRecherche": {
+        "additionalProperties": false,
+        "description": "Réponse de `POST /v1/recherches` : la recherche exécutée et ce qu'elle a trouvé.",
+        "properties": {
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "recherche": {
+            "$ref": "#/components/schemas/Recherche"
+          },
+          "recit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pour le type `phrase` : le récit de la phrase, ajouté au radar."
+          },
+          "video": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Video"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pour le type `lien` : la vidéo retrouvée."
+          }
+        },
+        "required": [
+          "mode",
+          "recherche"
+        ],
+        "title": "ResultatRecherche",
         "type": "object"
       },
       "Resume": {
@@ -2100,6 +2384,160 @@
         "summary": "Actualiser le radar par une requête Oriane en direct",
         "tags": [
           "état"
+        ]
+      }
+    },
+    "/v1/recherches": {
+      "post": {
+        "description": "Prépare puis exécute (une page chez Oriane), même corps que `/recherches/preparer`.\n\nType `phrase` : écrit les vidéos, ajoute le récit de la phrase au radar (`GET /v1/radar` le sert\nensuite) et le rend dans `recit`. Type `lien` : rend dans `video` la vidéo du lien (404 `introuvable`\nsi Oriane ne la retrouve pas). Une recherche refusée rend 422 `validation` avec le libellé du refus\ndans `detail`. En mode enregistré, rien n'est envoyé : une phrase du cas rend son récit, une autre\nphrase rend 409 `recherche_indisponible`, un lien hors du cas rend 404 `introuvable`.",
+        "operationId": "lancer_recherche_v1_recherches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeRecherche"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatRecherche"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "recherche_indisponible : en mode enregistré, seules les phrases du cas sont servies (« Mode enregistré : seules les phrases du cas sont servies »)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "oriane_injoignable : Oriane n'a pas répondu utilement (première panne) ; après deux pannes de suite, un 402 ou le plafond de crédits du jour, le service passe en mode enregistré et répond depuis le cas (201 ou 409), sans 503."
+          }
+        },
+        "summary": "Lancer une recherche : récit ajouté au radar (phrase) ou vidéo retrouvée (lien)",
+        "tags": [
+          "recherches"
+        ]
+      }
+    },
+    "/v1/recherches/preparer": {
+      "post": {
+        "description": "Traduit `{\"question\": …}` en `recherche.v1` : filtres affichés avant lancement, requête en clair, coût.\n\nAucun appel à Oriane, aucun crédit dépensé, rien d'écrit. Une recherche refusée (RG-02 : le seul\nnom d'une personne, par exemple) rend 200 avec `refus` renseigné et un coût de 0 : l'écran affiche\n`refus.detail` et n'offre pas de lancer. Une question vide rend 422 `validation`.",
+        "operationId": "preparer_recherche_v1_recherches_preparer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeRecherche"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recherche"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Préparer une recherche : question ou lien traduits en filtres, sans appel à Oriane",
+        "tags": [
+          "recherches"
         ]
       }
     },

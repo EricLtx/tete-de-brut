@@ -2,15 +2,18 @@
 
     python scripts/verifier_parcours.py --adresse http://localhost:8080 --origine http://localhost:5173
 
-Huit gestes, dans l'ordre : santé, radar, vidéo, comparaison, fiche, décision, export, en-tête CORS.
-Le script lit le radar du service (aucune actualisation, donc aucun crédit Oriane dépensé), prend les
+Neuf gestes, dans l'ordre : santé, radar, je cherche, vidéo, comparaison, fiche, décision, export,
+en-tête CORS. Le script lit le radar du service (aucune actualisation, donc aucun crédit Oriane dépensé) ;
+le geste « je cherche » prépare une recherche sur la phrase du premier récit (aucun appel), vérifie le
+refus d'un nom seul (RG-02), et ne la lance que si le service est en mode enregistré (rien n'est dépensé)
+ou si `--lancer-la-recherche` est donné (en direct, une page : 15 crédits). Il prend ensuite les
 deux premières vidéos du premier récit et rejoue le parcours sur ce couple, pris dans l'ordre inverse
 de celui de la démonstration pour ne pas toucher à la fiche qu'on y montre. Il écrit donc une
 comparaison, une fiche, des versions tranchées, un constat et une décision « à vérifier » dans la base du
 service vérifié.
 
 Si `CLE_DEMO` est dans l'environnement du script, elle est envoyée dans `X-Cle-Demo`.
-Sortie : huit lignes sur la sortie standard ; code 0 seulement si les huit sont OK, sinon 1.
+Sortie : neuf lignes sur la sortie standard ; code 0 seulement si les neuf sont OK, sinon 1.
 Bibliothèque standard et `httpx` seulement : le script n'importe rien du service.
 """
 
@@ -45,6 +48,8 @@ class Parcours:
         self.videos: list[dict[str, Any]] = []
         self.comparaison = ""
         self.fiche: dict[str, Any] = {}
+        self.phrase = ""
+        self.lancer_la_recherche = False
 
     def appeler(self, methode: str, chemin: str, attendus: tuple[int, ...] = (200,), **kwargs: Any) -> Any:
         """Appelle le service ; refuse un statut inattendu ou une réponse JSON sans `mode`."""
@@ -90,7 +95,28 @@ def verifier_radar(p: Parcours) -> str:
         if not str(m.get("methode", "")).strip() or not m.get("fenetre"):
             raise Echec(f"mesure {m.get('nom')} sans méthode ou sans fenêtre")
     p.videos = [{"identifiant": v} for v in recits[0].get("videos", [])]
+    p.phrase = recits[0].get("phrase_surveillee", "")
     return f"{len(recits)} récit(s), {len(mesures)} mesure(s), mode {radar['mode']}"
+
+
+def verifier_recherche(p: Parcours) -> str:
+    if not p.phrase:
+        raise Echec("pas de phrase surveillée au geste précédent")
+    prepare = p.appeler("POST", "/v1/recherches/preparer", json={"question": f"« {p.phrase} »"})
+    if prepare.get("refus") is not None or prepare.get("filtres", {}).get("phrases") != [p.phrase]:
+        raise Echec("la préparation ne rend pas la phrase du cas en filtre, sans refus")
+    if not prepare.get("requete_en_clair") or not prepare.get("cout_estime", {}).get("methode"):
+        raise Echec("la préparation ne dit ni la requête en clair ni la méthode du coût")
+    refus = p.appeler("POST", "/v1/recherches/preparer", json={"question": "Jean Dupont"})
+    if (refus.get("refus") or {}).get("code") != "nom_seul":
+        raise Echec("RG-02 : le seul nom d'une personne n'est pas refusé")
+    detail = f"{prepare['cout_estime']['credits_estimes']} crédits estimés, nom seul refusé"
+    if prepare["mode"] == "direct" and not p.lancer_la_recherche:
+        return detail + ", recherche non lancée (--lancer-la-recherche)"
+    lancee = p.appeler("POST", "/v1/recherches", attendus=(201,), json={"question": f"« {p.phrase} »"})
+    if not (lancee.get("recit") or {}).get("videos"):
+        raise Echec("la recherche lancée ne rend pas le récit de la phrase avec ses vidéos")
+    return detail + f", lancée : récit de {len(lancee['recit']['videos'])} vidéo(s), mode {lancee['mode']}"
 
 
 def verifier_video(p: Parcours) -> str:
@@ -183,6 +209,7 @@ def verifier_cors(p: Parcours) -> str:
 GESTES: list[tuple[str, Callable[[Parcours], str]]] = [
     ("santé", verifier_sante),
     ("radar", verifier_radar),
+    ("je cherche", verifier_recherche),
     ("vidéo", verifier_video),
     ("comparaison", verifier_comparaison),
     ("fiche", verifier_fiche),
@@ -202,6 +229,11 @@ def main(argv: list[str] | None = None) -> int:
     analyseur.add_argument(
         "--origine", required=True, help="origine des écrans, par exemple http://localhost:5173"
     )
+    analyseur.add_argument(
+        "--lancer-la-recherche",
+        action="store_true",
+        help="lancer aussi la recherche en direct (dépense 15 crédits ; sans effet en mode enregistré)",
+    )
     arguments = analyseur.parse_args(argv)
     for flux in (sys.stdout, sys.stderr):
         flux.reconfigure(encoding="utf-8")
@@ -210,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     resultats: list[bool] = []
     with httpx.Client(base_url=arguments.adresse.rstrip("/"), timeout=DELAI_S) as client:
         parcours = Parcours(client, arguments.origine.rstrip("/"), cle)
+        parcours.lancer_la_recherche = arguments.lancer_la_recherche
         for nom, geste in GESTES:
             try:
                 detail, ok = geste(parcours), True

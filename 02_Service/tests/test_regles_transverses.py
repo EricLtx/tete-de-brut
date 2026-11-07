@@ -542,3 +542,67 @@ def test_regle_8_ecritures_refusees_sans_cle_de_demonstration(client_avec_cle: T
     assert refus.headers["access-control-allow-origin"] == ORIGINE_LOVABLE
     autre = client_avec_cle.get("/v1/etat", headers={"Origin": "https://autre.exemple"})
     assert "access-control-allow-origin" not in autre.headers
+
+
+# --- S13 : la recherche à la demande suit les mêmes règles (mode, clé de démonstration, libellés) ---
+
+ROUTES_RECHERCHE = ("/v1/recherches/preparer", "/v1/recherches")
+QUESTIONS_RECHERCHE = (
+    f"« {CAS_PHRASE} »",  # une phrase du cas
+    "« une autre phrase simulée »",  # hors du cas : 409 en mode enregistré
+    "Jean Dupont",  # RG-02 : refusée
+    "https://www.tiktok.com/@compte_simule_source/video/7000000000000000010",  # un lien du cas
+    "https://www.tiktok.com/@compte_simule_source/video/7999999999999999999",  # un lien inconnu
+)
+
+
+@pytest.mark.parametrize("mode", ["enregistre", "direct"])
+def test_recherche_mode_partout_et_aucun_libelle_refuse(
+    tmp_path: Path,
+    mode: str,
+    reponse_oriane_simulee: dict[str, Any],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+) -> None:
+    with ouvrir_service(
+        tmp_path, mode, reponse_oriane=reponse_oriane_simulee, fabriquer_transport=transport_oriane_simule
+    ) as (client, _, _):
+        reponses = [
+            (route, question, client.post(route, json={"question": question}))
+            for route in ROUTES_RECHERCHE
+            for question in (*QUESTIONS_RECHERCHE, "")
+        ]
+    statuts = {reponse.status_code for _, _, reponse in reponses}
+    assert {200, 201, 422} <= statuts  # les erreurs font partie du contrôle
+    assert (409 in statuts) if mode == "enregistre" else (409 not in statuts)
+    assert 404 in statuts
+    for route, question, reponse in reponses:
+        corps = reponse.json()
+        assert corps.get("mode") == mode, (route, question, reponse.status_code)
+        for d in dictionnaires(corps):
+            if "mode" in d and "etat" not in d:
+                assert d["mode"] == mode, (route, question, d)
+                if "enregistre_le" in d:
+                    assert bool(d["enregistre_le"]) == (mode == "enregistre"), (route, question, d)
+        for segment in segments_libelle(corps):
+            assert contient_libelle_refuse(segment["texte"]) is None, segment
+        for d in dictionnaires(corps):
+            for cle in d:
+                assert cle not in CHAMPS_REFUSES | CHAMPS_REFUSES_MEDIA, (route, cle)
+                assert not cle.startswith(PREFIXES_REFUSES), (route, cle)
+
+
+def test_recherche_exige_la_cle_de_demonstration(client_avec_cle: TestClient) -> None:
+    for route in ROUTES_RECHERCHE:
+        corps = {"question": f"« {CAS_PHRASE} »"}
+        for entetes in ({}, {"X-Cle-Demo": "mauvaise-cle"}):
+            refus = client_avec_cle.post(route, json=corps, headers=entetes)
+            assert refus.status_code == 401, (route, entetes)
+            assert refus.json()["erreur"] == "cle_demo_invalide" and refus.json()["mode"] == "enregistre"
+        ouverte = client_avec_cle.post(route, json=corps, headers={"X-Cle-Demo": CLE_DEMO_TEST})
+        assert ouverte.status_code != 401, route
+    # Le refus porte les en-têtes CORS de l'origine déclarée (le navigateur peut lire le 401).
+    avec_origine = client_avec_cle.post(
+        ROUTES_RECHERCHE[1], json={"question": "x"}, headers={"Origin": ORIGINE_LOVABLE}
+    )
+    assert avec_origine.status_code == 401
+    assert avec_origine.headers["access-control-allow-origin"] == ORIGINE_LOVABLE

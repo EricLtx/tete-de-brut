@@ -17,13 +17,13 @@ from app import __version__, base, cas
 from app.config import Configuration
 from app.erreurs import installer_gestionnaires
 from app.modeles import API_V1
-from app.routes import comparaisons, etat, fiches, radar, videos
+from app.routes import comparaisons, etat, fiches, radar, recherches, videos
 from app.securite import EN_TETE_CLE_DEMO, exiger_cle_demo
 
 journal = logging.getLogger("tete_de_brut")
 
 routeur_v1 = APIRouter(prefix="/v1")
-for module in (etat, radar, videos, comparaisons, fiches):
+for module in (etat, radar, videos, comparaisons, fiches, recherches):
     routeur_v1.include_router(module.routeur)
 
 
