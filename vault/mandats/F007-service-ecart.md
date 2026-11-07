@@ -1,7 +1,7 @@
 ---
 mandat: F007
 titre: S07 — Écart au mot entre deux vidéos sur la normalisation mots.v1, POST /v1/comparaisons idempotent et GET /v1/comparaisons/{id}
-statut: realise
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S07
 branche: feat/service-ecart (part de feat/service-contrats à 407a5c7 ; fusion après S02)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T10:52Z
 rendu_a: 2026-11-07T11:01Z
-go_a:
+go_a: 2026-11-07T11:18Z
 allers_retours: 0
 ---
 
@@ -57,3 +57,4 @@ sha ; diff ; run et tests ; écarts ; points ouverts pour S08 (forme des opérat
 | Date | De | Message |
 |---|---|---|
 | 2026-11-07 | réalisateur sonnet / medium | Rendu 71d4c17 : `app/ecart.py`, `app/routes/comparaisons.py`, `tests/test_ecart.py` (+330), run GitHub 42366312318 vert, 122 tests. Écarts : `tests/test_contrats.py` modifié hors réserve (ensemble `ROUTES_IMPLEMENTEES` qui exclut les routes remplies du test 501 ; S03 et S05 toucheront le même endroit, conflit trivial à unir à la fusion) ; validateur de schéma local dans le test (jsonschema hors pile) ; identifiant `cmp-` + sha256(source, reprise)[:12], document de type `ecart`, vidéos lues sous le type `video`. Pour S08 : positions dès 0 dans les listes `mots.v1`, un bloc contigu = une opération, trois listes (parole, légende, texte à l'écran) et la ligne « heure dans la vidéo : non fournie ». |
+| 2026-11-07 | relecteur sonnet / high | GO sur 71d4c17 : 0 bloquant, 0 majeur, 3 mineurs (mémoire O(n·m) mesurée : 600×600 en 0,05 s et 10 Mo, 3 000×3 000 en 1,4 s et 350 Mo, plafond ou mémoire linéaire après la démonstration, calcul bloquant en `async def` ; `ROUTES_IMPLEMENTEES` hors réserve acceptable ; écart figé à la première demande, conforme). Service rejoué sur 8085, 122 tests, export vérifié. Fusionné sur `main`. |
