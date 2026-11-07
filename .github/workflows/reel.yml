@@ -29,6 +29,7 @@ jobs:
         working-directory: 02_Service
         env:
           ORIANE_API_KEY: ${{ secrets.ORIANE_API_KEY }}
+        shell: bash # -eo pipefail : un échec de pytest n'est pas avalé par tee
         run: python -m pytest -q -m reel -s | tee "$RUNNER_TEMP/reel-pytest.log"
 
       - name: Service en direct puis parcours du journaliste
@@ -38,6 +39,7 @@ jobs:
           MODE_DONNEES: auto
           ORIGINES_AUTORISEES: http://localhost:5173
           PORT: "8080"
+        shell: bash
         run: |
           set -eu
           CLE_DEMO="$(openssl rand -hex 16)"
@@ -64,13 +66,13 @@ jobs:
           with open(os.path.join(os.environ["CHEMIN_CAS"], "cas.json"), "w", encoding="utf-8") as f:
               json.dump(document, f, ensure_ascii=False)
           PY
-          python -m uvicorn app.main:app --host 127.0.0.1 --port 8080 > "$RUNNER_TEMP/service.log" 2>&1 &
+          python -m uvicorn app.main:app --host 127.0.0.1 --port "$PORT" > "$RUNNER_TEMP/service.log" 2>&1 &
           SERVICE_PID=$!
           arreter() { kill "$SERVICE_PID" 2>/dev/null || true; }
           trap arreter EXIT
           pret=0
           for _ in $(seq 1 30); do
-            if curl -fsS -o /dev/null http://127.0.0.1:8080/sante; then pret=1; break; fi
+            if curl -fsS -o /dev/null http://127.0.0.1:$PORT/sante; then pret=1; break; fi
             sleep 1
           done
           if [ "$pret" -ne 1 ]; then
@@ -80,10 +82,10 @@ jobs:
           fi
           code="$(curl -sS -o "$RUNNER_TEMP/radar.json" -w '%{http_code}' -X POST \
             -H "X-Cle-Demo: $CLE_DEMO" -H "Origin: http://localhost:5173" \
-            http://127.0.0.1:8080/v1/radar/actualiser)"
+            http://127.0.0.1:$PORT/v1/radar/actualiser)"
           echo "actualisation du radar : code $code"
           [ "$code" = "200" ]
-          curl -sS -o "$RUNNER_TEMP/etat.json" -H "X-Cle-Demo: $CLE_DEMO" http://127.0.0.1:8080/v1/etat
+          curl -sS -o "$RUNNER_TEMP/etat.json" -H "X-Cle-Demo: $CLE_DEMO" http://127.0.0.1:$PORT/v1/etat
           # Une bascule (402, plafond) rejouerait le parcours sur le cas enregistré : on exige le mode direct.
           # N'affiche que mode, raison et credits_du_jour, jamais le reste des réponses.
           python - <<'PY'
@@ -97,7 +99,7 @@ jobs:
               print("KO : le service n'est pas en mode direct (bascule vers le cas enregistré)")
               sys.exit(1)
           PY
-          python scripts/verifier_parcours.py --adresse http://localhost:8080 --origine http://localhost:5173
+          python scripts/verifier_parcours.py --adresse http://localhost:$PORT --origine http://localhost:5173
 
       - name: Ligne REEL du test
         if: always()
