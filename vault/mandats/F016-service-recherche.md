@@ -1,7 +1,7 @@
 ---
 mandat: F016
 titre: S13 — Recherche à la demande : question ou lien collé traduits en filtres affichés avant lancement, coût estimé, exécution chez Oriane, récit ajouté au radar (POST /v1/recherches/preparer, POST /v1/recherches)
-statut: lance
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S13
 branche: feat/service-recherche (part de main)
@@ -11,7 +11,7 @@ effort: high
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T13:58Z
-rendu_a:
+rendu_a: 2026-11-07T14:20Z
 go_a:
 allers_retours: 0
 ---
