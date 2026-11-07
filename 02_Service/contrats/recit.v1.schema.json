@@ -1,0 +1,264 @@
+{
+  "$defs": {
+    "Echantillon": {
+      "additionalProperties": false,
+      "description": "Ce qui a été consulté pour calculer une mesure.",
+      "properties": {
+        "limite_page": {
+          "minimum": 1,
+          "title": "Limite Page",
+          "type": "integer"
+        },
+        "resultats_consultes": {
+          "minimum": 0,
+          "title": "Resultats Consultes",
+          "type": "integer"
+        },
+        "tronque": {
+          "title": "Tronque",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "resultats_consultes",
+        "limite_page",
+        "tronque"
+      ],
+      "title": "Echantillon",
+      "type": "object"
+    },
+    "Fenetre": {
+      "additionalProperties": false,
+      "description": "Fenêtre de temps sur laquelle porte une mesure (bornes comprises).",
+      "properties": {
+        "debut": {
+          "format": "date-time",
+          "title": "Debut",
+          "type": "string"
+        },
+        "fin": {
+          "format": "date-time",
+          "title": "Fin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "debut",
+        "fin"
+      ],
+      "title": "Fenetre",
+      "type": "object"
+    },
+    "Mesure": {
+      "additionalProperties": false,
+      "description": "Mesure chiffrée : jamais sans `methode` ni `fenetre` ; une valeur nulle dit sa raison.",
+      "properties": {
+        "echantillon": {
+          "$ref": "#/$defs/Echantillon"
+        },
+        "fenetre": {
+          "$ref": "#/$defs/Fenetre"
+        },
+        "methode": {
+          "minLength": 1,
+          "title": "Methode",
+          "type": "string"
+        },
+        "nom": {
+          "minLength": 1,
+          "title": "Nom",
+          "type": "string"
+        },
+        "raison": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raison"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "unite": {
+          "title": "Unite",
+          "type": "string"
+        },
+        "valeur": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Valeur"
+        }
+      },
+      "required": [
+        "nom",
+        "valeur",
+        "unite",
+        "methode",
+        "fenetre",
+        "echantillon",
+        "source"
+      ],
+      "title": "Mesure",
+      "type": "object"
+    },
+    "PlusAncienneVersion": {
+      "additionalProperties": false,
+      "description": "Plus ancienne version retrouvée dans les sources consultées (jamais « la première »).",
+      "properties": {
+        "libelle": {
+          "const": "plus ancienne version retrouvée dans les sources consultées",
+          "default": "plus ancienne version retrouvée dans les sources consultées",
+          "title": "Libelle",
+          "type": "string"
+        },
+        "publie_le": {
+          "format": "date-time",
+          "title": "Publie Le",
+          "type": "string"
+        },
+        "video": {
+          "minLength": 1,
+          "title": "Video",
+          "type": "string"
+        }
+      },
+      "required": [
+        "video",
+        "publie_le"
+      ],
+      "title": "PlusAncienneVersion",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "description": "Morceau de texte typé : `libelle` (écrit par le service, filtré) ou `citation` (rapportée).",
+      "properties": {
+        "texte": {
+          "title": "Texte",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "libelle",
+            "citation"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "texte"
+      ],
+      "title": "Segment",
+      "type": "object"
+    }
+  },
+  "$id": "recit.v1",
+  "additionalProperties": false,
+  "description": "Récit `recit.v1` : une phrase surveillée, ses vidéos, ses mesures et ce qui n'a pas été cherché.",
+  "properties": {
+    "calcule_le": {
+      "format": "date-time",
+      "title": "Calcule Le",
+      "type": "string"
+    },
+    "enregistre_le": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+      "title": "Enregistre Le"
+    },
+    "identifiant": {
+      "minLength": 1,
+      "title": "Identifiant",
+      "type": "string"
+    },
+    "mesures": {
+      "items": {
+        "$ref": "#/$defs/Mesure"
+      },
+      "title": "Mesures",
+      "type": "array"
+    },
+    "mode": {
+      "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+      "enum": [
+        "direct",
+        "enregistre"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "non_cherche": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "title": "Non Cherche",
+      "type": "array"
+    },
+    "phrase_surveillee": {
+      "description": "Citation exacte, jamais filtrée.",
+      "minLength": 1,
+      "title": "Phrase Surveillee",
+      "type": "string"
+    },
+    "plus_ancienne_version": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlusAncienneVersion"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "requete_en_clair": {
+      "description": "Requête envoyée à Oriane, lisible.",
+      "minLength": 1,
+      "title": "Requete En Clair",
+      "type": "string"
+    },
+    "videos": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Videos",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode",
+    "identifiant",
+    "phrase_surveillee",
+    "requete_en_clair",
+    "calcule_le"
+  ],
+  "title": "Recit",
+  "type": "object"
+}

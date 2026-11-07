@@ -1,0 +1,324 @@
+{
+  "$defs": {
+    "Decision": {
+      "additionalProperties": false,
+      "description": "Décision `decision.v1` : l'une des trois, prise par une personne, avec son rôle et l'heure.",
+      "properties": {
+        "heure": {
+          "format": "date-time",
+          "title": "Heure",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "valeur": {
+          "enum": [
+            "a_verifier",
+            "ne_pas_amplifier",
+            "pret_a_traiter"
+          ],
+          "title": "Valeur",
+          "type": "string"
+        }
+      },
+      "required": [
+        "valeur",
+        "role",
+        "heure"
+      ],
+      "title": "Decision",
+      "type": "object"
+    },
+    "GesteFiche": {
+      "additionalProperties": false,
+      "description": "Ligne du journal de la fiche : un geste, son heure.",
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "geste": {
+          "minLength": 1,
+          "title": "Geste",
+          "type": "string"
+        },
+        "heure": {
+          "format": "date-time",
+          "title": "Heure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "heure",
+        "geste"
+      ],
+      "title": "GesteFiche",
+      "type": "object"
+    },
+    "PlusAncienneVersion": {
+      "additionalProperties": false,
+      "description": "Plus ancienne version retrouvée dans les sources consultées (jamais « la première »).",
+      "properties": {
+        "libelle": {
+          "const": "plus ancienne version retrouvée dans les sources consultées",
+          "default": "plus ancienne version retrouvée dans les sources consultées",
+          "title": "Libelle",
+          "type": "string"
+        },
+        "publie_le": {
+          "format": "date-time",
+          "title": "Publie Le",
+          "type": "string"
+        },
+        "video": {
+          "minLength": 1,
+          "title": "Video",
+          "type": "string"
+        }
+      },
+      "required": [
+        "video",
+        "publie_le"
+      ],
+      "title": "PlusAncienneVersion",
+      "type": "object"
+    },
+    "Resume": {
+      "additionalProperties": false,
+      "description": "Résumé de la fiche, en segments, avec sa méthode de rédaction.",
+      "properties": {
+        "methode": {
+          "default": "gabarit v1",
+          "minLength": 1,
+          "title": "Methode",
+          "type": "string"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/Segment"
+          },
+          "title": "Segments",
+          "type": "array"
+        }
+      },
+      "title": "Resume",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "description": "Morceau de texte typé : `libelle` (écrit par le service, filtré) ou `citation` (rapportée).",
+      "properties": {
+        "texte": {
+          "title": "Texte",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "libelle",
+            "citation"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "texte"
+      ],
+      "title": "Segment",
+      "type": "object"
+    },
+    "VersionFiche": {
+      "additionalProperties": false,
+      "description": "Une des deux versions de la fiche, à trancher par le journaliste.",
+      "properties": {
+        "compte": {
+          "minLength": 1,
+          "title": "Compte",
+          "type": "string"
+        },
+        "date": {
+          "format": "date-time",
+          "title": "Date",
+          "type": "string"
+        },
+        "etat": {
+          "default": "a_trancher",
+          "enum": [
+            "a_trancher",
+            "confirmee",
+            "ecartee"
+          ],
+          "title": "Etat",
+          "type": "string"
+        },
+        "lien": {
+          "minLength": 1,
+          "title": "Lien",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "video": {
+          "minLength": 1,
+          "title": "Video",
+          "type": "string"
+        },
+        "vues_selon_oriane": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vues Selon Oriane"
+        }
+      },
+      "required": [
+        "video",
+        "lien",
+        "compte",
+        "date"
+      ],
+      "title": "VersionFiche",
+      "type": "object"
+    }
+  },
+  "$id": "fiche.v1",
+  "additionalProperties": false,
+  "description": "Fiche de vérification `fiche.v1` : sources, indices, limites, constat et décision humaine.",
+  "properties": {
+    "comparaison": {
+      "minLength": 1,
+      "title": "Comparaison",
+      "type": "string"
+    },
+    "constat": {
+      "default": "",
+      "description": "Écrit par le journaliste, vide à la création, jamais filtré.",
+      "title": "Constat",
+      "type": "string"
+    },
+    "decision": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Decision"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "enregistre_le": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+      "title": "Enregistre Le"
+    },
+    "identifiant": {
+      "minLength": 1,
+      "title": "Identifiant",
+      "type": "string"
+    },
+    "indices_de_transformation": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "title": "Indices De Transformation",
+      "type": "array"
+    },
+    "journal": {
+      "items": {
+        "$ref": "#/$defs/GesteFiche"
+      },
+      "title": "Journal",
+      "type": "array"
+    },
+    "limites": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "title": "Limites",
+      "type": "array"
+    },
+    "mode": {
+      "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+      "enum": [
+        "direct",
+        "enregistre"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "non_cherche": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "title": "Non Cherche",
+      "type": "array"
+    },
+    "plus_ancienne_version": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlusAncienneVersion"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "requete": {
+      "title": "Requete",
+      "type": "string"
+    },
+    "resume": {
+      "$ref": "#/$defs/Resume"
+    },
+    "versions": {
+      "items": {
+        "$ref": "#/$defs/VersionFiche"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Versions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode",
+    "identifiant",
+    "comparaison",
+    "requete",
+    "versions",
+    "limites",
+    "resume"
+  ],
+  "title": "Fiche",
+  "type": "object"
+}

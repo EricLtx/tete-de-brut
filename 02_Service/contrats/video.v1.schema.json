@@ -1,0 +1,183 @@
+{
+  "$defs": {
+    "TexteEcran": {
+      "additionalProperties": false,
+      "description": "Texte affiché à l'écran de la vidéo, lu chez Oriane.",
+      "properties": {
+        "lue_le": {
+          "format": "date-time",
+          "title": "Lue Le",
+          "type": "string"
+        },
+        "source": {
+          "const": "Oriane",
+          "default": "Oriane",
+          "title": "Source",
+          "type": "string"
+        },
+        "texte": {
+          "title": "Texte",
+          "type": "string"
+        }
+      },
+      "required": [
+        "texte",
+        "lue_le"
+      ],
+      "title": "TexteEcran",
+      "type": "object"
+    },
+    "Transcription": {
+      "additionalProperties": false,
+      "description": "Transcription de la parole, lue chez Oriane au niveau `default`, jamais refaite.",
+      "properties": {
+        "lue_le": {
+          "format": "date-time",
+          "title": "Lue Le",
+          "type": "string"
+        },
+        "niveau": {
+          "const": "default",
+          "default": "default",
+          "title": "Niveau",
+          "type": "string"
+        },
+        "source": {
+          "const": "Oriane",
+          "default": "Oriane",
+          "title": "Source",
+          "type": "string"
+        },
+        "texte": {
+          "title": "Texte",
+          "type": "string"
+        }
+      },
+      "required": [
+        "texte",
+        "lue_le"
+      ],
+      "title": "Transcription",
+      "type": "object"
+    }
+  },
+  "$id": "video.v1",
+  "additionalProperties": false,
+  "description": "Vidéo `video.v1` : seuls les champs de la liste blanche, sans aucune donnée de tiers.",
+  "properties": {
+    "compte": {
+      "minLength": 1,
+      "title": "Compte",
+      "type": "string"
+    },
+    "enregistre_le": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+      "title": "Enregistre Le"
+    },
+    "identifiant": {
+      "minLength": 1,
+      "title": "Identifiant",
+      "type": "string"
+    },
+    "identifiant_plateforme": {
+      "minLength": 1,
+      "title": "Identifiant Plateforme",
+      "type": "string"
+    },
+    "interactions_selon_oriane": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Interactions Selon Oriane"
+    },
+    "legende": {
+      "default": "",
+      "title": "Legende",
+      "type": "string"
+    },
+    "lien": {
+      "minLength": 1,
+      "title": "Lien",
+      "type": "string"
+    },
+    "mode": {
+      "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+      "enum": [
+        "direct",
+        "enregistre"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "plateforme": {
+      "enum": [
+        "instagram",
+        "tiktok",
+        "youtube"
+      ],
+      "title": "Plateforme",
+      "type": "string"
+    },
+    "publie_le": {
+      "format": "date-time",
+      "title": "Publie Le",
+      "type": "string"
+    },
+    "requetes_trouvees": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Requetes Trouvees",
+      "type": "array"
+    },
+    "texte_ecran": {
+      "$ref": "#/$defs/TexteEcran"
+    },
+    "transcription": {
+      "$ref": "#/$defs/Transcription"
+    },
+    "vues_selon_oriane": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vues Selon Oriane"
+    }
+  },
+  "required": [
+    "mode",
+    "identifiant",
+    "plateforme",
+    "identifiant_plateforme",
+    "compte",
+    "publie_le",
+    "transcription",
+    "texte_ecran",
+    "lien"
+  ],
+  "title": "Video",
+  "type": "object"
+}

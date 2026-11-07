@@ -5,14 +5,17 @@ Les noms sont stables : les mandats suivants (S02 à S10) les réutilisent sans 
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import copy
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Configuration
 from app.main import creer_application
+from app.modeles import Video
 
 ORIGINE_LOVABLE = "https://exemple.lovable.app"
 CLE_DEMO_TEST = "secret-de-test"
@@ -48,3 +51,190 @@ def client_avec_cle(tmp_path: Path) -> Iterator[TestClient]:
     config = construire_config(tmp_path, CLE_DEMO=CLE_DEMO_TEST)
     with TestClient(creer_application(config)) as c:
         yield c
+
+
+# --- vidéos simulées (S02) : réutilisées par tous les mandats, jamais redéfinies -------------------
+# Aucune donnée réelle : comptes, textes et liens sont fictifs et marqués « simulé ».
+
+ENREGISTRE_LE_TEST = "2026-11-07T08:00:00+00:00"
+LUE_LE_TEST = "2026-11-07T07:55:00+00:00"
+
+
+def fabriquer_video(**surcharges: Any) -> Video:
+    """Fabrique une `Video` simulée valide (mode enregistré) ; chaque champ peut être surchargé."""
+    donnees: dict[str, Any] = {
+        "identifiant": "video-simulee-1",
+        "plateforme": "tiktok",
+        "identifiant_plateforme": "7000000000000000001",
+        "compte": "compte_simule_1",
+        "publie_le": "2026-11-05T09:00:00+00:00",
+        "vues_selon_oriane": 12000,
+        "interactions_selon_oriane": 800,
+        "legende": "Légende simulée",
+        "requetes_trouvees": ["phrase simulée"],
+        "transcription": {
+            "texte": "Propos simulé : phrase simulée pour les tests",
+            "source": "Oriane",
+            "niveau": "default",
+            "lue_le": LUE_LE_TEST,
+        },
+        "texte_ecran": {"texte": "TEXTE À L'ÉCRAN SIMULÉ", "source": "Oriane", "lue_le": LUE_LE_TEST},
+        "lien": "https://www.tiktok.com/@compte_simule_1/video/7000000000000000001",
+        "mode": "enregistre",
+        "enregistre_le": ENREGISTRE_LE_TEST,
+    }
+    donnees.update(surcharges)
+    return Video.model_validate(donnees)
+
+
+@pytest.fixture
+def video_simulee() -> Callable[..., Video]:
+    """Fabrique de vidéos simulées : `video_simulee(identifiant="v2", compte="…")`."""
+    return fabriquer_video
+
+
+@pytest.fixture
+def deux_videos_comparables() -> tuple[Video, Video]:
+    """Source et reprise d'un même propos simulé : la reprise retire « si l'État paie »."""
+    source = fabriquer_video(
+        identifiant="video-simulee-source",
+        identifiant_plateforme="7000000000000000010",
+        compte="compte_simule_source",
+        publie_le="2026-11-04T08:00:00+00:00",
+        legende="Légende simulée de la source",
+        transcription={
+            "texte": "Propos simulé : il faut dix mille postes si l'État paie",
+            "lue_le": LUE_LE_TEST,
+        },
+        texte_ecran={"texte": "TEXTE SIMULÉ : 10 000 postes", "lue_le": LUE_LE_TEST},
+        lien="https://www.tiktok.com/@compte_simule_source/video/7000000000000000010",
+    )
+    reprise = fabriquer_video(
+        identifiant="video-simulee-reprise",
+        plateforme="instagram",
+        identifiant_plateforme="CSIMULEREPRISE",
+        compte="compte_simule_reprise",
+        publie_le="2026-11-06T18:00:00+00:00",
+        vues_selon_oriane=90000,
+        interactions_selon_oriane=5000,
+        legende="Légende simulée de la reprise",
+        transcription={"texte": "Propos simulé : il faut dix mille postes", "lue_le": LUE_LE_TEST},
+        texte_ecran={"texte": "TEXTE SIMULÉ : dix mille postes", "lue_le": LUE_LE_TEST},
+        lien="https://www.instagram.com/reel/CSIMULEREPRISE/",
+    )
+    return source, reprise
+
+
+# Champs de tiers d'une réponse Oriane (relevé du 06/11) : aucun ne doit entrer en base ni au journal.
+CHAMPS_TIERS_ORIANE = (
+    "popularComments",
+    "locationPlatformId",
+    "locationCompleteAddress",
+    "locationLatitude",
+    "locationLongitude",
+    "profileLocationPlatformId",
+    "profileLocationCompleteAddress",
+    "profileLocationLatitude",
+    "profileLocationLongitude",
+    "profilePictureUrl",
+    "profileBio",
+    "profileDisplayName",
+    "mentions",
+    "coAuthors",
+    "audioAuthor",
+    "thumbnailMediaUrl",
+)
+CHAMPS_TIERS_MEDIA_ORIANE = ("tags", "frames", "transcriptChunks")
+
+_REPONSE_ORIANE_SIMULEE: dict[str, Any] = {
+    "metadata": {
+        "requestId": "req_SIMULE0000000000000000000000001",
+        "executionTime": 17,
+        "timestamp": 1793952000000,
+        "pagination": {"offset": 0, "limit": 100, "totalCount": 2},
+    },
+    "data": {
+        "aggregations": {"totalViewsCount": 102000, "totalInteractionsCount": 5800},
+        "results": [
+            {
+                "id": "cnt_SIMULE0000000000000000000001",
+                "platform": "tiktok",
+                "platformId": "7000000000000000010",
+                "profileHandle": "compte_simule_source",
+                "publishedAt": "2026-11-04T08:00:00.000Z",
+                "viewsCount": 12000,
+                "interactionsCount": 800,
+                "caption": "Légende simulée de la source",
+                "matchedQueries": ["query1"],
+                "audioPlatformId": "audio-simule-1",
+                "media": [
+                    {
+                        "type": "video",
+                        "duration": 31.5,
+                        "caption": "Légende simulée de la source",
+                        "transcript": "Propos simulé : il faut dix mille postes si l'État paie",
+                        "onScreenText": ["TEXTE SIMULÉ : 10 000 postes"],
+                        "tags": [{"handle": "compte_tiers_simule", "x": 0.4, "y": 0.6}],
+                        "frames": [{"url": "https://exemple.invalid/image-simulee.jpg"}],
+                        "transcriptChunks": [{"start": 0, "end": 3, "text": "Propos simulé"}],
+                    }
+                ],
+                "popularComments": [{"text": "commentaire simulé d'un tiers", "author": "tiers_simule"}],
+                "locationPlatformId": "lieu-simule",
+                "locationCompleteAddress": "1 rue Simulée, Ville Fictive",
+                "locationLatitude": 0.0,
+                "locationLongitude": 0.0,
+                "profileLocationPlatformId": "lieu-profil-simule",
+                "profileLocationCompleteAddress": "Ville Fictive",
+                "profileLocationLatitude": 0.0,
+                "profileLocationLongitude": 0.0,
+                "profilePictureUrl": "https://exemple.invalid/photo-simulee.jpg",
+                "profileBio": "Biographie simulée",
+                "profileDisplayName": "Nom Affiché Simulé",
+                "mentions": [{"handle": "compte_mentionne_simule"}],
+                "coAuthors": [{"handle": "coauteur_simule"}],
+                "audioAuthor": "auteur_audio_simule",
+                "thumbnailMediaUrl": "https://exemple.invalid/vignette-simulee.jpg",
+            },
+            {
+                "id": "cnt_SIMULE0000000000000000000002",
+                "platform": "instagram",
+                "platformId": "CSIMULEREPRISE",
+                "profileHandle": "compte_simule_reprise",
+                "publishedAt": "2026-11-06T18:00:00.000Z",
+                "viewsCount": 90000,
+                "interactionsCount": 5000,
+                "caption": "Légende simulée de la reprise",
+                "matchedQueries": ["query1"],
+                "media": [
+                    {
+                        "type": "video",
+                        "duration": 12.0,
+                        "caption": "Légende simulée de la reprise",
+                        "transcript": "Propos simulé : il faut dix mille postes",
+                        "onScreenText": ["TEXTE SIMULÉ : dix mille postes"],
+                        "tags": [],
+                    }
+                ],
+                "popularComments": [],
+                "profilePictureUrl": "https://exemple.invalid/photo-simulee-2.jpg",
+                "profileBio": "Biographie simulée 2",
+                "profileDisplayName": "Autre Nom Simulé",
+                "mentions": [],
+                "coAuthors": [],
+                "audioAuthor": "auteur_audio_simule_2",
+                "thumbnailMediaUrl": "https://exemple.invalid/vignette-simulee-2.jpg",
+            },
+        ],
+    },
+}
+
+
+@pytest.fixture
+def reponse_oriane_simulee() -> dict[str, Any]:
+    """Réponse Oriane simulée (`/rest/contents/search`, niveau `default`), avec des champs de tiers.
+
+    Forme d'après la spécification OpenAPI d'Oriane (`metadata`, `data.results[]`, `media[]`) ;
+    copie neuve à chaque test, valeurs fictives évidentes, aucun nom réel.
+    """
+    return copy.deepcopy(_REPONSE_ORIANE_SIMULEE)

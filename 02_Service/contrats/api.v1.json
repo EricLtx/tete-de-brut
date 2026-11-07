@@ -1,0 +1,2156 @@
+{
+  "components": {
+    "schemas": {
+      "AttributionTranscription": {
+        "additionalProperties": false,
+        "description": "Attribution d'une transcription comparée : toujours Oriane, avec l'heure de lecture.",
+        "properties": {
+          "lue_le": {
+            "format": "date-time",
+            "title": "Lue Le",
+            "type": "string"
+          },
+          "niveau": {
+            "const": "default",
+            "default": "default",
+            "title": "Niveau",
+            "type": "string"
+          },
+          "source": {
+            "const": "Oriane",
+            "default": "Oriane",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lue_le"
+        ],
+        "title": "AttributionTranscription",
+        "type": "object"
+      },
+      "CoutActualisation": {
+        "additionalProperties": false,
+        "description": "Coût estimé d'une actualisation, affiché avant le geste.",
+        "properties": {
+          "credits_estimes": {
+            "minimum": 0.0,
+            "title": "Credits Estimes",
+            "type": "integer"
+          },
+          "methode": {
+            "minLength": 1,
+            "title": "Methode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credits_estimes",
+          "methode"
+        ],
+        "title": "CoutActualisation",
+        "type": "object"
+      },
+      "Decision": {
+        "additionalProperties": false,
+        "description": "Décision `decision.v1` : l'une des trois, prise par une personne, avec son rôle et l'heure.",
+        "properties": {
+          "heure": {
+            "format": "date-time",
+            "title": "Heure",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "role": {
+            "minLength": 1,
+            "title": "Role",
+            "type": "string"
+          },
+          "valeur": {
+            "enum": [
+              "a_verifier",
+              "ne_pas_amplifier",
+              "pret_a_traiter"
+            ],
+            "title": "Valeur",
+            "type": "string"
+          }
+        },
+        "required": [
+          "valeur",
+          "role",
+          "heure"
+        ],
+        "title": "Decision",
+        "type": "object"
+      },
+      "DemandeComparaison": {
+        "additionalProperties": false,
+        "description": "Corps de `POST /v1/comparaisons` : deux vidéos du cas, la source puis la reprise.",
+        "properties": {
+          "video_reprise": {
+            "minLength": 1,
+            "title": "Video Reprise",
+            "type": "string"
+          },
+          "video_source": {
+            "minLength": 1,
+            "title": "Video Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_source",
+          "video_reprise"
+        ],
+        "title": "DemandeComparaison",
+        "type": "object"
+      },
+      "DemandeDecision": {
+        "additionalProperties": false,
+        "description": "Corps de `POST /v1/fiches/{id}/decision` ; l'heure est posée par le service.",
+        "properties": {
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "role": {
+            "minLength": 1,
+            "title": "Role",
+            "type": "string"
+          },
+          "valeur": {
+            "enum": [
+              "a_verifier",
+              "ne_pas_amplifier",
+              "pret_a_traiter"
+            ],
+            "title": "Valeur",
+            "type": "string"
+          }
+        },
+        "required": [
+          "valeur",
+          "role"
+        ],
+        "title": "DemandeDecision",
+        "type": "object"
+      },
+      "DemandeFiche": {
+        "additionalProperties": false,
+        "description": "Corps de `POST /v1/fiches` : la comparaison dont la fiche part.",
+        "properties": {
+          "comparaison": {
+            "minLength": 1,
+            "title": "Comparaison",
+            "type": "string"
+          }
+        },
+        "required": [
+          "comparaison"
+        ],
+        "title": "DemandeFiche",
+        "type": "object"
+      },
+      "Ecart": {
+        "additionalProperties": false,
+        "description": "Écart `ecart.v1` entre deux versions, au mot, sans aucune qualification de l'écart.",
+        "properties": {
+          "ecart_legende": {
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "title": "Ecart Legende",
+            "type": "array"
+          },
+          "ecart_texte_ecran": {
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "title": "Ecart Texte Ecran",
+            "type": "array"
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "heure_dans_la_video": {
+            "$ref": "#/components/schemas/HeureDansLaVideo"
+          },
+          "identifiant": {
+            "minLength": 1,
+            "title": "Identifiant",
+            "type": "string"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "normalisation": {
+            "const": "mots.v1",
+            "default": "mots.v1",
+            "title": "Normalisation",
+            "type": "string"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "transcriptions": {
+            "$ref": "#/components/schemas/TranscriptionsComparees"
+          },
+          "video_reprise": {
+            "minLength": 1,
+            "title": "Video Reprise",
+            "type": "string"
+          },
+          "video_source": {
+            "minLength": 1,
+            "title": "Video Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "identifiant",
+          "video_source",
+          "video_reprise",
+          "transcriptions"
+        ],
+        "title": "Ecart",
+        "type": "object"
+      },
+      "Echantillon": {
+        "additionalProperties": false,
+        "description": "Ce qui a été consulté pour calculer une mesure.",
+        "properties": {
+          "limite_page": {
+            "minimum": 1.0,
+            "title": "Limite Page",
+            "type": "integer"
+          },
+          "resultats_consultes": {
+            "minimum": 0.0,
+            "title": "Resultats Consultes",
+            "type": "integer"
+          },
+          "tronque": {
+            "title": "Tronque",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "resultats_consultes",
+          "limite_page",
+          "tronque"
+        ],
+        "title": "Echantillon",
+        "type": "object"
+      },
+      "EntreeJournal": {
+        "additionalProperties": false,
+        "description": "Ligne du journal des appels (jamais de réponse brute ni de clé).",
+        "properties": {
+          "cible": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cible"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "credits_estimes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Estimes"
+          },
+          "duree_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duree Ms"
+          },
+          "filtres": {
+            "title": "Filtres"
+          },
+          "heure": {
+            "format": "date-time",
+            "title": "Heure",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "projection": {
+            "title": "Projection"
+          },
+          "resultats": {
+            "title": "Resultats"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "heure",
+          "route"
+        ],
+        "title": "EntreeJournal",
+        "type": "object"
+      },
+      "Erreur": {
+        "additionalProperties": false,
+        "description": "Enveloppe unique de toute erreur du service.",
+        "properties": {
+          "detail": {
+            "description": "Phrase lisible, à afficher telle quelle.",
+            "title": "Detail",
+            "type": "string"
+          },
+          "erreur": {
+            "description": "Code `snake_case` : validation (422), introuvable (404), cle_demo_invalide (401), decision_manquante, version_non_tranchee, constat_manquant (409), non_implemente (501).",
+            "title": "Erreur",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "erreur",
+          "detail",
+          "mode"
+        ],
+        "title": "Erreur",
+        "type": "object"
+      },
+      "Etat": {
+        "additionalProperties": false,
+        "description": "État du service pour la barre d'état des écrans.",
+        "properties": {
+          "contrat": {
+            "const": "api.v1",
+            "default": "api.v1",
+            "title": "Contrat",
+            "type": "string"
+          },
+          "credits_du_jour": {
+            "minimum": 0.0,
+            "title": "Credits Du Jour",
+            "type": "integer"
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date du cas rejoué, s'il y en a un.",
+            "title": "Enregistre Le"
+          },
+          "mode": {
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "plafond_credits_jour": {
+            "minimum": 0.0,
+            "title": "Plafond Credits Jour",
+            "type": "integer"
+          },
+          "raison": {
+            "title": "Raison",
+            "type": "string"
+          },
+          "version": {
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "raison",
+          "credits_du_jour",
+          "plafond_credits_jour",
+          "version"
+        ],
+        "title": "Etat",
+        "type": "object"
+      },
+      "Fenetre": {
+        "additionalProperties": false,
+        "description": "Fenêtre de temps sur laquelle porte une mesure (bornes comprises).",
+        "properties": {
+          "debut": {
+            "format": "date-time",
+            "title": "Debut",
+            "type": "string"
+          },
+          "fin": {
+            "format": "date-time",
+            "title": "Fin",
+            "type": "string"
+          }
+        },
+        "required": [
+          "debut",
+          "fin"
+        ],
+        "title": "Fenetre",
+        "type": "object"
+      },
+      "Fiche": {
+        "additionalProperties": false,
+        "description": "Fiche de vérification `fiche.v1` : sources, indices, limites, constat et décision humaine.",
+        "properties": {
+          "comparaison": {
+            "minLength": 1,
+            "title": "Comparaison",
+            "type": "string"
+          },
+          "constat": {
+            "default": "",
+            "description": "Écrit par le journaliste, vide à la création, jamais filtré.",
+            "title": "Constat",
+            "type": "string"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "identifiant": {
+            "minLength": 1,
+            "title": "Identifiant",
+            "type": "string"
+          },
+          "indices_de_transformation": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Indices De Transformation",
+            "type": "array"
+          },
+          "journal": {
+            "items": {
+              "$ref": "#/components/schemas/GesteFiche"
+            },
+            "title": "Journal",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "non_cherche": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Non Cherche",
+            "type": "array"
+          },
+          "plus_ancienne_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlusAncienneVersion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requete": {
+            "title": "Requete",
+            "type": "string"
+          },
+          "resume": {
+            "$ref": "#/components/schemas/Resume"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/VersionFiche"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "identifiant",
+          "comparaison",
+          "requete",
+          "versions",
+          "limites",
+          "resume"
+        ],
+        "title": "Fiche",
+        "type": "object"
+      },
+      "GesteFiche": {
+        "additionalProperties": false,
+        "description": "Ligne du journal de la fiche : un geste, son heure.",
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "geste": {
+            "minLength": 1,
+            "title": "Geste",
+            "type": "string"
+          },
+          "heure": {
+            "format": "date-time",
+            "title": "Heure",
+            "type": "string"
+          }
+        },
+        "required": [
+          "heure",
+          "geste"
+        ],
+        "title": "GesteFiche",
+        "type": "object"
+      },
+      "HeureDansLaVideo": {
+        "additionalProperties": false,
+        "description": "Heure du passage dans la vidéo : non fournie par Oriane au niveau `default`.",
+        "properties": {
+          "libelle": {
+            "default": "non fournie au niveau default",
+            "title": "Libelle",
+            "type": "string"
+          },
+          "secondes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondes"
+          }
+        },
+        "title": "HeureDansLaVideo",
+        "type": "object"
+      },
+      "Journal": {
+        "additionalProperties": false,
+        "description": "Journal des appels, le plus récent d'abord.",
+        "properties": {
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "entrees": {
+            "items": {
+              "$ref": "#/components/schemas/EntreeJournal"
+            },
+            "title": "Entrees",
+            "type": "array"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "Journal",
+        "type": "object"
+      },
+      "Mesure": {
+        "additionalProperties": false,
+        "description": "Mesure chiffrée : jamais sans `methode` ni `fenetre` ; une valeur nulle dit sa raison.",
+        "properties": {
+          "echantillon": {
+            "$ref": "#/components/schemas/Echantillon"
+          },
+          "fenetre": {
+            "$ref": "#/components/schemas/Fenetre"
+          },
+          "methode": {
+            "minLength": 1,
+            "title": "Methode",
+            "type": "string"
+          },
+          "nom": {
+            "minLength": 1,
+            "title": "Nom",
+            "type": "string"
+          },
+          "raison": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raison"
+          },
+          "source": {
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "unite": {
+            "title": "Unite",
+            "type": "string"
+          },
+          "valeur": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valeur"
+          }
+        },
+        "required": [
+          "nom",
+          "valeur",
+          "unite",
+          "methode",
+          "fenetre",
+          "echantillon",
+          "source"
+        ],
+        "title": "Mesure",
+        "type": "object"
+      },
+      "ModificationFiche": {
+        "additionalProperties": false,
+        "description": "Corps de `PATCH /v1/fiches/{id}` : versions tranchées et constat, chacun facultatif.",
+        "properties": {
+          "constat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Constat"
+          },
+          "versions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/VersionTranchee"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versions"
+          }
+        },
+        "title": "ModificationFiche",
+        "type": "object"
+      },
+      "Operation": {
+        "additionalProperties": false,
+        "description": "Opération d'édition au mot entre la source et la reprise (positions comptées dès 0).",
+        "properties": {
+          "mots_reprise": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mots Reprise",
+            "type": "array"
+          },
+          "mots_source": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mots Source",
+            "type": "array"
+          },
+          "position_reprise": {
+            "minimum": 0.0,
+            "title": "Position Reprise",
+            "type": "integer"
+          },
+          "position_source": {
+            "minimum": 0.0,
+            "title": "Position Source",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "retire",
+              "ajoute",
+              "remplace"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "position_source",
+          "position_reprise"
+        ],
+        "title": "Operation",
+        "type": "object"
+      },
+      "PlusAncienneVersion": {
+        "additionalProperties": false,
+        "description": "Plus ancienne version retrouvée dans les sources consultées (jamais « la première »).",
+        "properties": {
+          "libelle": {
+            "const": "plus ancienne version retrouvée dans les sources consultées",
+            "default": "plus ancienne version retrouvée dans les sources consultées",
+            "title": "Libelle",
+            "type": "string"
+          },
+          "publie_le": {
+            "format": "date-time",
+            "title": "Publie Le",
+            "type": "string"
+          },
+          "video": {
+            "minLength": 1,
+            "title": "Video",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video",
+          "publie_le"
+        ],
+        "title": "PlusAncienneVersion",
+        "type": "object"
+      },
+      "Radar": {
+        "additionalProperties": false,
+        "description": "Radar des récits : les récits calculés, la date du calcul et le coût d'une actualisation.",
+        "properties": {
+          "calcule_le": {
+            "format": "date-time",
+            "title": "Calcule Le",
+            "type": "string"
+          },
+          "cout_actualisation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoutActualisation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "raison": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pourquoi ce mode, en clair.",
+            "title": "Raison"
+          },
+          "recits": {
+            "items": {
+              "$ref": "#/components/schemas/Recit"
+            },
+            "title": "Recits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "calcule_le"
+        ],
+        "title": "Radar",
+        "type": "object"
+      },
+      "Recit": {
+        "additionalProperties": false,
+        "description": "Récit `recit.v1` : une phrase surveillée, ses vidéos, ses mesures et ce qui n'a pas été cherché.",
+        "properties": {
+          "calcule_le": {
+            "format": "date-time",
+            "title": "Calcule Le",
+            "type": "string"
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "identifiant": {
+            "minLength": 1,
+            "title": "Identifiant",
+            "type": "string"
+          },
+          "mesures": {
+            "items": {
+              "$ref": "#/components/schemas/Mesure"
+            },
+            "title": "Mesures",
+            "type": "array"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "non_cherche": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Non Cherche",
+            "type": "array"
+          },
+          "phrase_surveillee": {
+            "description": "Citation exacte, jamais filtrée.",
+            "minLength": 1,
+            "title": "Phrase Surveillee",
+            "type": "string"
+          },
+          "plus_ancienne_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlusAncienneVersion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requete_en_clair": {
+            "description": "Requête envoyée à Oriane, lisible.",
+            "minLength": 1,
+            "title": "Requete En Clair",
+            "type": "string"
+          },
+          "videos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Videos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "identifiant",
+          "phrase_surveillee",
+          "requete_en_clair",
+          "calcule_le"
+        ],
+        "title": "Recit",
+        "type": "object"
+      },
+      "Resume": {
+        "additionalProperties": false,
+        "description": "Résumé de la fiche, en segments, avec sa méthode de rédaction.",
+        "properties": {
+          "methode": {
+            "default": "gabarit v1",
+            "minLength": 1,
+            "title": "Methode",
+            "type": "string"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Segments",
+            "type": "array"
+          }
+        },
+        "title": "Resume",
+        "type": "object"
+      },
+      "Segment": {
+        "additionalProperties": false,
+        "description": "Morceau de texte typé : `libelle` (écrit par le service, filtré) ou `citation` (rapportée).",
+        "properties": {
+          "texte": {
+            "title": "Texte",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "libelle",
+              "citation"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "texte"
+        ],
+        "title": "Segment",
+        "type": "object"
+      },
+      "TexteEcran": {
+        "additionalProperties": false,
+        "description": "Texte affiché à l'écran de la vidéo, lu chez Oriane.",
+        "properties": {
+          "lue_le": {
+            "format": "date-time",
+            "title": "Lue Le",
+            "type": "string"
+          },
+          "source": {
+            "const": "Oriane",
+            "default": "Oriane",
+            "title": "Source",
+            "type": "string"
+          },
+          "texte": {
+            "title": "Texte",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texte",
+          "lue_le"
+        ],
+        "title": "TexteEcran",
+        "type": "object"
+      },
+      "Transcription": {
+        "additionalProperties": false,
+        "description": "Transcription de la parole, lue chez Oriane au niveau `default`, jamais refaite.",
+        "properties": {
+          "lue_le": {
+            "format": "date-time",
+            "title": "Lue Le",
+            "type": "string"
+          },
+          "niveau": {
+            "const": "default",
+            "default": "default",
+            "title": "Niveau",
+            "type": "string"
+          },
+          "source": {
+            "const": "Oriane",
+            "default": "Oriane",
+            "title": "Source",
+            "type": "string"
+          },
+          "texte": {
+            "title": "Texte",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texte",
+          "lue_le"
+        ],
+        "title": "Transcription",
+        "type": "object"
+      },
+      "TranscriptionsComparees": {
+        "additionalProperties": false,
+        "description": "Attribution des deux transcriptions comparées.",
+        "properties": {
+          "reprise": {
+            "$ref": "#/components/schemas/AttributionTranscription"
+          },
+          "source": {
+            "$ref": "#/components/schemas/AttributionTranscription"
+          }
+        },
+        "required": [
+          "source",
+          "reprise"
+        ],
+        "title": "TranscriptionsComparees",
+        "type": "object"
+      },
+      "VersionFiche": {
+        "additionalProperties": false,
+        "description": "Une des deux versions de la fiche, à trancher par le journaliste.",
+        "properties": {
+          "compte": {
+            "minLength": 1,
+            "title": "Compte",
+            "type": "string"
+          },
+          "date": {
+            "format": "date-time",
+            "title": "Date",
+            "type": "string"
+          },
+          "etat": {
+            "default": "a_trancher",
+            "enum": [
+              "a_trancher",
+              "confirmee",
+              "ecartee"
+            ],
+            "title": "Etat",
+            "type": "string"
+          },
+          "lien": {
+            "minLength": 1,
+            "title": "Lien",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "video": {
+            "minLength": 1,
+            "title": "Video",
+            "type": "string"
+          },
+          "vues_selon_oriane": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vues Selon Oriane"
+          }
+        },
+        "required": [
+          "video",
+          "lien",
+          "compte",
+          "date"
+        ],
+        "title": "VersionFiche",
+        "type": "object"
+      },
+      "VersionTranchee": {
+        "additionalProperties": false,
+        "description": "Geste du journaliste sur une version de la fiche.",
+        "properties": {
+          "etat": {
+            "enum": [
+              "a_trancher",
+              "confirmee",
+              "ecartee"
+            ],
+            "title": "Etat",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "video": {
+            "minLength": 1,
+            "title": "Video",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video",
+          "etat"
+        ],
+        "title": "VersionTranchee",
+        "type": "object"
+      },
+      "Video": {
+        "additionalProperties": false,
+        "description": "Vidéo `video.v1` : seuls les champs de la liste blanche, sans aucune donnée de tiers.",
+        "properties": {
+          "compte": {
+            "minLength": 1,
+            "title": "Compte",
+            "type": "string"
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "identifiant": {
+            "minLength": 1,
+            "title": "Identifiant",
+            "type": "string"
+          },
+          "identifiant_plateforme": {
+            "minLength": 1,
+            "title": "Identifiant Plateforme",
+            "type": "string"
+          },
+          "interactions_selon_oriane": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interactions Selon Oriane"
+          },
+          "legende": {
+            "default": "",
+            "title": "Legende",
+            "type": "string"
+          },
+          "lien": {
+            "minLength": 1,
+            "title": "Lien",
+            "type": "string"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "plateforme": {
+            "enum": [
+              "instagram",
+              "tiktok",
+              "youtube"
+            ],
+            "title": "Plateforme",
+            "type": "string"
+          },
+          "publie_le": {
+            "format": "date-time",
+            "title": "Publie Le",
+            "type": "string"
+          },
+          "requetes_trouvees": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Requetes Trouvees",
+            "type": "array"
+          },
+          "texte_ecran": {
+            "$ref": "#/components/schemas/TexteEcran"
+          },
+          "transcription": {
+            "$ref": "#/components/schemas/Transcription"
+          },
+          "vues_selon_oriane": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vues Selon Oriane"
+          }
+        },
+        "required": [
+          "mode",
+          "identifiant",
+          "plateforme",
+          "identifiant_plateforme",
+          "compte",
+          "publie_le",
+          "transcription",
+          "texte_ecran",
+          "lien"
+        ],
+        "title": "Video",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Tête de Brut. — service de démonstration",
+    "version": "api.v1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/comparaisons": {
+      "post": {
+        "description": "Identifiant dérivé du couple (source, reprise) : une seconde demande rend la même ressource, en 200.",
+        "operationId": "creer_comparaison_v1_comparaisons_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeComparaison"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ecart"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Comparer une reprise à sa source (idempotent)",
+        "tags": [
+          "comparaisons"
+        ]
+      }
+    },
+    "/v1/comparaisons/{id}": {
+      "get": {
+        "description": "Écart `ecart.v1` : opérations retire, ajoute, remplace avec positions, jamais un verdict.",
+        "operationId": "lire_comparaison_v1_comparaisons__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ecart"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Une comparaison : opérations au mot, écarts de légende et de texte à l'écran",
+        "tags": [
+          "comparaisons"
+        ]
+      }
+    },
+    "/v1/etat": {
+      "get": {
+        "description": "Mode (`direct` ou `enregistre`) et sa raison, date du cas rejoué, crédits du jour sur plafond.",
+        "operationId": "lire_etat_v1_etat_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Etat"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "État du service : mode, raison, crédits du jour, version et contrat",
+        "tags": [
+          "état"
+        ]
+      }
+    },
+    "/v1/fiches": {
+      "post": {
+        "description": "Fiche `fiche.v1` construite par le gabarit : versions à trancher, constat vide, aucune décision.",
+        "operationId": "creer_fiche_v1_fiches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeFiche"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fiche"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Créer la fiche de vérification d'une comparaison",
+        "tags": [
+          "fiches"
+        ]
+      }
+    },
+    "/v1/fiches/{id}": {
+      "get": {
+        "description": "Fiche `fiche.v1` avec son journal de gestes.",
+        "operationId": "lire_fiche_v1_fiches__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fiche"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Une fiche de vérification",
+        "tags": [
+          "fiches"
+        ]
+      },
+      "patch": {
+        "description": "Le journaliste tranche chaque version (confirmée, écartée) et écrit le constat ; rien n'est filtré.",
+        "operationId": "modifier_fiche_v1_fiches__id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModificationFiche"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fiche"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Trancher les versions et écrire le constat",
+        "tags": [
+          "fiches"
+        ]
+      }
+    },
+    "/v1/fiches/{id}/decision": {
+      "post": {
+        "description": "Décision `decision.v1` prise par une personne ; l'heure est posée par le service.",
+        "operationId": "decider_v1_fiches__id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemandeDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fiche"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Enregistrer la décision : à vérifier, ne pas amplifier, prêt à traiter",
+        "tags": [
+          "fiches"
+        ]
+      }
+    },
+    "/v1/fiches/{id}/export": {
+      "get": {
+        "description": "Refusé (409) tant que la décision, une version tranchée ou le constat manque.",
+        "operationId": "exporter_fiche_v1_fiches__id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Page HTML d'une page, constat en tête."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "decision_manquante, version_non_tranchee ou constat_manquant : un geste du journaliste manque avant l'export."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Exporter la fiche en page HTML lisible",
+        "tags": [
+          "fiches"
+        ]
+      }
+    },
+    "/v1/journal": {
+      "get": {
+        "description": "Chaque appel Oriane et chaque geste, sans réponse brute ni clé.",
+        "operationId": "lire_journal_v1_journal_get",
+        "parameters": [
+          {
+            "description": "Nombre de lignes rendues.",
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Nombre de lignes rendues.",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limite",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Journal des appels, le plus récent d'abord",
+        "tags": [
+          "état"
+        ]
+      }
+    },
+    "/v1/radar": {
+      "get": {
+        "description": "Un récit par phrase surveillée, avec ses mesures (méthode et fenêtre) et ce qui n'a pas été cherché.",
+        "operationId": "lire_radar_v1_radar_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Radar"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Radar des récits : récits, mesures, requête en clair, mode et date du calcul",
+        "tags": [
+          "radar"
+        ]
+      }
+    },
+    "/v1/radar/actualiser": {
+      "post": {
+        "description": "Une requête Oriane en direct (coût affiché avant le geste) ; bascule en mode enregistré si besoin.",
+        "operationId": "actualiser_radar_v1_radar_actualiser_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Radar"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Actualiser le radar par une requête Oriane en direct",
+        "tags": [
+          "état"
+        ]
+      }
+    },
+    "/v1/recits/{id}": {
+      "get": {
+        "description": "Récit `recit.v1` : phrase surveillée, requête en clair, plus ancienne version, non cherché.",
+        "operationId": "lire_recit_v1_recits__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Un récit, ses vidéos et ses mesures",
+        "tags": [
+          "radar"
+        ]
+      }
+    },
+    "/v1/videos/{id}": {
+      "get": {
+        "description": "Vidéo `video.v1`, transcription et texte à l'écran attribués à Oriane, sans donnée de tiers.",
+        "operationId": "lire_video_v1_videos__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Video"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Une vidéo : compte, date, vues selon Oriane, légende, transcription et texte à l'écran",
+        "tags": [
+          "vidéos"
+        ]
+      }
+    }
+  }
+}

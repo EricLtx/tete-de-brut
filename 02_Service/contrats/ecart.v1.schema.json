@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "AttributionTranscription": {
+      "additionalProperties": false,
+      "description": "Attribution d'une transcription comparée : toujours Oriane, avec l'heure de lecture.",
+      "properties": {
+        "lue_le": {
+          "format": "date-time",
+          "title": "Lue Le",
+          "type": "string"
+        },
+        "niveau": {
+          "const": "default",
+          "default": "default",
+          "title": "Niveau",
+          "type": "string"
+        },
+        "source": {
+          "const": "Oriane",
+          "default": "Oriane",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lue_le"
+      ],
+      "title": "AttributionTranscription",
+      "type": "object"
+    },
+    "HeureDansLaVideo": {
+      "additionalProperties": false,
+      "description": "Heure du passage dans la vidéo : non fournie par Oriane au niveau `default`.",
+      "properties": {
+        "libelle": {
+          "default": "non fournie au niveau default",
+          "title": "Libelle",
+          "type": "string"
+        },
+        "secondes": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondes"
+        }
+      },
+      "title": "HeureDansLaVideo",
+      "type": "object"
+    },
+    "Operation": {
+      "additionalProperties": false,
+      "description": "Opération d'édition au mot entre la source et la reprise (positions comptées dès 0).",
+      "properties": {
+        "mots_reprise": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mots Reprise",
+          "type": "array"
+        },
+        "mots_source": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mots Source",
+          "type": "array"
+        },
+        "position_reprise": {
+          "minimum": 0,
+          "title": "Position Reprise",
+          "type": "integer"
+        },
+        "position_source": {
+          "minimum": 0,
+          "title": "Position Source",
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "retire",
+            "ajoute",
+            "remplace"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "position_source",
+        "position_reprise"
+      ],
+      "title": "Operation",
+      "type": "object"
+    },
+    "TranscriptionsComparees": {
+      "additionalProperties": false,
+      "description": "Attribution des deux transcriptions comparées.",
+      "properties": {
+        "reprise": {
+          "$ref": "#/$defs/AttributionTranscription"
+        },
+        "source": {
+          "$ref": "#/$defs/AttributionTranscription"
+        }
+      },
+      "required": [
+        "source",
+        "reprise"
+      ],
+      "title": "TranscriptionsComparees",
+      "type": "object"
+    }
+  },
+  "$id": "ecart.v1",
+  "additionalProperties": false,
+  "description": "Écart `ecart.v1` entre deux versions, au mot, sans aucune qualification de l'écart.",
+  "properties": {
+    "ecart_legende": {
+      "items": {
+        "$ref": "#/$defs/Operation"
+      },
+      "title": "Ecart Legende",
+      "type": "array"
+    },
+    "ecart_texte_ecran": {
+      "items": {
+        "$ref": "#/$defs/Operation"
+      },
+      "title": "Ecart Texte Ecran",
+      "type": "array"
+    },
+    "enregistre_le": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+      "title": "Enregistre Le"
+    },
+    "heure_dans_la_video": {
+      "$ref": "#/$defs/HeureDansLaVideo"
+    },
+    "identifiant": {
+      "minLength": 1,
+      "title": "Identifiant",
+      "type": "string"
+    },
+    "mode": {
+      "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+      "enum": [
+        "direct",
+        "enregistre"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "normalisation": {
+      "const": "mots.v1",
+      "default": "mots.v1",
+      "title": "Normalisation",
+      "type": "string"
+    },
+    "operations": {
+      "items": {
+        "$ref": "#/$defs/Operation"
+      },
+      "title": "Operations",
+      "type": "array"
+    },
+    "transcriptions": {
+      "$ref": "#/$defs/TranscriptionsComparees"
+    },
+    "video_reprise": {
+      "minLength": 1,
+      "title": "Video Reprise",
+      "type": "string"
+    },
+    "video_source": {
+      "minLength": 1,
+      "title": "Video Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "mode",
+    "identifiant",
+    "video_source",
+    "video_reprise",
+    "transcriptions"
+  ],
+  "title": "Ecart",
+  "type": "object"
+}

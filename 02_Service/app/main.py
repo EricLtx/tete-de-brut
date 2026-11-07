@@ -1,7 +1,7 @@
 """Application FastAPI : passerelle (CORS, clé de démonstration, enveloppe d'erreur) et route de santé.
 
 Les responsabilités transverses vivent ici, dans des intergiciels et gestionnaires, jamais dans les
-fichiers de routes. Le routeur `/v1` est vide : S02 y branche les routes du contrat.
+fichiers de routes. Le routeur `/v1` porte les routes du contrat `api.v1`, branchées ici une fois.
 """
 
 from __future__ import annotations
@@ -16,11 +16,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__, base
 from app.config import Configuration
 from app.erreurs import installer_gestionnaires
+from app.modeles import API_V1
+from app.routes import comparaisons, etat, fiches, radar, videos
 from app.securite import EN_TETE_CLE_DEMO, exiger_cle_demo
 
 journal = logging.getLogger("tete_de_brut")
 
 routeur_v1 = APIRouter(prefix="/v1")
+for module in (etat, radar, videos, comparaisons, fiches):
+    routeur_v1.include_router(module.routeur)
 
 
 def creer_application(config: Configuration | None = None) -> FastAPI:
@@ -39,8 +43,8 @@ def creer_application(config: Configuration | None = None) -> FastAPI:
         yield
 
     app = FastAPI(
-        title="Tête de Brut. — service d'API",
-        version=__version__,
+        title="Tête de Brut. — service de démonstration",
+        version=API_V1,
         lifespan=cycle_de_vie,
     )
     app.state.config = config
@@ -57,7 +61,7 @@ def creer_application(config: Configuration | None = None) -> FastAPI:
         allow_headers=[EN_TETE_CLE_DEMO, "Content-Type"],
     )
 
-    @app.get("/sante")
+    @app.get("/sante", include_in_schema=False)
     async def sante() -> dict[str, str | None]:
         """Sonde de vie, hors contrat versionné."""
         return {"etat": "ok", "version": __version__, "mode": config.mode, "enregistre_le": None}
