@@ -23,5 +23,14 @@
     "source": "Oriane",
     "lue_le": "2026-11-07T07:55:00Z"
   },
-  "lien": "https://www.tiktok.com/@compte_fictif_ville/video/7000000000000000101"
+  "lien": "https://www.tiktok.com/@compte_fictif_ville/video/7000000000000000101",
+  "apercu": {
+    "vignette": "https://exemple.invalid/vignette-fictive-0001.jpg",
+    "images_cles": [
+      "https://exemple.invalid/image-fictive-0001-a.jpg",
+      "https://exemple.invalid/image-fictive-0001-b.jpg"
+    ],
+    "source": "Oriane",
+    "lue_le": "2026-11-07T07:55:00Z"
+  }
 }

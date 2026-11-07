@@ -164,9 +164,8 @@ CHAMPS_TIERS_ORIANE = (
     "mentions",
     "coAuthors",
     "audioAuthor",
-    "thumbnailMediaUrl",
 )
-CHAMPS_TIERS_MEDIA_ORIANE = ("tags", "frames", "transcriptChunks")
+CHAMPS_TIERS_MEDIA_ORIANE = ("tags", "transcriptChunks")
 
 _REPONSE_ORIANE_SIMULEE: dict[str, Any] = {
     "metadata": {
@@ -197,7 +196,13 @@ _REPONSE_ORIANE_SIMULEE: dict[str, Any] = {
                         "transcript": "Propos simulé : il faut dix mille postes si l'État paie",
                         "onScreenText": ["TEXTE SIMULÉ : 10 000 postes"],
                         "tags": [{"handle": "compte_tiers_simule", "x": 0.4, "y": 0.6}],
-                        "frames": [{"url": "https://exemple.invalid/image-simulee.jpg"}],
+                        "frames": [
+                            {
+                                "url": "https://exemple.invalid/image-simulee.jpg",
+                                "onScreenTextRegions": [{"text": "REGION SIMULÉE", "x": 0.1, "y": 0.2}],
+                                "visualSimilarityScore": 0.42,
+                            }
+                        ],
                         "transcriptChunks": [{"start": 0, "end": 3, "text": "Propos simulé"}],
                     }
                 ],

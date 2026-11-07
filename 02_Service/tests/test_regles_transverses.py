@@ -301,13 +301,13 @@ def test_regle_1_aucun_champ_de_tiers_en_base_ni_au_journal(
         nom for r in resultats for m in r["media"] for nom in m
     }
     assert set(CHAMPS_TIERS_ORIANE) <= noms_servis & CHAMPS_REFUSES
-    assert set(CHAMPS_TIERS_MEDIA_ORIANE) & noms_servis == {"tags", "frames", "transcriptChunks"}
+    assert set(CHAMPS_TIERS_MEDIA_ORIANE) & noms_servis == {"tags", "transcriptChunks"}
     valeurs_de_tiers: set[str] = set()
     for r in resultats:
         for nom in CHAMPS_TIERS_ORIANE:
             valeurs_de_tiers.update(t for t in feuilles_texte(r.get(nom)) if len(t) >= 4)
         for m in r["media"]:
-            for nom in ("tags", "frames"):
+            for nom in ("tags",):
                 valeurs_de_tiers.update(t for t in feuilles_texte(m.get(nom)) if len(t) >= 4)
     assert len(valeurs_de_tiers) >= 10
 
