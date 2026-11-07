@@ -1,0 +1,106 @@
+# Vérification à la demande contre le vrai service Oriane. Jamais sur push ni pull_request :
+# chaque lancement dépense des crédits Oriane et le secret n'existe pas sur les forks.
+# Lancer : gh workflow run reel.yml --ref <branche>
+name: reel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dépendances du service
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "02_Service[dev]"
+
+      - name: Test réel Oriane (une page, un résultat)
+        working-directory: 02_Service
+        env:
+          ORIANE_API_KEY: ${{ secrets.ORIANE_API_KEY }}
+        shell: bash # -eo pipefail : un échec de pytest n'est pas avalé par tee
+        run: python -m pytest -q -m reel -s | tee "$RUNNER_TEMP/reel-pytest.log"
+
+      - name: Service en direct puis parcours du journaliste
+        working-directory: 02_Service
+        env:
+          ORIANE_API_KEY: ${{ secrets.ORIANE_API_KEY }}
+          MODE_DONNEES: auto
+          ORIGINES_AUTORISEES: http://localhost:5173
+          PORT: "8080"
+        shell: bash
+        run: |
+          set -eu
+          CLE_DEMO="$(openssl rand -hex 16)"
+          echo "::add-mask::$CLE_DEMO"
+          export CLE_DEMO
+          mkdir -p "$RUNNER_TEMP/cas"
+          export CHEMIN_CAS="$RUNNER_TEMP/cas"
+          export CHEMIN_BASE="$RUNNER_TEMP/reel-service.sqlite"
+          # Cas minimal sans donnée de personne : une phrase de trois mots et une fenêtre de sept jours.
+          python - <<'PY'
+          import json, os
+          from datetime import UTC, datetime, timedelta
+          fin = datetime.now(UTC).replace(microsecond=0)
+          document = {
+              "enregistre_le": fin.isoformat(),
+              "projection": "default",
+              "credits_estimes": 0,
+              "phrases": ["réforme des retraites"],
+              "comptes": [],
+              "requete": "cas minimal du job reel",
+              "fenetre": {"debut": (fin - timedelta(days=7)).isoformat(), "fin": fin.isoformat()},
+              "videos": [],
+          }
+          with open(os.path.join(os.environ["CHEMIN_CAS"], "cas.json"), "w", encoding="utf-8") as f:
+              json.dump(document, f, ensure_ascii=False)
+          PY
+          python -m uvicorn app.main:app --host 127.0.0.1 --port "$PORT" > "$RUNNER_TEMP/service.log" 2>&1 &
+          SERVICE_PID=$!
+          arreter() { kill "$SERVICE_PID" 2>/dev/null || true; }
+          trap arreter EXIT
+          pret=0
+          for _ in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:$PORT/sante; then pret=1; break; fi
+            sleep 1
+          done
+          if [ "$pret" -ne 1 ]; then
+            echo "KO : /sante ne répond pas en 30 s"
+            tail -n 20 "$RUNNER_TEMP/service.log"
+            exit 1
+          fi
+          code="$(curl -sS -o "$RUNNER_TEMP/radar.json" -w '%{http_code}' -X POST \
+            -H "X-Cle-Demo: $CLE_DEMO" -H "Origin: http://localhost:5173" \
+            http://127.0.0.1:$PORT/v1/radar/actualiser)"
+          echo "actualisation du radar : code $code"
+          [ "$code" = "200" ]
+          curl -sS -o "$RUNNER_TEMP/etat.json" -H "X-Cle-Demo: $CLE_DEMO" http://127.0.0.1:$PORT/v1/etat
+          # Une bascule (402, plafond) rejouerait le parcours sur le cas enregistré : on exige le mode direct.
+          # N'affiche que mode, raison et credits_du_jour, jamais le reste des réponses.
+          python - <<'PY'
+          import json, os, sys
+          tmp = os.environ["RUNNER_TEMP"]
+          radar = json.load(open(os.path.join(tmp, "radar.json"), encoding="utf-8"))
+          etat = json.load(open(os.path.join(tmp, "etat.json"), encoding="utf-8"))
+          print(f"radar mode={radar.get('mode')} raison={radar.get('raison')}")
+          print(f"etat mode={etat.get('mode')} raison={etat.get('raison')} credits_du_jour={etat.get('credits_du_jour')}")
+          if radar.get("mode") != "direct" or etat.get("mode") != "direct":
+              print("KO : le service n'est pas en mode direct (bascule vers le cas enregistré)")
+              sys.exit(1)
+          PY
+          python scripts/verifier_parcours.py --adresse http://localhost:$PORT --origine http://localhost:5173
+
+      - name: Ligne REEL du test
+        if: always()
+        run: grep -h '^REEL ' "$RUNNER_TEMP/reel-pytest.log" || echo "ligne REEL absente"
