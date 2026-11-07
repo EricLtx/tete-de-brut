@@ -1,16 +1,16 @@
 ---
 mandat: F007
 titre: S07 — Écart au mot entre deux vidéos sur la normalisation mots.v1, POST /v1/comparaisons idempotent et GET /v1/comparaisons/{id}
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S07
-branche: feat/service-ecart (part de feat/service-contrats rendue ; fusion après S02)
+branche: feat/service-ecart (part de feat/service-contrats à 407a5c7 ; fusion après S02)
 worktree: .claude/worktrees/feat-service-ecart
 modele: sonnet
 effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
-lance_a:
+lance_a: 2026-11-07T10:52Z
 rendu_a:
 go_a:
 allers_retours: 0
