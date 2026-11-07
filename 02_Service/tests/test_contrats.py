@@ -391,7 +391,14 @@ def test_routes_toutes_sous_v1_sauf_sante(client):
     assert "/sante" not in client.app.openapi()["paths"]
 
 
-@pytest.mark.parametrize(("methode", "chemin", "corps"), ROUTES_API_V1)
+# Routes remplies par un mandat : elles quittent la liste des 501 (S07 : comparaisons).
+ROUTES_IMPLEMENTEES = {("POST", "/v1/comparaisons"), ("GET", "/v1/comparaisons/c1")}
+
+
+@pytest.mark.parametrize(
+    ("methode", "chemin", "corps"),
+    [r for r in ROUTES_API_V1 if (r[0], r[1]) not in ROUTES_IMPLEMENTEES],
+)
 def test_route_repond_501_dans_l_enveloppe(client, methode, chemin, corps):
     reponse = client.request(methode, chemin, json=corps)
     assert reponse.status_code == 501
