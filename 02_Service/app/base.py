@@ -31,7 +31,7 @@ CHAMPS_JOURNAL = (
     "mode",
 )
 CHAMPS_JSON = ("filtres", "projection", "resultats")
-VARIABLES_SECRETES = ("ORIANE_API_KEY", "CLE_DEMO", "SCALEWAY_API_KEY")
+VARIABLES_SECRETES = ("ORIANE_API_KEY", "CLE_DEMO", "MODELE_LANGUE_API_KEY", "ANTHROPIC_API_KEY")
 # Nom de champ ou motif de valeur qui trahit une clé d'accès.
 NOM_SECRET = re.compile(r"(api[_-]?key|apikey|authorization|bearer|token|secret|cle[_-]?demo)", re.I)
 VALEUR_SECRETE = re.compile(

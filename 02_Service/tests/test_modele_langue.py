@@ -112,6 +112,24 @@ def test_configuration_par_defaut_gabarit_et_claude():
     assert config.modele_langue_cle == ""
 
 
+def test_cle_repli_sur_anthropic_api_key():
+    assert Configuration.depuis_environnement({"ANTHROPIC_API_KEY": "cle-repli"}).modele_langue_cle == (
+        "cle-repli"
+    )
+    prioritaire = {"MODELE_LANGUE_API_KEY": CLE_MODELE_TEST, "ANTHROPIC_API_KEY": "cle-repli"}
+    assert Configuration.depuis_environnement(prioritaire).modele_langue_cle == CLE_MODELE_TEST
+
+
+@pytest.mark.parametrize("variable", ["MODELE_LANGUE_API_KEY", "ANTHROPIC_API_KEY"])
+def test_consigner_refuse_la_cle_du_modele(client, monkeypatch, variable):
+    monkeypatch.setenv(variable, CLE_MODELE_TEST)
+    with pytest.raises(base.ErreurJournal):
+        base.consigner(route=ROUTE_JOURNAL_MODELE, cible=f"appel avec {CLE_MODELE_TEST}")
+    with pytest.raises(base.ErreurJournal):
+        base.consigner(route=ROUTE_JOURNAL_MODELE, resultats={"modele": CLE_MODELE_TEST})
+    assert CLE_MODELE_TEST not in json.dumps(base.lire_journal(50), ensure_ascii=False)
+
+
 def test_configuration_cle_hors_repr_et_mode_invalide_refuse():
     config = Configuration.depuis_environnement({"MODELE_LANGUE_API_KEY": CLE_MODELE_TEST})
     assert CLE_MODELE_TEST not in repr(config)
@@ -306,7 +324,10 @@ def test_reponse_brute_jamais_au_journal(client, comparaison_simulee, transport_
 
 
 @pytest.mark.reel
-@pytest.mark.skipif(not os.environ.get("MODELE_LANGUE_API_KEY"), reason="MODELE_LANGUE_API_KEY absente")
+@pytest.mark.skipif(
+    not (os.environ.get("MODELE_LANGUE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")),
+    reason="MODELE_LANGUE_API_KEY et ANTHROPIC_API_KEY absentes",
+)
 def test_appel_reel_claude_marquage_et_filtre(client, comparaison_simulee, monkeypatch):
     monkeypatch.setenv("RESUME_MODE", "modele")
     monkeypatch.setattr(modele_langue, "transport_par_defaut", None)

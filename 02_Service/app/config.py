@@ -114,7 +114,7 @@ class Configuration:
             port=_entier(env, "PORT", 8080),
             resume_mode=resume_mode,
             modele_langue_url=_texte(env, "MODELE_LANGUE_URL", MODELE_LANGUE_URL_PAR_DEFAUT).rstrip("/"),
-            modele_langue_cle=_texte(env, "MODELE_LANGUE_API_KEY"),
+            modele_langue_cle=_texte(env, "MODELE_LANGUE_API_KEY", _texte(env, "ANTHROPIC_API_KEY")),
             modele_langue_id=_texte(env, "MODELE_LANGUE_ID", MODELE_LANGUE_ID_PAR_DEFAUT),
         )
 
