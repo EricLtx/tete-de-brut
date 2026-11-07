@@ -33,7 +33,6 @@ Traduction déterministe (aucun modèle de langue ; H à confirmer par l'usage) 
 
 Réserve élargie par l'orchestrateur au doublage (07/11) : `app/oriane.py` (`comptes_exclus`, `identifiants_plateforme`, rétrocompatible), `app/main.py` (une ligne), `tests/test_exemples_ecrans.py` (exemption provisoire de quatre lignes, à retirer par F017).
 
-
 `app/recherche.py` (traduction, préparation, exécution), `app/routes/recherches.py` (deux routes, branchées dans `app/main.py` : une ligne), `app/modeles.py` (classes `FiltresRecherche`, `CoutEstime`, `RefusRecherche`, `Recherche`, `ResultatRecherche`, constante `RECHERCHE_V1`), `app/config.py` (`CHEMIN_COMPTES`), `app/liste_blanche.py` (si le filtre `platformId` manque : l'ajouter à la table, un commentaire), `contrats/recherche.v1.schema.json` (export), `contrats/api.v1.json` (réexport), `tests/test_recherche.py`, `tests/test_contrats.py` (`ROUTES_IMPLEMENTEES` et schéma), `tests/test_regles_transverses.py` (deux routes couvertes : mode partout, clé de démo, aucun libellé refusé), `scripts/verifier_parcours.py` (un geste « je cherche » ajouté, phrase du cas), `.env.example` (`CHEMIN_COMPTES`), `01_Docs/05_Integration/branchement-lovable-et-oriane.md` § 2 (ligne « Je cherche »). Rien dans `app/ecart.py`, `app/fiche.py`, `app/resume.py`.
 
 ## Règles de confiance (testées)
