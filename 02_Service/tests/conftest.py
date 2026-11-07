@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import json
 from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from app import cas
 from app.config import Configuration
 from app.main import creer_application
 from app.modeles import Video
@@ -294,3 +296,45 @@ def transport_oriane_simule(reponse_oriane_simulee: dict[str, Any]) -> Callable[
         return transport
 
     return fabriquer
+
+
+# --- cas enregistré simulé (S04) -----------------------------------------------------------------
+
+CAS_ENREGISTRE_LE = datetime(2026, 11, 6, 20, 0, tzinfo=UTC)
+CAS_PHRASE = "dix mille postes"
+
+
+@pytest.fixture
+def cas_simule() -> Callable[..., Path]:
+    """Fabrique le fichier du cas simulé dans `config.chemin_cas` : `cas_simule(config)` rend son chemin.
+
+    Deux vidéos fictives dont les identifiants sont ceux de `reponse_oriane_simulee`, une phrase de trois
+    mots (RG-02), mode `enregistre` ; aucune donnée réelle.
+    """
+
+    def ecrire(config: Configuration, phrases: tuple[str, ...] = (CAS_PHRASE,)) -> Path:
+        videos = [
+            fabriquer_video(
+                identifiant=f"cnt_SIMULE000000000000000000000{i}",
+                identifiant_plateforme=f"70000000000000000{i}0",
+                compte=f"compte_simule_{i}",
+                publie_le=f"2026-11-0{3 + i}T08:00:00+00:00",
+                requetes_trouvees=list(phrases),
+                lien=f"https://www.tiktok.com/@compte_simule_{i}/video/70000000000000000{i}0",
+            )
+            for i in (1, 2)
+        ]
+        document = cas.construire_document(
+            enregistre_le=CAS_ENREGISTRE_LE,
+            phrases=phrases,
+            comptes=[],
+            plateformes=[],
+            fenetre=None,
+            credits_estimes=15,
+            videos=videos,
+        )
+        chemin = cas.fichier_cas(config)
+        cas.ecrire_fichier(chemin, document)
+        return chemin
+
+    return ecrire

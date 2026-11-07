@@ -78,6 +78,7 @@ class Configuration:
     chemin_base: Path = BASE_PAR_DEFAUT
     chemin_cas: Path = CAS_PAR_DEFAUT
     plafond_credits_jour: int = 600
+    bascule: str = ""  # raison d'une bascule en mode enregistré décidée à l'exécution (S04) ; vide, aucune
     port: int = 8080
     resume_mode: str = "gabarit"
     modele_langue_id: str = ""
@@ -112,14 +113,16 @@ class Configuration:
 
     @property
     def mode(self) -> str:
-        """Mode effectif : `enregistre` sans clé Oriane ou sur demande, sinon `direct`."""
-        if not self.oriane_cle or self.mode_donnees == "enregistre":
+        """Mode effectif : `enregistre` sans clé Oriane, sur demande ou après bascule, sinon `direct`."""
+        if not self.oriane_cle or self.mode_donnees == "enregistre" or self.bascule:
             return "enregistre"
         return "direct"
 
     @property
     def raison(self) -> str:
         """Pourquoi le mode effectif est celui-là, en clair."""
+        if self.bascule:
+            return self.bascule
         if not self.oriane_cle:
             return "ORIANE_API_KEY absente : le service rejoue le cas enregistré"
         if self.mode_donnees == "enregistre":
