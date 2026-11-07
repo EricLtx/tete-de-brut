@@ -1,7 +1,7 @@
 ---
 mandat: F006
 titre: S05 — Radar des récits : regroupement par phrase surveillée, mesures de volume avec méthode et fenêtre, plus ancienne version, non cherché, GET /v1/radar et /v1/recits/{id}
-statut: realise
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S05
 branche: feat/service-radar (part de feat/service-contrats à 407a5c7 ; fusion après S02)
@@ -13,7 +13,7 @@ cree: 2026-11-07
 lance_a: 2026-11-07T10:52Z
 rendu_a: 2026-11-07T11:04Z
 go_a:
-allers_retours: 0
+allers_retours: 1
 ---
 
 # F006 — S05, radar des récits
@@ -57,3 +57,5 @@ sha ; diff ; run et tests ; écarts ; points ouverts pour S06 (ligne d'appel de 
 | Date | De | Message |
 |---|---|---|
 | 2026-11-07 | réalisateur sonnet / medium | Rendu 18a2b97 : `app/mesures.py`, `app/recits.py`, `app/routes/radar.py`, `tests/test_radar.py` (+406), run GitHub 42366305259 vert, 119 tests. Écarts : `tests/test_contrats.py` hors réserve (constante `ROUTES_IMPLEMENTEES`, même endroit que S07) ; décorateurs `erreurs(501)` conservés sur `radar.py` pour ne pas changer le contrat exporté (à nettoyer et réexporter plus tard) ; rattachement vidéo-récit par `requetes_trouvees` normalisées ; documents `cas` lus avec les clés `phrases`/`phrase`, `requete`, `fenetre {debut, fin}`, `enregistre_le` (S04 doit aligner son format) ; identifiant `recit-` + sha256[:12] de la phrase normalisée ; `cout_actualisation` à None (S04). Pour S06 : `mesures_du_recit(videos, fenetre, calcule_le)` appelle `mesures_de_volume` ; ajouter les mesures de vitesse après cet appel, `mesures.echantillon_de(videos)` réutilisable. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 18a2b97 : 0 bloquant, 1 majeur (conflit `ROUTES_IMPLEMENTEES` avec S07, à unir), 7 mineurs (requête et fenêtre reconstruites sans cas ; cas mal formé fait tomber le radar ; `enregistre_le` = heure du calcul sur base vide ; `vues_cumulees` sous-estime sans le dire ; `erreurs(501)` conservé ; origine et liens absents de `recit.v1` ; tests légers). 119 tests, `TestClient` (uvicorn refusé par le poste). |
+| 2026-11-07 | orchestrateur | S07 fusionné avant S05 : raccord demandé au réalisateur (fusion de `main` dans la branche, union de `ROUTES_IMPLEMENTEES`, garde contre un cas mal formé : radar vide avec `non_cherche` plutôt qu'une 500), nouveau sha relu sur le seul diff. |
