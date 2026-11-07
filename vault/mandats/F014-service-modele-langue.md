@@ -1,7 +1,7 @@
 ---
 mandat: F014
 titre: S10 — Résumé de fiche par modèle de langue (Claude), filtré, enregistré avec le cas
-statut: lance
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S10
 branche: feat/service-modele-langue (part de main)
@@ -12,7 +12,7 @@ relecteur: opus / medium (textes lus par le jury), jamais moins que la config
 cree: 2026-11-07
 lance_a: 2026-11-07T13:34Z
 rendu_a: 2026-11-07T13:47Z
-go_a:
+go_a: 2026-11-07T14:52Z
 allers_retours: 0
 ---
 
@@ -52,3 +52,6 @@ sha ; `git diff --stat` ; run ; écarts ; points ouverts.
 | 2026-11-07 | orchestrateur (session service) | Correctif poussé par le réalisateur : 0021d2e5e2da5c4338a73d58a6dc3709324b9ae6 (`app/filtre_sortie.py`, appel hors de la boucle avec plafond global de 10 s, mineurs pris, `max_tokens` 1024, `thinking` non envoyé), run 42380635333 vert, 363 tests. Relecture du diff relancée auprès des deux relecteurs (opus pour le filtre, sonnet pour la garde). |
 | 2026-11-07 | relecteur sonnet / high | GO sur 0021d2e5e2da5c4338a73d58a6dc3709324b9ae6 (`vault/revues/F014-0021d2e-sonnet.md`) : 0 bloquant, 0 majeur, 4 mineurs (« premier tour » et « contexte » refusés ; filtre lexical : « montage », « inversé », « erronée », « hoax » passent ; « … » hors du compte de phrases, fil orphelin après expiration ; configuration injectée ignorée, `thinking` non envoyé, API réelle non vérifiée). Rejoué : `/sante` plus retardé, expiration à 10,04 s avec ligne au journal, aucune fuite de clé. |
 | 2026-11-07 | relecteur opus / high | NO-GO sur 0021d2e5e2da5c4338a73d58a6dc3709324b9ae6 (`vault/revues/F014-0021d2e-opus.md`) : 0 bloquant, 2 majeurs (le test de concurrence passe aussi sans `run_in_threadpool`, chrono démarré trop tard ; treize qualifications passent encore : « originelle », « authentique », « la vraie », « erroné », « inexacte », « décontextualisé », « trafiquée », « bidonné », « infox », « biaisé », « a menti », « altération », « sens modifié »), 4 mineurs. Décision de l'orchestrateur : second correctif par le même réalisateur, relecture du diff par opus ; la fusion attend. Le mode `gabarit` reste le défaut de la démonstration. |
+| 2026-11-07 | réalisateur sonnet / medium | Second correctif 3b78e30b7e7ed0345d6908bee20a591874c8810f (`filtre_sortie.py`, tests : chrono avant `create_task`, test vu échouer sans `run_in_threadpool` ; treize qualifications de plus refusées, mots entiers `vrai`, `menti`), run 42381374549 vert, 377 tests. |
+| 2026-11-07 | relecteur opus / high | GO sur 3b78e30b7e7ed0345d6908bee20a591874c8810f (`vault/revues/F014-3b78e30-opus.md`) : majeurs levés (sonde de 40 textes propre, test de concurrence qui échoue sans le correctif), 0 bloquant, 0 majeur, 3 mineurs (tournures sur mots contigus seulement ; faux positifs assumés « origine », « par le biais de », « premier tour » ; mineurs antérieurs acceptés). Test `reel` à lancer par une personne sur le cas réel. |
+| 2026-11-07 | relecteur sonnet / high | GO sur 3b78e30b7e7ed0345d6908bee20a591874c8810f (`vault/revues/F014-3b78e30-sonnet.md`) : 0 bloquant, 0 majeur, mineurs inchangés (préfixes larges, filtre lexical, fil orphelin, configuration injectée, `thinking`). Fusionné sur `main`. |
