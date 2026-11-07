@@ -1,7 +1,7 @@
 ---
 mandat: F012
 titre: S09 — Règles transverses testées sur un parcours simulé complet et script de vérification du parcours contre une adresse servie
-statut: lance
+statut: en-doublage
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S09
 branche: feat/service-parcours (part de main après fusion de S04)
@@ -11,7 +11,7 @@ effort: medium
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T12:27Z
-rendu_a:
+rendu_a: 2026-11-07T12:38Z
 go_a:
 allers_retours: 0
 ---
@@ -61,3 +61,4 @@ sha ; diff ; run et tests ; écarts et anomalies trouvées (candidats `fix/…`,
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur sonnet / medium | Rendu 26c405b188fa6e9575bc125af7c727b7ef2509af : `scripts/verifier_parcours.py` (229), `tests/test_regles_transverses.py` (544, huit règles, 13 tests collectés), paragraphe dans le `README.md` racine (pas de README du service : écart déclaré) ; run GitHub 42373192821 vert, 302 tests ; script rejoué : huit OK et code 0, KO et code 1 sur origine non autorisée ou sans `CLE_DEMO`. Aucune anomalie, aucun `xfail`. H07 : variable CORS `ORIGINES_AUTORISEES` (origines exactes, sans `*` ni slash final, aperçu et publication Lovable = deux origines) ; HTTPS public requis ; P2 configure l'adresse du service et `X-Cle-Demo` sur POST et PATCH, jamais figée dans le dépôt des écrans ; lire `mode` et `enregistre_le` sur chaque réponse, erreurs comprises ; le script laisse une fiche inversée dans la base vérifiée. Doublage sonnet / high lancé. |
