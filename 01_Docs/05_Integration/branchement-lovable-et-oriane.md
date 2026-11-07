@@ -31,7 +31,7 @@ Les textes des vidéos (transcriptions, légendes, textes à l'écran) s'affiche
 ## 4. Côté Oriane
 
 - La clé vit dans `ORIANE_API_KEY`, dans l'environnement du conteneur (secret Scaleway) ou du poste qui expose le tunnel. Sans clé, le service démarre en mode `enregistre` et le dit.
-- Avant le lancement de S03, P1 relève au premier appel réel (tâche H01) : le nom de l'en-tête d'authentification (porté dans `ORIANE_EN_TETE_AUTH`), le chemin de recherche, la présence de `media[].transcript` et `media[].onScreenText` au niveau `default`, le coût réel et le compteur de crédits avant et après. Aucune réponse brute n'entre dans le dépôt.
+- Relevé H01 fait le 07/11 (un appel réel, un résultat) : en-tête `Authorization` avec le préfixe `Bearer` (`ORIANE_EN_TETE_AUTH=Authorization`, `ORIANE_PREFIXE_AUTH` = « Bearer » suivi d'une espace) ; `POST /rest/contents/search` ; `media[].transcript` (chaîne) et `media[].onScreenText` (liste) présents au niveau `default` ; le code **206** signale une page incomplète et vaut succès ; le filtre `platform` s'écrit `{"includes": ["tiktok"]}` ; une requête mal formée rend 400 avec `error.context[]` (`field`, `rule`, `message`). Le coût n'apparaît ni dans les en-têtes ni dans la réponse : P1 lit le compteur de crédits dans l'application avant et après. Aucune réponse brute n'entre dans le dépôt.
 - Délai d'un appel : `ORIANE_DELAI_S` (20 s par défaut). Plafond du jour : `PLAFOND_CREDITS_JOUR` (600). Au-delà, ou après deux expirations, le service passe seul en mode enregistré et l'annonce.
 - Le cas enregistré (`02_Service/cas/`) est produit par `scripts/enregistrer_cas.py` (S04) avec la clé, hors Git, et copié sur le poste qui construit l'image.
 
