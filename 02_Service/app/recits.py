@@ -19,6 +19,7 @@ from app import base
 from app.mesures import mesures_de_volume
 from app.modeles import Fenetre, Mesure, PlusAncienneVersion, Radar, Recit, Segment, Video
 from app.mots import normaliser
+from app.vitesse import mesures_de_vitesse
 
 TYPE_CAS = "cas"
 TYPE_VIDEO = "video"
@@ -105,10 +106,9 @@ def fenetre_de(videos: Sequence[Video], declaree: dict[str, Any] | None, calcule
 def mesures_du_recit(videos: Sequence[Video], fenetre: Fenetre, calcule_le: datetime) -> list[Mesure]:
     """Point d'appel des mesures d'un récit.
 
-    S06 : ajouter ici, après les mesures de volume, la mesure de vitesse de `app/vitesse.py`
-    (vidéos par jour sur 48 h contre sur 7 jours, deux fenêtres), sans changer `Mesure`.
+    Volume sur la fenêtre de la requête, puis vitesse sur 48 h et 7 jours avant `calcule_le` (S06).
     """
-    return mesures_de_volume(videos, fenetre)
+    return [*mesures_de_volume(videos, fenetre), *mesures_de_vitesse(videos, calcule_le)]
 
 
 def requete_en_clair(phrase: str, fenetre: Fenetre, declaree: str | None) -> str:
