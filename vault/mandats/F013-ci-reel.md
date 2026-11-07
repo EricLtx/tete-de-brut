@@ -1,7 +1,7 @@
 ---
 mandat: F013
 titre: Job GitHub « reel » à la demande — appel réel Oriane et parcours contre un service lancé
-statut: go
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: hors fiche (vérification avant H07)
 branche: pipeline/ci-reel (part de main)
