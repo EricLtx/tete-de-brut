@@ -8,7 +8,7 @@
   "typesCommit": ["feat", "fix", "docs", "test", "pipeline", "chore", "refactor"],
   "signature": "",
   "pipeline": {
-    "ci": "04_Pipeline/ci.sh",
+    "ci": "",
     "build": [
       "test ! -d 02_Service || (cd 02_Service && python -m ruff check . && python -m ruff format --check .)",
       "test ! -d 02_Service || (cd 02_Service && python -m pytest -q -m 'not reel')"
