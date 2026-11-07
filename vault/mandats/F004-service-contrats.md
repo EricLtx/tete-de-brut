@@ -1,7 +1,7 @@
 ---
 mandat: F004
 titre: S02 — Contrats JSON et OpenAPI api.v1, normalisation mots.v1, libellés refusés, routes présentes en 501
-statut: lance
+statut: realise
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S02
 branche: feat/service-contrats (part de feat/service-socle rendue ; fusion après celle de S01)
@@ -11,7 +11,7 @@ effort: medium
 relecteur: opus / medium (conception du contrat que tous les mandats et les écrans suivent)
 cree: 2026-11-07
 lance_a: 2026-11-07T10:30Z
-rendu_a:
+rendu_a: 2026-11-07T10:34Z
 go_a:
 allers_retours: 0
 ---
@@ -49,3 +49,4 @@ sha ; `git diff --stat feat/service-socle...HEAD` ; résultat du run GitHub et n
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-07 | réalisateur opus / medium | Rendu b90aaf6 : 19 fichiers, +4589, run GitHub 42364385279 vert, 103 tests (32 S01 + 71 S02), `/openapi.json` égal à `contrats/api.v1.json`. Écarts : `main.py` reçoit aussi titre, version `api.v1` et `/sante` hors schéma ; `POST /v1/radar/actualiser` dans `routes/etat.py` (réservé à S04) ; `GET /v1/journal?limite=` ; `POST /v1/fiches` 201 ; contraintes plus strictes (mesure nulle exige raison, fiche exige segment LIMITE_TRANSCRIPTIONS, `enregistre_le` obligatoire en mode enregistré) ; `Etat` n'hérite pas de `Reponse`. Règle pour S03 à S08 : tout mandat qui change un modèle ou une route relance `scripts/exporter_contrats.py` et commite `contrats/`. |
