@@ -522,6 +522,7 @@ def test_regle_8_ecritures_refusees_sans_cle_de_demonstration(client_avec_cle: T
         ("POST", "/v1/comparaisons", {"video_source": "a", "video_reprise": "b"}),
         ("POST", "/v1/fiches", {"comparaison": "cmp-x"}),
         ("PATCH", "/v1/fiches/fic-x", {"constat": "x"}),
+        ("DELETE", "/v1/recits/recit-x", None),
         ("POST", "/v1/fiches/fic-x/decision", {"valeur": "a_verifier", "role": "journaliste simulé"}),
     ]
     for methode, chemin, corps in ecritures:

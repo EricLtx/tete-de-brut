@@ -12,7 +12,7 @@ from app import base
 from app.libelles import contient_libelle_refuse
 from app.mesures import mesures_de_volume
 from app.modeles import LIBELLE_PLUS_ANCIENNE_VERSION, Fenetre, Mesure, Recit
-from tests.conftest import fabriquer_video
+from tests.conftest import CLE_DEMO_TEST, fabriquer_video
 
 PHRASE_A = "dix mille postes"
 PHRASE_B = "la réforme passe"
@@ -195,3 +195,91 @@ def test_cas_mal_forme_ignore_et_dit(client: TestClient, cas: dict, morceau: str
     mentions = [s["texte"] for s in recits[0]["non_cherche"] if s["texte"].startswith("cas ignoré : ")]
     assert len(mentions) == 1 and morceau in mentions[0]
     assert client.get(f"/v1/recits/{recits[0]['identifiant']}").status_code == 200
+
+
+# --- suppression d'un récit (F019) ---
+
+
+def _id_recit(client: TestClient, phrase: str) -> str:
+    recits = client.get("/v1/radar").json()["recits"]
+    return next(r["identifiant"] for r in recits if r["phrase_surveillee"] == phrase)
+
+
+def test_suppression_retire_le_recit_ses_phrases_et_ses_videos_orphelines(client: TestClient) -> None:
+    _poser(*_trois_videos())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A, PHRASE_B]})
+    base.ecrire("cas", "recherche-x", "cas.v1", {"phrases": [PHRASE_A], "requete": "requête de recherche"})
+    identifiant = _id_recit(client, PHRASE_A)
+    reponse = client.delete(f"/v1/recits/{identifiant}")
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["identifiant"] == identifiant and corps["phrase_surveillee"] == PHRASE_A
+    assert corps["videos_retirees"] == 2 and corps["videos_conservees"] == 0
+    assert corps["mode"] == "enregistre" and corps["enregistre_le"]
+    assert corps["avertissement"] and "redémarrage" in corps["avertissement"]
+    assert [r["phrase_surveillee"] for r in client.get("/v1/radar").json()["recits"]] == [PHRASE_B]
+    assert client.get(f"/v1/recits/{identifiant}").status_code == 404
+    assert base.lire("cas", "recherche-x") is None  # document ajouté par une recherche, vidé : supprimé
+    assert base.lire("cas", "cas-1")["phrases"] == [PHRASE_B]
+    assert sorted(d["identifiant"] for d in base.lister("video")) == ["v-b"]
+
+
+def test_suppression_garde_la_video_trouvee_par_une_autre_phrase(client: TestClient) -> None:
+    _poser(
+        fabriquer_video(identifiant="v-double", requetes_trouvees=[PHRASE_A, PHRASE_B]),
+        fabriquer_video(identifiant="v-seule", compte="compte_simule_b", requetes_trouvees=[PHRASE_A]),
+    )
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A, PHRASE_B]})
+    corps = client.delete(f"/v1/recits/{_id_recit(client, PHRASE_A)}").json()
+    assert corps["videos_retirees"] == 1 and corps["videos_conservees"] == 1
+    restantes = {d["identifiant"]: d for d in base.lister("video")}
+    assert list(restantes) == ["v-double"]
+    assert restantes["v-double"]["requetes_trouvees"] == [PHRASE_B]
+    recits = client.get("/v1/radar").json()["recits"]
+    assert [(r["phrase_surveillee"], r["videos"]) for r in recits] == [(PHRASE_B, ["v-double"])]
+
+
+def test_suppression_phrase_unique_du_cas_et_phrases_voisines_intactes(client: TestClient) -> None:
+    _poser(*_trois_videos())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrase": PHRASE_A})
+    base.ecrire("cas", "cas-2", "cas.v1", {"phrases": [PHRASE_B]})
+    client.delete(f"/v1/recits/{_id_recit(client, PHRASE_A)}")
+    assert base.lire("cas", "cas-1") is None
+    assert base.lire("cas", "cas-2") == {"phrases": [PHRASE_B]}
+
+
+def test_suppression_recit_inconnu_rend_404(client: TestClient) -> None:
+    reponse = client.delete("/v1/recits/recit-inconnu")
+    assert reponse.status_code == 404
+    assert reponse.json()["erreur"] == "introuvable"
+    assert reponse.json()["mode"] == "enregistre"
+
+
+def test_suppression_est_consignee_au_journal(client: TestClient) -> None:
+    _poser(*_trois_videos())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A]})
+    client.delete(f"/v1/recits/{_id_recit(client, PHRASE_A)}")
+    entrees = [e for e in client.get("/v1/journal").json()["entrees"] if e["route"] == "recit:suppression"]
+    assert len(entrees) == 1
+    assert entrees[0]["cible"] == PHRASE_A
+    assert entrees[0]["resultats"] == {"videos_retirees": 2, "videos_conservees": 0}
+    assert entrees[0]["mode"] == "enregistre"
+
+
+def test_suppression_sans_cle_ne_supprime_rien(client_avec_cle: TestClient) -> None:
+    _poser(*_trois_videos())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A]})
+    identifiant = _id_recit(client_avec_cle, PHRASE_A)
+    refus = client_avec_cle.delete(f"/v1/recits/{identifiant}")
+    assert refus.status_code == 401 and refus.json()["erreur"] == "cle_demo_invalide"
+    assert client_avec_cle.get(f"/v1/recits/{identifiant}").status_code == 200
+    ouvert = client_avec_cle.delete(f"/v1/recits/{identifiant}", headers={"X-Cle-Demo": CLE_DEMO_TEST})
+    assert ouvert.status_code == 200
+    assert client_avec_cle.get(f"/v1/recits/{identifiant}").status_code == 404
+
+
+def test_suppression_reponse_sans_libelle_refuse(client: TestClient) -> None:
+    _poser(*_trois_videos())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A]})
+    corps = client.delete(f"/v1/recits/{_id_recit(client, PHRASE_A)}").json()
+    assert contient_libelle_refuse(corps["avertissement"]) is None

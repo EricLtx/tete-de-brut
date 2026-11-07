@@ -217,6 +217,23 @@ class Recit(Reponse):
     calcule_le: datetime
 
 
+class SuppressionRecit(Reponse):
+    """Compte rendu de la suppression d'un récit : la phrase retirée et ce qui est parti avec elle."""
+
+    identifiant: TexteNonVide
+    phrase_surveillee: TexteNonVide = Field(description="Phrase retirée des phrases surveillées.")
+    videos_retirees: int = Field(
+        ge=0, description="Vidéos supprimées : seule cette phrase les avait trouvées."
+    )
+    videos_conservees: int = Field(
+        ge=0, description="Vidéos gardées : une autre phrase surveillée les a aussi trouvées."
+    )
+    avertissement: str | None = Field(
+        default=None,
+        description="Limite de la suppression, par exemple le retour de la phrase au redémarrage.",
+    )
+
+
 class CoutActualisation(Modele):
     """Coût estimé d'une actualisation, affiché avant le geste."""
 

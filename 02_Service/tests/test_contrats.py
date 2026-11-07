@@ -41,6 +41,7 @@ ROUTES_API_V1: list[tuple[str, str, dict[str, Any] | None]] = [
     ("GET", "/v1/radar", None),
     ("POST", "/v1/radar/actualiser", None),
     ("GET", "/v1/recits/r1", None),
+    ("DELETE", "/v1/recits/r1", None),
     ("GET", "/v1/videos/v1", None),
     ("POST", "/v1/comparaisons", {"video_source": "v1", "video_reprise": "v2"}),
     ("GET", "/v1/comparaisons/c1", None),
@@ -381,7 +382,7 @@ def test_exporteur_verifie_les_contrats():
 def test_routes_toutes_sous_v1_sauf_sante(client):
     documentees = {(m.upper(), c) for c, ops in client.app.openapi()["paths"].items() for m in ops}
     attendues = {(m, c) for m, c, _ in ROUTES_API_V1}
-    assert len(documentees) == len(attendues) == 15
+    assert len(documentees) == len(attendues) == 16
     hors_documentation = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc", "/sante"}
     assert routeur_v1.prefix == "/v1"
     for route in client.app.routes:
@@ -399,6 +400,7 @@ ROUTES_IMPLEMENTEES = {
     ("GET", "/v1/videos/v1"),
     ("GET", "/v1/radar"),
     ("GET", "/v1/recits/r1"),
+    ("DELETE", "/v1/recits/r1"),  # F019
     ("POST", "/v1/comparaisons"),
     ("GET", "/v1/comparaisons/c1"),
     ("POST", "/v1/fiches"),

@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from app import base
+from app.cas import CAS_V1
 from app.mesures import mesures_de_volume
-from app.modeles import Fenetre, Mesure, PlusAncienneVersion, Radar, Recit, Segment, Video
+from app.modeles import VIDEO_V1, Fenetre, Mesure, PlusAncienneVersion, Radar, Recit, Segment, Video
 from app.mots import normaliser
 from app.vitesse import mesures_de_vitesse
 
@@ -191,3 +193,79 @@ def calculer_radar(mode: str, raison: str) -> Radar:
         calcule_le=calcule_le,
         raison=raison,
     )
+
+
+@dataclass(frozen=True)
+class RecitSupprime:
+    """Ce qu'une suppression a retiré : la phrase, le sort des vidéos et la date du cas rejoué."""
+
+    phrase: str
+    videos_retirees: int
+    videos_conservees: int
+    enregistre_le: datetime
+
+
+def _sans_la_phrase(document: dict[str, Any], cle: str) -> dict[str, Any] | None:
+    """Le document `cas` privé de la phrase (`phrases`, `phrase`), `None` s'il ne la porte pas."""
+    phrases = document.get("phrases")
+    unique = document.get("phrase")
+    porte_liste = isinstance(phrases, list) and any(cle_phrase(p) == cle for p in phrases)
+    porte_unique = isinstance(unique, str) and cle_phrase(unique) == cle
+    if not (porte_liste or porte_unique):
+        return None
+    reste = dict(document)
+    if porte_liste:
+        reste["phrases"] = [p for p in phrases if cle_phrase(p) != cle]
+    if porte_unique:
+        reste.pop("phrase")
+    return reste
+
+
+def supprimer_recit(identifiant: str) -> RecitSupprime | None:
+    """Retire un récit : sa phrase des phrases surveillées, des vidéos, et les vidéos devenues orphelines.
+
+    Rend `None` si aucune phrase surveillée ne porte cet identifiant. Une vidéo trouvée aussi par une
+    autre phrase est conservée. Le fichier du cas sur disque n'est pas modifié.
+    """
+    maintenant = datetime.fromisoformat(base.maintenant())
+    documents_cas = base.lister_avec_identifiants(TYPE_CAS)
+    documents_video = base.lister_avec_identifiants(TYPE_VIDEO)
+    valides = [d for _, d in documents_cas if verifier_cas(d) is None]
+    videos = [Video.model_validate(d) for _, d in documents_video]
+    cible = next(
+        (
+            (cle, details["phrase"])
+            for cle, details in phrases_surveillees(valides, videos).items()
+            if identifiant_recit(details["phrase"]) == identifiant
+        ),
+        None,
+    )
+    if cible is None:
+        return None
+    cle, phrase = cible
+    enregistre_le = _enregistre_le(valides, videos, maintenant)
+
+    for id_cas, document in documents_cas:
+        if verifier_cas(document) is not None:
+            continue
+        reste = _sans_la_phrase(document, cle)
+        if reste is None:
+            continue
+        if reste.get("phrases") or reste.get("phrase"):
+            base.ecrire(TYPE_CAS, id_cas, CAS_V1, reste)
+        else:
+            base.supprimer(TYPE_CAS, id_cas)
+
+    retirees = conservees = 0
+    for id_video, document in documents_video:
+        trouvees = document.get("requetes_trouvees") or []
+        if not any(cle_phrase(r) == cle for r in trouvees):
+            continue
+        restantes = [r for r in trouvees if cle_phrase(r) != cle]
+        if restantes:
+            base.ecrire(TYPE_VIDEO, id_video, VIDEO_V1, {**document, "requetes_trouvees": restantes})
+            conservees += 1
+        else:
+            base.supprimer(TYPE_VIDEO, id_video)
+            retirees += 1
+    return RecitSupprime(phrase, retirees, conservees, enregistre_le)

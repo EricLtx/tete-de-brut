@@ -140,6 +140,24 @@ def purger(type: str, a_garder: set[str], *, chemin: str | Path | None = None) -
     return len(inutiles)
 
 
+def supprimer(type: str, identifiant: str, *, chemin: str | Path | None = None) -> bool:
+    """Supprime le document (type, identifiant) ; rend vrai s'il existait."""
+    with _transaction(chemin) as connexion:
+        curseur = connexion.execute(
+            "DELETE FROM documents WHERE type = ? AND identifiant = ?", (type, identifiant)
+        )
+    return curseur.rowcount > 0
+
+
+def lister_avec_identifiants(type: str, *, chemin: str | Path | None = None) -> list[tuple[str, Any]]:
+    """Rend les documents d'un type avec leur identifiant, du plus ancien au plus récent."""
+    with _transaction(chemin) as connexion:
+        lignes = connexion.execute(
+            "SELECT identifiant, json FROM documents WHERE type = ? ORDER BY cree_le, identifiant", (type,)
+        ).fetchall()
+    return [(ligne["identifiant"], json.loads(ligne["json"])) for ligne in lignes]
+
+
 def lister(type: str, *, chemin: str | Path | None = None) -> list[Any]:
     """Rend les documents d'un type, du plus ancien au plus récent."""
     with _transaction(chemin) as connexion:
