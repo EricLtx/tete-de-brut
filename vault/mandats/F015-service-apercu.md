@@ -13,7 +13,7 @@ cree: 2026-11-07
 lance_a: 2026-11-07T13:36Z
 rendu_a: 2026-11-07T13:44Z
 go_a:
-allers_retours: 0
+allers_retours: 1
 ---
 
 # F015 — S12, aperçu des vidéos
@@ -53,3 +53,4 @@ sha ; `git diff --stat origin/main...HEAD` ; run GitHub ; écarts ; adresses ré
 |---|---|---|
 | 2026-11-07 | orchestrateur (session service) | Lancé sur `feat/service-apercu` (worktree `.claude/worktrees/feat-service-apercu`), réalisateur sonnet / medium, en parallèle de F013 et F014 (aucun fichier commun). |
 | 2026-11-07 | réalisateur sonnet / medium | Rendu aa7f98a762721f52269577a76d1a65fc2115ef22 : `Apercu` facultatif sur `Video`, liste blanche amendée (`thumbnailMediaId` reste refusé), images clés depuis `frames[].url` en `https://` sans doublon, dix au plus ; contrats réexportés sans champ obligatoire ; exemples du kit et README § 7 ; run 42378207683 vert, 305 tests. Hors réserve déclaré : `app/cas.py` (exemption de `vignette` dans les champs refusés), `tests/test_regles_transverses.py` (listes de champs de tiers). Fait relevé par l'orchestrateur dans la spécification OpenAPI Oriane (dépôt privé) : `frames` est une liste d'objets `{id, position, timestampSeconds, url, …}` servie au niveau `full` seulement ; au niveau `default` de la démonstration, seule la vignette arrive. Doublage sonnet / high lancé. |
+| 2026-11-07 | relecteur sonnet / high | GO conditionnel sur aa7f98a (`vault/revues/F015-aa7f98a.md`) : 0 bloquant, 2 majeurs (le cas enregistré accepte une adresse arbitraire dans `apercu` : `vignette` exemptée par son nom, `images_cles` jamais contrôlées, `Apercu` n'impose pas `https://` ; `app/cas.py` et `tests/test_regles_transverses.py` hors réserve, déclarés), 4 mineurs (dédoublonnage non testé, fixture sans sous-champs des frames, README § 7 dit « absent » pour `null`, test « frames sans vignette » manquant). Au niveau `default`, `images_cles` restera vide sur un résultat réel : seule la vignette arrive. Décision de l'orchestrateur : correctif sur la même branche, relecture du diff. |
