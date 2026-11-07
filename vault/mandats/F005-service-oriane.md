@@ -13,7 +13,7 @@ cree: 2026-11-07
 lance_a: 2026-11-07T10:52Z
 rendu_a: 2026-11-07T11:07Z
 go_a:
-allers_retours: 1
+allers_retours: 2
 ---
 
 # F005 — S03, adaptateur Oriane
@@ -68,3 +68,5 @@ sha ; `git diff --stat feat/service-contrats...HEAD` ; run GitHub et nombre de t
 |---|---|---|
 | 2026-11-07 | réalisateur sonnet / medium | Rendu 120183f : `app/oriane.py`, `app/liste_blanche.py`, `app/routes/videos.py`, `app/config.py`, `.env.example`, `tests/test_oriane.py`, `conftest.py` (+923), run 42366568938 vert, 152 tests, test `reel` sauté. Écarts : `tests/test_contrats.py` hors réserve (`ROUTES_IMPLEMENTEES`, commit séparé) ; 501 encore documenté sur la route ; pas de gestionnaire d'enveloppe pour `OrianeInjoignable`, `CreditsEpuises`, `RequeteInvalide` (`erreurs.py` hors réserve → S04) ; `rechercher` asynchrone, rend `ResultatRecherche` (videos, total, ecartees, code, credits_estimes, requete, incomplete) et écrit les vidéos en base ; mode `direct` seulement si config en direct et vidéo écrite en direct. Hypothèse déclarée : `operator: and` racine avec `transcript` et `onScreenText`. |
 | 2026-11-07 | orchestrateur | Hypothèse levée par appel réel (limit=1, « retraites ») : `and` racine = intersection (28), `or` racine casse plateforme et date (28 M), forme correcte = racine `and` + sous-requête `or` de deux requêtes nommées `dit` (transcript) et `ecrit` (onScreenText) → 142 (union), `matchedQueries` donne l'origine. Correctif demandé au réalisateur (forme du corps, test de forme, test `reel` lancé une fois avec la clé du poste) ; doublage après le correctif. |
+| 2026-11-07 | réalisateur sonnet / medium | Correctif 4bc3f14 : racine `and` + sous-requête `dit_ou_ecrit` (`or`) à deux enfants `dit`/`ecrit`, tests de forme, journal `dits`/`ecrits`, run 42366899362 vert, 153 tests. Test `reel` exécuté une fois avec la clé du poste : code 206, total 7, 0 écartée, 900 ms. Point ouvert : `requetes_trouvees` porte les noms de requêtes, pas les phrases. |
+| 2026-11-07 | orchestrateur | Second correctif demandé avant doublage : enfants nommés `dit:<phrase>` et `ecrit:<phrase>`, `requetes_trouvees` = phrases reconnues dans `matchedQueries` (jamais les noms techniques), pour que le regroupement de S05 fonctionne. |
