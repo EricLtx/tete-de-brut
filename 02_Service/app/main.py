@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import __version__, base
+from app import __version__, base, cas
 from app.config import Configuration
 from app.erreurs import installer_gestionnaires
 from app.modeles import API_V1
@@ -36,6 +36,11 @@ def creer_application(config: Configuration | None = None) -> FastAPI:
     async def cycle_de_vie(application: FastAPI) -> AsyncIterator[None]:
         base.configurer(config.chemin_base)
         base.initialiser()
+        if config.mode == "enregistre":
+            try:
+                cas.charger(config, avec_videos=True)
+            except cas.CasInvalide as exc:
+                journal.warning("cas enregistré non chargé : %s", exc.raison)
         if not config.cle_demo:
             avertissement = "CLE_DEMO vide : le service est ouvert, toute écriture sous /v1 est acceptée"
             journal.warning(avertissement)
@@ -64,7 +69,19 @@ def creer_application(config: Configuration | None = None) -> FastAPI:
     @app.get("/sante", include_in_schema=False)
     async def sante() -> dict[str, str | None]:
         """Sonde de vie, hors contrat versionné."""
-        return {"etat": "ok", "version": __version__, "mode": config.mode, "enregistre_le": None}
+        courant = app.state.config
+        rejoue = None
+        if courant.mode == "enregistre":
+            try:
+                rejoue = cas.lire_cas(courant)
+            except cas.CasInvalide:
+                pass
+        return {
+            "etat": "ok",
+            "version": __version__,
+            "mode": courant.mode,
+            "enregistre_le": rejoue.enregistre_le.isoformat() if rejoue else None,
+        }
 
     app.include_router(routeur_v1)
     return app

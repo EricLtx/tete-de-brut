@@ -7,6 +7,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as ErreurHttp
 
+from app.oriane import CreditsEpuises, OrianeInjoignable, RequeteInvalide
+
 CODES_PAR_STATUT = {
     404: ("introuvable", "Ressource introuvable."),
     405: ("methode_non_permise", "Méthode non permise sur cette route."),
@@ -54,6 +56,18 @@ async def _gerer_http(request: Request, exc: ErreurHttp) -> JSONResponse:
     return reponse_erreur(code, detail, exc.status_code, mode_courant(request))
 
 
+async def _gerer_oriane_injoignable(request: Request, exc: OrianeInjoignable) -> JSONResponse:
+    return reponse_erreur("oriane_injoignable", exc.raison, 503, mode_courant(request))
+
+
+async def _gerer_credits_epuises(request: Request, exc: CreditsEpuises) -> JSONResponse:
+    return reponse_erreur("credits_epuises", exc.raison, 503, mode_courant(request))
+
+
+async def _gerer_requete_invalide(request: Request, exc: RequeteInvalide) -> JSONResponse:
+    return reponse_erreur("validation", exc.raison, 422, mode_courant(request))
+
+
 async def _gerer_inattendue(request: Request, exc: Exception) -> JSONResponse:
     return reponse_erreur("erreur_interne", "Erreur interne du service.", 500, mode_courant(request))
 
@@ -63,4 +77,7 @@ def installer_gestionnaires(app: FastAPI) -> None:
     app.add_exception_handler(ErreurApi, _gerer_erreur_api)
     app.add_exception_handler(RequestValidationError, _gerer_validation)
     app.add_exception_handler(ErreurHttp, _gerer_http)
+    app.add_exception_handler(OrianeInjoignable, _gerer_oriane_injoignable)
+    app.add_exception_handler(CreditsEpuises, _gerer_credits_epuises)
+    app.add_exception_handler(RequeteInvalide, _gerer_requete_invalide)
     app.add_exception_handler(Exception, _gerer_inattendue)

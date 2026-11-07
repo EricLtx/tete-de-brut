@@ -370,7 +370,7 @@
             "type": "string"
           },
           "erreur": {
-            "description": "Code `snake_case` : validation (422), introuvable (404), cle_demo_invalide (401), decision_manquante, version_non_tranchee, constat_manquant (409), non_implemente (501).",
+            "description": "Code `snake_case` : validation (422), introuvable (404), cle_demo_invalide (401), decision_manquante, version_non_tranchee, constat_manquant (409), non_implemente (501), oriane_injoignable, credits_epuises (503).",
             "title": "Erreur",
             "type": "string"
           },
@@ -2010,6 +2010,16 @@
             },
             "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
           },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
           "501": {
             "content": {
               "application/json": {
@@ -2019,6 +2029,16 @@
               }
             },
             "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "oriane_injoignable ou credits_epuises : Oriane n'a pas répondu utilement ou n'a plus de crédits (le service bascule seul en mode enregistré après deux pannes de suite ou un 402)."
           }
         },
         "summary": "Actualiser le radar par une requête Oriane en direct",

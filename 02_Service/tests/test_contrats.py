@@ -392,7 +392,7 @@ def test_routes_toutes_sous_v1_sauf_sante(client):
 
 
 # Routes remplies par un mandat : elles quittent la liste des 501 et ont leurs propres tests
-# (S03 : vidéos ; S05 : radar et récits ; S07 : comparaisons ; S08 : fiches).
+# (S03 : vidéos ; S05 : radar et récits ; S07 : comparaisons ; S08 : fiches ; S04 : état, journal).
 ROUTES_IMPLEMENTEES = {
     ("GET", "/v1/videos/v1"),
     ("GET", "/v1/radar"),
@@ -404,6 +404,9 @@ ROUTES_IMPLEMENTEES = {
     ("PATCH", "/v1/fiches/f1"),
     ("POST", "/v1/fiches/f1/decision"),
     ("GET", "/v1/fiches/f1/export"),
+    ("GET", "/v1/etat"),  # S04
+    ("GET", "/v1/journal"),
+    ("POST", "/v1/radar/actualiser"),
 }
 
 
