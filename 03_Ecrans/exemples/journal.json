@@ -1,0 +1,50 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "entrees": [
+    {
+      "id": 2,
+      "heure": "2026-11-07T07:55:00Z",
+      "route": "oriane.recherche",
+      "cible": "POST /rest/contents/search?offset=0&limit=100&projection=default",
+      "filtres": {
+        "phrases": [
+          "places de crèche en 2027",
+          "cantine à un euro pour tous les élèves"
+        ],
+        "dans": "parole ou texte à l'écran",
+        "fenetre": {
+          "debut": "2026-10-31T00:00:00+00:00",
+          "fin": "2026-11-07T00:00:00+00:00"
+        },
+        "note": "valeurs d'essai fictives ; le vrai journal montre la requête telle qu'envoyée à Oriane"
+      },
+      "projection": "default",
+      "resultats": {
+        "retournes": 2,
+        "ecartes": 0,
+        "total_annonce": 2,
+        "dits": 2,
+        "ecrits": 2,
+        "sans_origine": 0
+      },
+      "credits_estimes": 15.0,
+      "duree_ms": 1840.5,
+      "code": 206,
+      "mode": "direct"
+    },
+    {
+      "id": 1,
+      "heure": "2026-11-07T07:50:00Z",
+      "route": "demarrage",
+      "cible": "service démarré, contrat api.v1",
+      "filtres": null,
+      "projection": null,
+      "resultats": null,
+      "credits_estimes": null,
+      "duree_ms": null,
+      "code": null,
+      "mode": "enregistre"
+    }
+  ]
+}

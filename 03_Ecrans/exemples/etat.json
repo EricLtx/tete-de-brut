@@ -1,0 +1,9 @@
+{
+  "mode": "enregistre",
+  "raison": "MODE_DONNEES=enregistre : le service rejoue le cas enregistré",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "credits_du_jour": 15,
+  "plafond_credits_jour": 600,
+  "version": "0.1.0",
+  "contrat": "api.v1"
+}

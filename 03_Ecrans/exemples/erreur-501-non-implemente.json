@@ -1,0 +1,5 @@
+{
+  "erreur": "non_implemente",
+  "detail": "La route GET /v1/radar est prévue au contrat api.v1, pas encore implémentée.",
+  "mode": "enregistre"
+}

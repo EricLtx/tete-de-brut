@@ -1,0 +1,208 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "identifiant": "fic-f08a377337d2",
+  "comparaison": "cmp-f08a377337d2",
+  "requete": "places de crèche en 2027",
+  "versions": [
+    {
+      "video": "vid-fictive-0001",
+      "lien": "https://www.tiktok.com/@compte_fictif_ville/video/7000000000000000101",
+      "compte": "compte_fictif_ville",
+      "date": "2026-11-04T08:00:00Z",
+      "vues_selon_oriane": 4200,
+      "etat": "a_trancher",
+      "note": ""
+    },
+    {
+      "video": "vid-fictive-0002",
+      "lien": "https://www.instagram.com/reel/CFICTIFREPRISE02/",
+      "compte": "compte_fictif_reprise",
+      "date": "2026-11-06T18:00:00Z",
+      "vues_selon_oriane": 38000,
+      "etat": "a_trancher",
+      "note": ""
+    }
+  ],
+  "indices_de_transformation": [
+    {
+      "type": "libelle",
+      "texte": "Parole, selon Oriane : mots de la source remplacés dans la reprise, à partir du mot 4 de la source ; dans la source :"
+    },
+    {
+      "type": "citation",
+      "texte": "trois"
+    },
+    {
+      "type": "libelle",
+      "texte": "dans la reprise :"
+    },
+    {
+      "type": "citation",
+      "texte": "cinq"
+    },
+    {
+      "type": "libelle",
+      "texte": "Parole, selon Oriane : mots de la source absents de la reprise, à partir du mot 11 de la source."
+    },
+    {
+      "type": "citation",
+      "texte": "si le budget annexe est voté en décembre"
+    },
+    {
+      "type": "libelle",
+      "texte": "Légende, selon Oriane : mots de la source remplacés dans la reprise, à partir du mot 9 de la source ; dans la source :"
+    },
+    {
+      "type": "citation",
+      "texte": "300"
+    },
+    {
+      "type": "libelle",
+      "texte": "dans la reprise :"
+    },
+    {
+      "type": "citation",
+      "texte": "500"
+    },
+    {
+      "type": "libelle",
+      "texte": "Légende, selon Oriane : mots de la source absents de la reprise, à partir du mot 11 de la source."
+    },
+    {
+      "type": "citation",
+      "texte": "si le budget annexe est voté"
+    },
+    {
+      "type": "libelle",
+      "texte": "Texte à l'écran, selon Oriane : mots de la source remplacés dans la reprise, à partir du mot 1 de la source ; dans la source :"
+    },
+    {
+      "type": "citation",
+      "texte": "300"
+    },
+    {
+      "type": "libelle",
+      "texte": "dans la reprise :"
+    },
+    {
+      "type": "citation",
+      "texte": "500"
+    },
+    {
+      "type": "libelle",
+      "texte": "Texte à l'écran, selon Oriane : mots de la source absents de la reprise, à partir du mot 7 de la source."
+    },
+    {
+      "type": "citation",
+      "texte": "si le budget est voté"
+    }
+  ],
+  "plus_ancienne_version": {
+    "video": "vid-fictive-0001",
+    "publie_le": "2026-11-04T08:00:00Z",
+    "libelle": "plus ancienne version retrouvée dans les sources consultées"
+  },
+  "non_cherche": [
+    {
+      "type": "libelle",
+      "texte": "Autres plateformes que Instagram, TikTok et YouTube."
+    },
+    {
+      "type": "libelle",
+      "texte": "Vidéos supprimées avant la recherche."
+    },
+    {
+      "type": "libelle",
+      "texte": "Comptes privés."
+    },
+    {
+      "type": "libelle",
+      "texte": "Vidéos publiées hors de la fenêtre de la requête."
+    },
+    {
+      "type": "libelle",
+      "texte": "Résultats au-delà de ceux consultés."
+    }
+  ],
+  "limites": [
+    {
+      "type": "libelle",
+      "texte": "transcriptions lues chez Oriane, non refaites sur la vidéo"
+    },
+    {
+      "type": "libelle",
+      "texte": "Vues et interactions selon Oriane, non recomptées."
+    },
+    {
+      "type": "libelle",
+      "texte": "Heure du passage dans la vidéo non fournie au niveau default."
+    },
+    {
+      "type": "libelle",
+      "texte": "Comparaison limitée aux deux versions choisies ; d'autres versions peuvent exister."
+    },
+    {
+      "type": "libelle",
+      "texte": "L'écart décrit ce qui diffère, il ne dit pas pourquoi."
+    }
+  ],
+  "resume": {
+    "segments": [
+      {
+        "type": "libelle",
+        "texte": "Deux versions comparées au mot (normalisation mots.v1), d'après les transcriptions, légendes et textes à l'écran lus chez Oriane."
+      },
+      {
+        "type": "libelle",
+        "texte": "Parole, selon Oriane : mots retirés : 8 ; ajoutés : 0 ; remplacés : 1."
+      },
+      {
+        "type": "libelle",
+        "texte": "Parole, écart rencontré d'abord :"
+      },
+      {
+        "type": "citation",
+        "texte": "trois"
+      },
+      {
+        "type": "libelle",
+        "texte": "Légende, selon Oriane : mots retirés : 6 ; ajoutés : 0 ; remplacés : 1."
+      },
+      {
+        "type": "libelle",
+        "texte": "Légende, écart rencontré d'abord :"
+      },
+      {
+        "type": "citation",
+        "texte": "300"
+      },
+      {
+        "type": "libelle",
+        "texte": "Texte à l'écran, selon Oriane : mots retirés : 5 ; ajoutés : 0 ; remplacés : 1."
+      },
+      {
+        "type": "libelle",
+        "texte": "Texte à l'écran, écart rencontré d'abord :"
+      },
+      {
+        "type": "citation",
+        "texte": "300"
+      },
+      {
+        "type": "libelle",
+        "texte": "Le constat et la décision reviennent au journaliste."
+      }
+    ],
+    "methode": "gabarit v1"
+  },
+  "constat": "",
+  "decision": null,
+  "journal": [
+    {
+      "heure": "2026-11-07T08:10:00Z",
+      "geste": "creation",
+      "detail": "depuis la comparaison cmp-f08a377337d2"
+    }
+  ]
+}

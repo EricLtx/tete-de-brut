@@ -1,0 +1,106 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "identifiant": "cmp-f08a377337d2",
+  "video_source": "vid-fictive-0001",
+  "video_reprise": "vid-fictive-0002",
+  "operations": [
+    {
+      "type": "remplace",
+      "position_source": 3,
+      "position_reprise": 3,
+      "mots_source": [
+        "trois"
+      ],
+      "mots_reprise": [
+        "cinq"
+      ]
+    },
+    {
+      "type": "retire",
+      "position_source": 10,
+      "position_reprise": 10,
+      "mots_source": [
+        "si",
+        "le",
+        "budget",
+        "annexe",
+        "est",
+        "voté",
+        "en",
+        "décembre"
+      ],
+      "mots_reprise": []
+    }
+  ],
+  "ecart_legende": [
+    {
+      "type": "remplace",
+      "position_source": 8,
+      "position_reprise": 8,
+      "mots_source": [
+        "300"
+      ],
+      "mots_reprise": [
+        "500"
+      ]
+    },
+    {
+      "type": "retire",
+      "position_source": 10,
+      "position_reprise": 10,
+      "mots_source": [
+        "si",
+        "le",
+        "budget",
+        "annexe",
+        "est",
+        "voté"
+      ],
+      "mots_reprise": []
+    }
+  ],
+  "ecart_texte_ecran": [
+    {
+      "type": "remplace",
+      "position_source": 0,
+      "position_reprise": 0,
+      "mots_source": [
+        "300"
+      ],
+      "mots_reprise": [
+        "500"
+      ]
+    },
+    {
+      "type": "retire",
+      "position_source": 6,
+      "position_reprise": 6,
+      "mots_source": [
+        "si",
+        "le",
+        "budget",
+        "est",
+        "voté"
+      ],
+      "mots_reprise": []
+    }
+  ],
+  "normalisation": "mots.v1",
+  "transcriptions": {
+    "source": {
+      "source": "Oriane",
+      "niveau": "default",
+      "lue_le": "2026-11-07T07:55:00Z"
+    },
+    "reprise": {
+      "source": "Oriane",
+      "niveau": "default",
+      "lue_le": "2026-11-07T07:55:00Z"
+    }
+  },
+  "heure_dans_la_video": {
+    "secondes": null,
+    "libelle": "non fournie au niveau default"
+  }
+}
