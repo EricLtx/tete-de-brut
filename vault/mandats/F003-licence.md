@@ -1,7 +1,7 @@
 ---
 mandat: F003
 titre: Licence commerciale « Tête de Brut. » (co-auteurs) et LICENSE en documentation seule
-statut: realise
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: hors fiche (décision du propriétaire du 07/11/2026)
 branche: chore/licence
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T10:00Z
 rendu_a: 2026-11-07T10:03Z
-go_a:
+go_a: 2026-11-07T10:20Z
 allers_retours: 0
 ---
 

@@ -391,12 +391,18 @@ def test_routes_toutes_sous_v1_sauf_sante(client):
     assert "/sante" not in client.app.openapi()["paths"]
 
 
-# Routes remplies par un mandat : elles ne répondent plus 501 (S05 : radar et récits).
-ROUTES_IMPLEMENTEES = {("GET", "/v1/radar"), ("GET", "/v1/recits/r1")}
+# Routes remplies par un mandat : elles quittent la liste des 501 (S05 : radar et récits ; S07 : comparaisons).
+ROUTES_IMPLEMENTEES = {
+    ("GET", "/v1/radar"),
+    ("GET", "/v1/recits/r1"),
+    ("POST", "/v1/comparaisons"),
+    ("GET", "/v1/comparaisons/c1"),
+}
 
 
 @pytest.mark.parametrize(
-    ("methode", "chemin", "corps"), [r for r in ROUTES_API_V1 if r[:2] not in ROUTES_IMPLEMENTEES]
+    ("methode", "chemin", "corps"),
+    [r for r in ROUTES_API_V1 if (r[0], r[1]) not in ROUTES_IMPLEMENTEES],
 )
 def test_route_repond_501_dans_l_enveloppe(client, methode, chemin, corps):
     reponse = client.request(methode, chemin, json=corps)

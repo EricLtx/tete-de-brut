@@ -2,7 +2,7 @@
   "projet": "tete-de-brut",
   "canonVersion": "1.0.3",
   "brancheProtegee": "main",
-  "docsSeulement": ["01_Docs/", "vault/", ".claude/", "!.claude/skills/", "!.claude/*.json", "CLAUDE.md", "README.md"],
+  "docsSeulement": ["01_Docs/", "vault/", ".claude/", "!.claude/skills/", "!.claude/*.json", "CLAUDE.md", "README.md", "LICENSE"],
   "tailleMaxMo": 5,
   "interdits": [".env", ".env.*", "!.env*.example", "*.pem", "*service-account*.json", "*.csv", "*.key", "*.sqlite", "*.sqlite3", "*.db", "02_Service/cas/*.json"],
   "typesCommit": ["feat", "fix", "docs", "test", "pipeline", "chore", "refactor"],
