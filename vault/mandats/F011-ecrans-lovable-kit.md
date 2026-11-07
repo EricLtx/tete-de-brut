@@ -1,7 +1,7 @@
 ---
 mandat: F011
 titre: S11 — Kit des trois écrans Lovable : brief écran par écran sur le contrat api.v1, instructions de projet, exemples de réponses validés, prompts de construction
-statut: realise
+statut: go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S11
 branche: feat/ecrans-lovable-kit (part de main à 2269c83)
@@ -12,7 +12,7 @@ relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T11:36Z
 rendu_a: 2026-11-07T12:00Z
-go_a:
+go_a: 2026-11-07T12:25Z
 allers_retours: 0
 ---
 
