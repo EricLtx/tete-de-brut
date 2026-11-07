@@ -102,8 +102,16 @@
           "description": "Pour un lien : identifiant de la vidéo sur sa plateforme.",
           "title": "Identifiant Plateforme"
         },
+        "noyaux": {
+          "description": "Parmi `phrases`, les noyaux cherchés comme mots, dans n'importe quel ordre et mots partiels compris ; les autres sont des phrases exactes.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Noyaux",
+          "type": "array"
+        },
         "phrases": {
-          "description": "Phrases exactes cherchées (de une à trois pour le type `phrase`).",
+          "description": "Toutes les variantes cherchées, noyaux de mots puis phrases exactes (de une à huit pour le type `phrase`) : « Ta question devient N filtres » compte ces entrées.",
           "items": {
             "type": "string"
           },

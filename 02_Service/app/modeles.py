@@ -204,8 +204,26 @@ class PlusAncienneVersion(Modele):
     )
 
 
+class SousRecherche(Modele):
+    """Une variante d'une recherche et le nombre de vidéos du récit qu'elle a trouvées (F020)."""
+
+    libelle: TexteNonVide = Field(description="La variante : un noyau de mots ou une phrase exacte.")
+    # Pas de clé `mode` : la règle transverse « mode partout » réserve ce nom au mode direct ou enregistré.
+    type: Literal["mots", "exacte"] = Field(
+        description=(
+            "`mots` : tous les mots du noyau, dans n'importe quel ordre ; `exacte` : la phrase telle quelle."
+        )
+    )
+    videos: Compte = Field(
+        description=(
+            "Vidéos du récit dont les requêtes trouvées contiennent ce libellé ; une vidéo trouvée par deux "
+            "variantes compte dans chacune, et une fois dans le total du récit."
+        )
+    )
+
+
 class Recit(Reponse):
-    """Récit `recit.v1` : une phrase surveillée, ses vidéos, ses mesures et ce qui n'a pas été cherché."""
+    """Récit `recit.v1` : une phrase surveillée ou une recherche, ses vidéos, ses mesures, son non-cherché."""
 
     identifiant: TexteNonVide
     phrase_surveillee: TexteNonVide = Field(description="Citation exacte, jamais filtrée.")
@@ -215,6 +233,21 @@ class Recit(Reponse):
     plus_ancienne_version: PlusAncienneVersion | None = None
     non_cherche: list[Segment] = Field(default_factory=list)
     calcule_le: datetime
+    variantes: list[str] | None = Field(
+        default=None,
+        description=(
+            "Pour un récit né d'une recherche : toutes les variantes cherchées (noyaux de mots puis "
+            "phrases exactes) ; ses vidéos sont celles qu'une variante au moins a trouvées, comptées une "
+            "fois. Absent pour la phrase d'un cas enregistré."
+        ),
+    )
+    sous_recherches: list[SousRecherche] | None = Field(
+        default=None,
+        description=(
+            "Les variantes dans l'ordre (noyaux en `mots`, phrases en `exacte`), chacune avec son nombre de "
+            "vidéos ; le total du récit (`videos`) est l'union, sans doublon. Absent comme `variantes`."
+        ),
+    )
 
 
 class SuppressionRecit(Reponse):
@@ -496,7 +529,18 @@ class FiltresRecherche(Modele):
     """Filtres tels qu'ils seront envoyés à Oriane : ce que l'écran affiche est ce qui part."""
 
     phrases: list[str] = Field(
-        default_factory=list, description="Phrases exactes cherchées (de une à trois pour le type `phrase`)."
+        default_factory=list,
+        description=(
+            "Toutes les variantes cherchées, noyaux de mots puis phrases exactes (de une à huit pour le "
+            "type `phrase`) : « Ta question devient N filtres » compte ces entrées."
+        ),
+    )
+    noyaux: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Parmi `phrases`, les noyaux cherchés comme mots, dans n'importe quel ordre et mots partiels "
+            "compris ; les autres sont des phrases exactes."
+        ),
     )
     dans: str | None = Field(
         default=None,

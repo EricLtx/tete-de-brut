@@ -25,6 +25,7 @@ from app.libelles import contient_libelle_refuse
 from app.liste_blanche import CHAMPS_REFUSES
 from app.main import creer_application
 from app.modeles import Fenetre, Recherche, ResultatRecherche
+from app.mots import normaliser
 from app.oriane import construire_corps, rechercher
 from app.recherche import DETAIL_NOM_SEUL, MESSAGE_HORS_CAS, preparer
 from tests.conftest import CAS_ENREGISTRE_LE, CAS_PHRASE, construire_config
@@ -109,8 +110,8 @@ def _appels_oriane(client: TestClient) -> list[dict[str, Any]]:
     [
         # 1. la question du mandat : guillemets, « depuis hier », exclusion des partis
         (QUESTION_DU_MANDAT, "places de crèche en 2027", "2026-11-06", [], COMPTES_PARTIS),
-        # 2. sans guillemets, sans consigne : la question est la phrase, fenêtre de 30 jours par défaut
-        ("places de crèche en 2027", "places de crèche en 2027", "2026-10-08", [], []),
+        # 2. sans guillemets, sans consigne : un noyau de mots pleins, fenêtre de 30 jours par défaut
+        ("places de crèche en 2027", "places crèche 2027", "2026-10-08", [], []),
         # 3. amorce, « depuis N jours », deux plateformes
         (
             "Que dit-on sur dix mille postes depuis 3 jours sur tiktok et instagram ?",
@@ -123,7 +124,7 @@ def _appels_oriane(client: TestClient) -> list[dict[str, Any]]:
         ('"dix mille postes" 48 h sur youtube', "dix mille postes", "2026-11-05", ["youtube"], []),
         # 5. « 24 h » et « 7 jours » en toutes lettres
         ("« la réforme passe » dans les dernières 24 heures", "la réforme passe", "2026-11-06", [], []),
-        ("la réforme passe sur les 7 derniers jours", "la réforme passe", "2026-10-31", [], []),
+        ("la réforme passe sur les 7 derniers jours", "réforme passe", "2026-10-31", [], []),
         # 6. un mot de la phrase qui ressemble à une consigne reste dans la phrase entre guillemets
         ("« 24 h chrono sur tiktok » depuis 2 jours", "24 h chrono sur tiktok", "2026-11-05", [], []),
     ],
@@ -139,7 +140,10 @@ def test_traduction_des_questions_types(
     recherche = preparer(question, config_traduction, maintenant=MAINTENANT)
     assert recherche.type == "phrase" and recherche.refus is None
     filtres = recherche.filtres
+    # Une phrase entre guillemets reste une phrase exacte ; une question libre devient un noyau de mots.
+    en_noyau = not any(guillemet in question for guillemet in '«"')
     assert filtres.phrases == [phrase]
+    assert filtres.noyaux == ([phrase] if en_noyau else [])
     assert filtres.dans == "parole ou texte à l'écran"
     assert filtres.fenetre is not None
     assert filtres.fenetre.debut.isoformat() == f"{debut}T00:00:00+00:00"
@@ -149,6 +153,7 @@ def test_traduction_des_questions_types(
     assert filtres.comptes == [] and filtres.identifiant_plateforme is None
     assert recherche.cout_estime.credits_estimes == 15
     assert f"« {phrase} »" in recherche.requete_en_clair
+    assert ("en tout ordre" in recherche.requete_en_clair) is en_noyau
     assert recherche.question == question
 
 
@@ -233,8 +238,28 @@ def test_liste_de_comptes_inutilisable_est_dite(tmp_path: Path, contenu: str | N
 
 def test_le_mot_sans_n_est_pas_une_exclusion(config_traduction: Configuration) -> None:
     recherche = preparer("régularisation des sans papiers", config_traduction, maintenant=MAINTENANT)
-    assert recherche.filtres.phrases == ["régularisation des sans papiers"]
+    assert recherche.filtres.phrases == ["régularisation sans papiers"]
     assert recherche.filtres.comptes_exclus == []
+
+
+@pytest.mark.parametrize(
+    ("phrase", "noyau"),
+    [
+        ("perdre du pouvoir d'achat", "perdre pouvoir achat"),
+        ("la réforme des retraites", "réforme retraites"),
+        ("le prix de l'essence en 2027 partout", "prix essence 2027"),
+        ("Donne moi les infos récentes sur la cantine", "cantine"),
+        ("Marie-Claire Dupont", "Marie-Claire Dupont"),
+        ("le de la", ""),
+    ],
+)
+def test_noyau_deterministe_mots_pleins_dans_l_ordre(phrase: str, noyau: str) -> None:
+    assert module_recherche.noyau_de(phrase) == noyau
+
+
+def test_question_libre_sans_mot_plein_reste_une_phrase_exacte(config_traduction: Configuration) -> None:
+    recherche = preparer("le de la", config_traduction, maintenant=MAINTENANT)
+    assert recherche.filtres.phrases == ["le de la"] and recherche.filtres.noyaux == []
 
 
 # --- RG-02 et autres refus ---------------------------------------------------------------------------
@@ -611,6 +636,51 @@ def test_corps_oriane_comptes_exclus_et_identifiants() -> None:
     assert "queries" not in sans_phrase and sans_phrase["operator"] == "and"
 
 
+def test_corps_oriane_noyaux_en_includes_fuzzy_et_phrases_en_includes_exactly() -> None:
+    corps = construire_corps(["fin du mois difficile"], noyaux=["pouvoir achat"])
+    assert corps["queries"] == [
+        {
+            "name": "dit_ou_ecrit",
+            "operator": "or",
+            "queries": [
+                {
+                    "name": "mots:pouvoir achat",
+                    "operator": "and",
+                    "filters": {
+                        "transcript": {"includesFuzzy": {"values": ["pouvoir achat"], "operator": "or"}}
+                    },
+                },
+                {
+                    "name": "mots:pouvoir achat",
+                    "operator": "and",
+                    "filters": {
+                        "onScreenText": {"includesFuzzy": {"values": ["pouvoir achat"], "operator": "or"}}
+                    },
+                },
+                {
+                    "name": "dit:fin du mois difficile",
+                    "operator": "and",
+                    "filters": {
+                        "transcript": {
+                            "includesExactly": {"values": ["fin du mois difficile"], "operator": "or"}
+                        }
+                    },
+                },
+                {
+                    "name": "ecrit:fin du mois difficile",
+                    "operator": "and",
+                    "filters": {
+                        "onScreenText": {
+                            "includesExactly": {"values": ["fin du mois difficile"], "operator": "or"}
+                        }
+                    },
+                },
+            ],
+        }
+    ]
+    assert construire_corps([], noyaux=["pouvoir achat"])["queries"][0]["queries"]  # un noyau suffit
+
+
 def test_corps_oriane_sans_phrase_ni_identifiant_reste_refuse() -> None:
     from app.oriane import RequeteInvalide
 
@@ -678,6 +748,7 @@ QUESTION_LIBRE = "Donne moi les informations récentes sur la réforme des retra
 PHRASE_A = "retraite à soixante-quatre ans"
 PHRASE_B = "la réforme des retraites"
 PHRASE_C = "âge légal de départ"
+NOYAU_A = "réforme retraites"
 ROUTE_REFORMULATION = "recherche.reformulation"
 
 
@@ -686,10 +757,14 @@ def _json_modele(
     jours: int | None = None,
     exclusions: list[str] | None = None,
     plateformes: list[str] | None = None,
+    noyaux: list[str] | None = None,
+    personne_seule: bool = False,
 ) -> str:
     return json.dumps(
         {
+            "noyaux": noyaux or [],
             "phrases": phrases,
+            "personne_seule": personne_seule,
             "jours": jours,
             "exclusions": exclusions or [],
             "plateformes": plateformes or [],
@@ -866,7 +941,7 @@ def test_toute_erreur_du_modele_ramene_a_la_traduction_deterministe(
     with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
         corps = _preparer(client, "places de crèche en 2027")
         assert corps["reformulation"] == "deterministe" and corps["refus"] is None
-        assert corps["filtres"]["phrases"] == ["places de crèche en 2027"]
+        assert corps["filtres"]["phrases"] == corps["filtres"]["noyaux"] == ["places crèche 2027"]
         assert not corps["requete_en_clair"].startswith("reformulée")
         (ligne,) = _lignes_reformulation(client)
         assert raison in ligne["cible"]
@@ -902,6 +977,7 @@ def test_aucun_appel_au_modele_sans_cle_ni_en_mode_deterministe_ni_pour_guilleme
         entre_guillemets = _preparer(client, f"Que dit-on de « {PHRASE_B} » depuis hier ?")
         assert entre_guillemets["reformulation"] == "deterministe"
         assert entre_guillemets["filtres"]["phrases"] == [PHRASE_B]  # jamais reformulée
+        assert entre_guillemets["filtres"]["noyaux"] == []  # une phrase entre guillemets n'est pas un noyau
         assert entre_guillemets["requete_en_clair"].startswith("phrase exacte")
         lien = _preparer(client, LIEN_TIKTOK)
         assert lien["type"] == "lien" and lien["reformulation"] is None
@@ -942,35 +1018,65 @@ def test_rg02_un_nom_seul_rendu_par_le_modele_est_refuse_sans_appel_oriane(
     assert oriane.requetes == []  # type: ignore[attr-defined]
 
 
-def test_les_phrases_du_modele_sont_nettoyees_et_limitees(
+def test_les_noyaux_et_phrases_du_modele_sont_nettoyes_et_limites(
     tmp_path: Path, transport_modele: Callable[..., httpx.MockTransport]
 ) -> None:
     transport_modele(
         _json_modele(
             [
-                f"« {PHRASE_B} »",  # guillemets retirés
-                PHRASE_B.upper(),  # doublon une fois normalisé
-                "retraites",  # un seul mot : trop court
+                "« fin du mois difficile »",  # guillemets retirés
+                "FIN DU MOIS DIFFICILE",  # doublon une fois normalisé
+                "retraites",  # un seul mot : trop court pour une phrase
                 "un deux trois quatre cinq six sept huit neuf dix onze",  # trop long
-                PHRASE_A + " ?",
-                PHRASE_C,
-                "quatrième phrase de trop",
-            ]
+                "tout augmente",
+                NOYAU_A,  # identique à un noyau : le noyau la couvre déjà
+                "prix du carburant",
+                "factures qui explosent",
+                "courses plus chères",
+                "sixième phrase de trop",
+            ],
+            noyaux=[
+                f"« {NOYAU_A} »",
+                NOYAU_A.upper(),  # doublon
+                "prix essence",
+                "un deux trois quatre cinq",  # cinq mots : trop long pour un noyau
+                "carburant",
+                "quatrième noyau de trop",
+            ],
         )
     )
     with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
-        corps = _preparer(client, QUESTION_LIBRE)
-    assert corps["filtres"]["phrases"] == [PHRASE_B, PHRASE_A, PHRASE_C]
+        filtres = _preparer(client, QUESTION_LIBRE)["filtres"]
+    assert filtres["noyaux"] == [NOYAU_A, "prix essence", "carburant"]
+    assert filtres["phrases"] == [
+        NOYAU_A,
+        "prix essence",
+        "carburant",
+        "fin du mois difficile",
+        "tout augmente",
+        "prix du carburant",
+        "factures qui explosent",
+    ]
 
 
-def test_une_reponse_sans_aucune_phrase_utilisable_ramene_au_deterministe(
+def test_une_reponse_sans_aucun_noyau_ni_phrase_utilisable_ramene_au_deterministe(
     tmp_path: Path, transport_modele: Callable[..., httpx.MockTransport]
 ) -> None:
     transport_modele(_json_modele([]))
     with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
         corps = _preparer(client, "places de crèche en 2027")
     assert corps["reformulation"] == "deterministe"
-    assert corps["filtres"]["phrases"] == ["places de crèche en 2027"]
+    assert corps["filtres"]["noyaux"] == ["places crèche 2027"]
+
+
+def test_une_reponse_a_l_ancien_format_sans_noyaux_reste_acceptee(
+    tmp_path: Path, transport_modele: Callable[..., httpx.MockTransport]
+) -> None:
+    transport_modele('{"phrases": ["la réforme des retraites"], "jours": null}')
+    with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        corps = _preparer(client, QUESTION_LIBRE)
+    assert corps["reformulation"] == "modele" and corps["filtres"]["noyaux"] == []
+    assert corps["filtres"]["phrases"] == [PHRASE_B]
 
 
 def test_la_reponse_en_cloture_de_code_est_acceptee(
@@ -981,22 +1087,22 @@ def test_la_reponse_en_cloture_de_code_est_acceptee(
         assert _preparer(client, QUESTION_LIBRE)["filtres"]["phrases"] == [PHRASE_B]
 
 
-def _reponse_a_trois_phrases(reponse_oriane: dict[str, Any]) -> dict[str, Any]:
-    """Première vidéo trouvée par A et B, seconde par B seulement ; C ne trouve rien."""
+def _reponse_couverture(reponse_oriane: dict[str, Any]) -> dict[str, Any]:
+    """Première vidéo trouvée par le noyau, A et B ; seconde par le noyau et B ; C ne trouve rien."""
     premiere, seconde = reponse_oriane["data"]["results"]
-    premiere["matchedQueries"] = [f"dit:{PHRASE_A}", f"dit:{PHRASE_B}", "dit_ou_ecrit"]
-    seconde["matchedQueries"] = [f"ecrit:{PHRASE_B}", "dit_ou_ecrit"]
+    premiere["matchedQueries"] = [f"mots:{NOYAU_A}", f"dit:{PHRASE_A}", f"dit:{PHRASE_B}", "dit_ou_ecrit"]
+    seconde["matchedQueries"] = [f"mots:{NOYAU_A}", f"ecrit:{PHRASE_B}", "dit_ou_ecrit"]
     return reponse_oriane
 
 
-def test_la_recherche_cherche_toutes_les_phrases_en_une_page(
+def test_la_recherche_cherche_noyaux_et_phrases_en_une_page_et_cree_un_seul_recit(
     tmp_path: Path,
     transport_modele: Callable[..., httpx.MockTransport],
     reponse_oriane_simulee: dict[str, Any],
     transport_oriane_simule: Callable[..., httpx.MockTransport],
 ) -> None:
-    modele = transport_modele(_json_modele([PHRASE_A, PHRASE_B, PHRASE_C]))
-    oriane = transport_oriane_simule(corps=_reponse_a_trois_phrases(reponse_oriane_simulee))
+    modele = transport_modele(_json_modele([PHRASE_B, PHRASE_A, PHRASE_C], noyaux=[NOYAU_A]))
+    oriane = transport_oriane_simule(corps=_reponse_couverture(reponse_oriane_simulee))
     with _service(tmp_path, direct=True, transport=oriane, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
         prepare = _preparer(client, QUESTION_LIBRE)
         reponse = _lancer(client, QUESTION_LIBRE)
@@ -1005,25 +1111,148 @@ def test_la_recherche_cherche_toutes_les_phrases_en_une_page(
         ResultatRecherche.model_validate(corps)
         # Les filtres affichés sont ceux qui partent, et le modèle n'a été appelé qu'une fois.
         assert corps["recherche"]["filtres"] == prepare["filtres"]
+        assert prepare["filtres"]["noyaux"] == [NOYAU_A]
+        assert prepare["filtres"]["phrases"] == [
+            NOYAU_A,
+            PHRASE_B,
+            PHRASE_A,
+            PHRASE_C,
+        ]  # toutes les variantes
         assert corps["recherche"]["reformulation"] == "modele"
         assert len(_appels_modele(modele)) == 1
         envoye = _corps_envoye(oriane)  # une seule requête, une page
         enfants = envoye["queries"][0]["queries"]
-        cherchees = {e["filters"][f]["includesExactly"]["values"][0] for e in enfants for f in e["filters"]}
-        assert cherchees == {PHRASE_A, PHRASE_B, PHRASE_C}
         assert len(envoye["queries"]) == 1 and envoye["queries"][0]["name"] == "dit_ou_ecrit"
-        # `recit` est celui qui a le plus de vidéos ; les trois récits sont au radar, même sans vidéo.
-        assert corps["recit"]["phrase_surveillee"] == PHRASE_B and len(corps["recit"]["videos"]) == 2
-        recits = {r["phrase_surveillee"]: r for r in client.get("/v1/radar").json()["recits"]}
-        assert set(recits) == {PHRASE_A, PHRASE_B, PHRASE_C}
-        assert [len(recits[p]["videos"]) for p in (PHRASE_A, PHRASE_B, PHRASE_C)] == [1, 2, 0]
-        assert recits[PHRASE_B]["requete_en_clair"].startswith("reformulée par un modèle de langue : ")
+        assert [e["name"] for e in enfants] == [
+            *[f"mots:{NOYAU_A}"] * 2,
+            *[f"{o}:{p}" for p in (PHRASE_B, PHRASE_A, PHRASE_C) for o in ("dit", "ecrit")],
+        ]
+        flous = [e for e in enfants if "includesFuzzy" in next(iter(e["filters"].values()))]
+        assert {next(iter(e["filters"])) for e in flous} == {"transcript", "onScreenText"}
+        assert all(
+            next(iter(e["filters"].values())) == {"includesFuzzy": {"values": [NOYAU_A], "operator": "or"}}
+            for e in flous
+        )
+        exactes = {
+            next(iter(e["filters"].values()))["includesExactly"]["values"][0]
+            for e in enfants
+            if e not in flous
+        }
+        assert exactes == {PHRASE_A, PHRASE_B, PHRASE_C}
+        # Un seul récit : celui de la recherche (pivot = premier noyau), union des vidéos sans doublon.
+        recit = corps["recit"]
+        assert recit["phrase_surveillee"] == NOYAU_A
+        assert recit["variantes"] == [NOYAU_A, PHRASE_B, PHRASE_A, PHRASE_C]
+        assert len(recit["videos"]) == 2 and len(set(recit["videos"])) == 2
+        assert [(s["libelle"], s["type"], s["videos"]) for s in recit["sous_recherches"]] == [
+            (NOYAU_A, "mots", 2),
+            (PHRASE_B, "exacte", 2),
+            (PHRASE_A, "exacte", 1),
+            (PHRASE_C, "exacte", 0),
+        ]
+        assert recit["requete_en_clair"].startswith(
+            f"reformulée par un modèle de langue : mots « {NOYAU_A} » en tout ordre ; phrases exactes "
+        )
+        assert f"« {PHRASE_B} », « {PHRASE_A} », « {PHRASE_C} »" in recit["requete_en_clair"]
+        radar = client.get("/v1/radar").json()["recits"]
+        assert [r["identifiant"] for r in radar] == [recit["identifiant"]]
+        # Chaque vidéo garde les variantes qui l'ont trouvée, y compris le noyau.
+        trouvees = {v: client.get(f"/v1/videos/{v}").json()["requetes_trouvees"] for v in recit["videos"]}
+        assert sorted((set(t) for t in trouvees.values()), key=len) == [
+            {NOYAU_A, PHRASE_B},
+            {NOYAU_A, PHRASE_A, PHRASE_B},
+        ]
         appels = _appels_oriane(client)
         assert len(appels) == 1 and appels[0]["credits_estimes"] == 15
         assert client.get("/v1/etat").json()["credits_du_jour"] == 15
         # Ni la clé du modèle ni celle d'Oriane dans les réponses ni dans le journal.
         for secret in (CLE_MODELE_TEST, CLE_ORIANE_TEST):
             assert secret not in json.dumps(client.get("/v1/journal").json()) + reponse.text
+
+
+def test_une_recherche_sans_resultat_laisse_un_recit_vide_au_radar(
+    tmp_path: Path,
+    transport_modele: Callable[..., httpx.MockTransport],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+) -> None:
+    transport_modele(_json_modele([PHRASE_B, PHRASE_A], noyaux=[NOYAU_A]))
+    vide = {"metadata": {"pagination": {"totalCount": 0}}, "data": {"results": []}}
+    oriane = transport_oriane_simule(corps=vide)
+    with _service(tmp_path, direct=True, transport=oriane, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        reponse = _lancer(client, QUESTION_LIBRE)
+        assert reponse.status_code == 201, reponse.text
+        recit = reponse.json()["recit"]
+        assert recit["videos"] == [] and recit["variantes"] == [NOYAU_A, PHRASE_B, PHRASE_A]
+        assert [r["identifiant"] for r in client.get("/v1/radar").json()["recits"]] == [recit["identifiant"]]
+
+
+def test_une_seconde_recherche_au_meme_pivot_garde_les_variantes_de_la_premiere(
+    tmp_path: Path,
+    transport_modele: Callable[..., httpx.MockTransport],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+) -> None:
+    transport_modele(_json_modele([PHRASE_B], noyaux=[NOYAU_A]))
+    vide = {"metadata": {"pagination": {"totalCount": 0}}, "data": {"results": []}}
+    with _service(
+        tmp_path,
+        direct=True,
+        transport=transport_oriane_simule(corps=vide),
+        MODELE_LANGUE_API_KEY=CLE_MODELE_TEST,
+    ) as client:
+        assert _lancer(client, QUESTION_LIBRE).status_code == 201
+        transport_modele(_json_modele([PHRASE_A], noyaux=[NOYAU_A]))
+        autre = _lancer(client, QUESTION_LIBRE + " en France")
+        assert autre.status_code == 201, autre.text
+        assert autre.json()["recit"]["variantes"] == [NOYAU_A, PHRASE_A, PHRASE_B]
+        assert len(client.get("/v1/radar").json()["recits"]) == 1
+
+
+def test_noyau_deterministe_envoye_en_includes_fuzzy_et_filtres_affiches_egaux_aux_filtres_envoyes(
+    direct: tuple[TestClient, httpx.MockTransport],
+) -> None:
+    client, transport = direct
+    question = "Que dit-on depuis hier sur la réforme des retraites sur tiktok ?"
+    prepare = _preparer(client, question)
+    assert prepare["reformulation"] == "deterministe"
+    assert prepare["filtres"]["phrases"] == prepare["filtres"]["noyaux"] == ["réforme retraites"]
+    assert "mots « réforme retraites » en tout ordre" in prepare["requete_en_clair"]
+    reponse = _lancer(client, question)
+    assert reponse.status_code == 201, reponse.text
+    assert reponse.json()["recherche"]["filtres"] == prepare["filtres"]
+    envoye = _corps_envoye(transport)
+    assert envoye["filters"]["platform"] == {"includes": ["tiktok"]}
+    (groupe,) = envoye["queries"]
+    assert [e["filters"] for e in groupe["queries"]] == [
+        {champ: {"includesFuzzy": {"values": ["réforme retraites"], "operator": "or"}}}
+        for champ in ("transcript", "onScreenText")
+    ]
+    assert reponse.json()["recit"]["phrase_surveillee"] == "réforme retraites"
+
+
+def test_personne_seule_est_refusee_sans_appel_a_oriane(
+    tmp_path: Path,
+    transport_modele: Callable[..., httpx.MockTransport],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+) -> None:
+    transport_modele(_json_modele([], noyaux=["glucksman"], personne_seule=True))
+    oriane = transport_oriane_simule()
+    with _service(tmp_path, direct=True, transport=oriane, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        prepare = _preparer(client, "glucksman")
+        assert prepare["refus"]["code"] == "nom_seul" and prepare["refus"]["detail"] == DETAIL_NOM_SEUL
+        assert prepare["cout_estime"]["credits_estimes"] == 0 and prepare["reformulation"] == "modele"
+        reponse = _lancer(client, "glucksman")
+        assert reponse.status_code == 422 and reponse.json()["detail"] == DETAIL_NOM_SEUL
+        assert client.get("/v1/radar").json()["recits"] == []
+    assert oriane.requetes == []  # type: ignore[attr-defined]
+
+
+def test_rg02_un_nom_seul_en_noyau_est_ecarte(
+    tmp_path: Path, transport_modele: Callable[..., httpx.MockTransport]
+) -> None:
+    transport_modele(_json_modele([PHRASE_B], noyaux=["Emmanuel Macron", NOYAU_A]))
+    with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        corps = _preparer(client, QUESTION_LIBRE)
+    assert corps["filtres"]["noyaux"] == [NOYAU_A] and corps["refus"] is None
 
 
 def test_en_mode_enregistre_la_recherche_reformulee_sert_le_recit_du_cas(
@@ -1039,6 +1268,26 @@ def test_en_mode_enregistre_la_recherche_reformulee_sert_le_recit_du_cas(
         corps = reponse.json()
         assert corps["mode"] == "enregistre" and corps["recit"]["phrase_surveillee"] == CAS_PHRASE
         assert corps["recherche"]["reformulation"] == "modele"
+
+
+def test_en_mode_enregistre_la_recherche_regroupe_les_variantes_du_cas_en_un_recit(
+    tmp_path: Path,
+    transport_modele: Callable[..., httpx.MockTransport],
+    cas_simule: Callable[..., Path],
+) -> None:
+    # Le cas porte deux phrases, trouvées par les deux mêmes vidéos : le récit rejoué les réunit, chaque
+    # vidéo une seule fois.
+    transport_modele(_json_modele([CAS_PHRASE, "autre phrase du cas", "phrase hors du cas"]))
+    with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        cas_simule(client.app.state.config, (CAS_PHRASE, "autre phrase du cas"))
+        reponse = _lancer(client, "Que dit-on des postes à créer ?")
+        assert reponse.status_code == 201, reponse.text
+        recit = reponse.json()["recit"]
+        assert recit["mode"] == "enregistre" and recit["phrase_surveillee"] == CAS_PHRASE
+        assert recit["variantes"] == [CAS_PHRASE, "autre phrase du cas"]
+        assert [(s["type"], s["videos"]) for s in recit["sous_recherches"]] == [("exacte", 2), ("exacte", 2)]
+        assert len(recit["videos"]) == 2 and len(set(recit["videos"])) == 2
+        ResultatRecherche.model_validate(reponse.json())
 
 
 # --- appels réels (sautés sans clés, exclus de la pipeline) ----------------------------------------------
@@ -1060,35 +1309,53 @@ def _service_reel(tmp_path: Path) -> TestClient:
     return TestClient(creer_application(Configuration.depuis_environnement(environnement)))
 
 
+QUESTION_REELLE = "perdre du pouvoir d'achat"
+
+
 @pytest.mark.reel
 @pytest.mark.skipif(_SANS_CLES_REELLES, reason="clés Oriane et modèle de langue absentes")
-def test_reel_la_question_libre_est_reformulee_puis_cherchee(
+def test_reel_la_question_libre_donne_un_seul_recit_couvrant(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(modele_langue, "transport_par_defaut", None)
     with _service_reel(tmp_path) as client:
-        prepare = _preparer(client, QUESTION_LIBRE)
+        prepare = _preparer(client, QUESTION_REELLE)
+        filtres = prepare["filtres"]
         print(  # noqa: T201 - compte rendu lisible avec `pytest -s`
-            f"REEL reformulation={prepare['reformulation']} phrases={prepare['filtres']['phrases']} "
-            f"fenetre={prepare['filtres']['fenetre']['debut'][:10]}.."
-            f"{prepare['filtres']['fenetre']['fin'][:10]} plateformes={prepare['filtres']['plateformes']}"
+            f"REEL reformulation={prepare['reformulation']} noyaux={filtres['noyaux']} "
+            f"phrases={[p for p in filtres['phrases'] if p not in filtres['noyaux']]} "
+            f"fenetre={filtres['fenetre']['debut'][:10]}..{filtres['fenetre']['fin'][:10]} "
+            f"plateformes={filtres['plateformes']}"
         )
         assert prepare["reformulation"] == "modele" and prepare["refus"] is None
-        assert prepare["requete_en_clair"].startswith("reformulée par un modèle de langue : ")
-        assert 1 <= len(prepare["filtres"]["phrases"]) <= 3
-        assert not any(module_recherche.est_nom_seul(p) for p in prepare["filtres"]["phrases"])
-        assert _jours_de(prepare["filtres"]["fenetre"]) == 30
-        reponse = _lancer(client, QUESTION_LIBRE)
+        assert prepare["requete_en_clair"].startswith("reformulée par un modèle de langue : mots « ")
+        assert filtres["noyaux"] and len(filtres["phrases"]) <= 8
+        assert not any(module_recherche.est_nom_seul(p) for p in filtres["phrases"])
+        assert _jours_de(filtres["fenetre"]) == 30
+        reponse = _lancer(client, QUESTION_REELLE)
         assert reponse.status_code == 201, reponse.text
         corps = reponse.json()
         ResultatRecherche.model_validate(corps)
-        assert corps["recherche"]["filtres"] == prepare["filtres"]
-        assert corps["recit"] is not None
-        radar = [(r["phrase_surveillee"], len(r["videos"])) for r in client.get("/v1/radar").json()["recits"]]
+        lances = corps["recherche"]["filtres"]  # la fin de la fenêtre suit l'horloge (une seconde d'écart)
+        assert {k: v for k, v in lances.items() if k != "fenetre"} == {
+            k: v for k, v in filtres.items() if k != "fenetre"
+        }
+        assert lances["fenetre"]["debut"] == filtres["fenetre"]["debut"]
+        recit = corps["recit"]
+        radar = client.get("/v1/radar").json()["recits"]
+        par_variante = {v: 0 for v in recit["variantes"]}
+        for identifiant in recit["videos"]:
+            trouvees = client.get(f"/v1/videos/{identifiant}").json()["requetes_trouvees"]
+            for variante in trouvees:
+                par_variante[variante] = par_variante.get(variante, 0) + 1
         print(  # noqa: T201
-            f"REEL recit={corps['recit']['phrase_surveillee']!r} videos={len(corps['recit']['videos'])} "
-            f"radar={radar}"
+            f"REEL recit={recit['phrase_surveillee']!r} videos={len(recit['videos'])} "
+            f"par_variante={par_variante} recits_au_radar={len(radar)}"
         )
+        assert [r["identifiant"] for r in radar] == [recit["identifiant"]]  # une recherche = un récit
+        mots = {m for m in normaliser(recit["phrase_surveillee"])}
+        assert {"pouvoir", "achat"} <= mots, recit["phrase_surveillee"]
+        assert len(recit["videos"]) >= 100
 
 
 @pytest.mark.reel

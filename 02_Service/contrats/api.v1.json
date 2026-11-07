@@ -733,8 +733,16 @@
             "description": "Pour un lien : identifiant de la vidéo sur sa plateforme.",
             "title": "Identifiant Plateforme"
           },
+          "noyaux": {
+            "description": "Parmi `phrases`, les noyaux cherchés comme mots, dans n'importe quel ordre et mots partiels compris ; les autres sont des phrases exactes.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Noyaux",
+            "type": "array"
+          },
           "phrases": {
-            "description": "Phrases exactes cherchées (de une à trois pour le type `phrase`).",
+            "description": "Toutes les variantes cherchées, noyaux de mots puis phrases exactes (de une à huit pour le type `phrase`) : « Ta question devient N filtres » compte ces entrées.",
             "items": {
               "type": "string"
             },
@@ -1185,7 +1193,7 @@
       },
       "Recit": {
         "additionalProperties": false,
-        "description": "Récit `recit.v1` : une phrase surveillée, ses vidéos, ses mesures et ce qui n'a pas été cherché.",
+        "description": "Récit `recit.v1` : une phrase surveillée ou une recherche, ses vidéos, ses mesures, son non-cherché.",
         "properties": {
           "calcule_le": {
             "format": "date-time",
@@ -1254,6 +1262,36 @@
             "minLength": 1,
             "title": "Requete En Clair",
             "type": "string"
+          },
+          "sous_recherches": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SousRecherche"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Les variantes dans l'ordre (noyaux en `mots`, phrases en `exacte`), chacune avec son nombre de vidéos ; le total du récit (`videos`) est l'union, sans doublon. Absent comme `variantes`.",
+            "title": "Sous Recherches"
+          },
+          "variantes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pour un récit né d'une recherche : toutes les variantes cherchées (noyaux de mots puis phrases exactes) ; ses vidéos sont celles qu'une variante au moins a trouvées, comptées une fois. Absent pour la phrase d'un cas enregistré.",
+            "title": "Variantes"
           },
           "videos": {
             "items": {
@@ -1404,6 +1442,40 @@
           "texte"
         ],
         "title": "Segment",
+        "type": "object"
+      },
+      "SousRecherche": {
+        "additionalProperties": false,
+        "description": "Une variante d'une recherche et le nombre de vidéos du récit qu'elle a trouvées (F020).",
+        "properties": {
+          "libelle": {
+            "description": "La variante : un noyau de mots ou une phrase exacte.",
+            "minLength": 1,
+            "title": "Libelle",
+            "type": "string"
+          },
+          "type": {
+            "description": "`mots` : tous les mots du noyau, dans n'importe quel ordre ; `exacte` : la phrase telle quelle.",
+            "enum": [
+              "mots",
+              "exacte"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "videos": {
+            "description": "Vidéos du récit dont les requêtes trouvées contiennent ce libellé ; une vidéo trouvée par deux variantes compte dans chacune, et une fois dans le total du récit.",
+            "minimum": 0.0,
+            "title": "Videos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "libelle",
+          "type",
+          "videos"
+        ],
+        "title": "SousRecherche",
         "type": "object"
       },
       "SuppressionRecit": {

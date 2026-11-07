@@ -92,7 +92,9 @@
           "texte": "résultats au-delà des résultats consultés"
         }
       ],
-      "calcule_le": "2026-11-07T08:05:00Z"
+      "calcule_le": "2026-11-07T08:05:00Z",
+      "variantes": null,
+      "sous_recherches": null
     },
     {
       "mode": "enregistre",
@@ -177,7 +179,9 @@
           "texte": "résultats au-delà des résultats consultés"
         }
       ],
-      "calcule_le": "2026-11-07T08:05:00Z"
+      "calcule_le": "2026-11-07T08:05:00Z",
+      "variantes": null,
+      "sous_recherches": null
     }
   ],
   "calcule_le": "2026-11-07T08:05:00Z",
