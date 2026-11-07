@@ -1,0 +1,37 @@
+Licence commerciale « Tête de Brut. »
+
+Copyright (c) 2026 les co-auteurs du projet « Tête de Brut. », tels qu'ils
+figurent dans l'historique des contributions de ce dépôt. Tous droits réservés.
+
+1. Objet. Le présent dépôt (code source, contrats d'interface, scripts,
+   documentation) est publié pour permettre sa lecture, son évaluation par un
+   jury et son intégration continue. Cette publication ne constitue pas une
+   licence libre ni open source.
+
+2. Droits accordés. Toute personne peut consulter le dépôt, le cloner et
+   l'exécuter localement à des fins d'évaluation, d'étude ou de démonstration,
+   sans modification ni redistribution.
+
+3. Droits réservés. Sont soumis à l'accord écrit préalable des co-auteurs :
+   toute reproduction, modification, distribution, mise à disposition,
+   exploitation commerciale ou intégration dans un autre produit ou service,
+   en tout ou partie, ainsi que toute utilisation des marques et noms
+   « Tête de Brut. » et « Signal Brut. ».
+
+4. Contributions. Toute contribution acceptée dans ce dépôt est réputée
+   apportée sous les mêmes conditions ; son auteur rejoint les co-auteurs
+   pour la part qu'il a apportée.
+
+5. Composants tiers. Les bibliothèques et services utilisés (Python, FastAPI,
+   pydantic, uvicorn, httpx, pytest, ruff, Oriane, Lovable, Scaleway)
+   restent soumis à leurs propres licences et conditions.
+
+6. Garantie et responsabilité. Le logiciel est fourni « en l'état », sans
+   garantie d'aucune sorte. Les co-auteurs ne sauraient être tenus
+   responsables d'un dommage résultant de son utilisation.
+
+7. Droit applicable. Droit français. Tout différend relève des tribunaux
+   compétents en France.
+
+Pour toute demande d'autorisation, s'adresser aux co-auteurs par les
+canaux de contribution du dépôt.
