@@ -126,6 +126,22 @@ def construire_corps(
     # dont chaque enfant porte une variante (`dit:<phrase>`, `ecrit:<phrase>`, `mots:<noyau>`) : Oriane
     # rend ces noms dans `matchedQueries`. Un `or` racine s'appliquerait aussi au cadre (relevé du 07/11).
     enfants: list[dict[str, Any]] = []
+
+    def exactes(phrase: str) -> list[dict[str, Any]]:
+        """Les deux sous-requêtes d'une phrase exacte : parole (`dit:`) et texte à l'écran (`ecrit:`)."""
+        groupe = {liste_blanche.OPERATEUR_PHRASES: {"values": [phrase], "operator": "or"}}
+        return [
+            {
+                "name": liste_blanche.nom_requete(origine, phrase),
+                "operator": "and",
+                "filters": {filtre: groupe},
+            }
+            for origine, filtre in (
+                (liste_blanche.REQUETE_DIT, liste_blanche.FILTRE_TRANSCRIPTION),
+                (liste_blanche.REQUETE_ECRIT, liste_blanche.FILTRE_TEXTE_ECRAN),
+            )
+        ]
+
     for noyau in mots:  # couverture : les noyaux d'abord, du plus général au plus précis
         groupe = {liste_blanche.OPERATEUR_MOTS: {"values": [noyau], "operator": "or"}}
         for filtre in (liste_blanche.FILTRE_TRANSCRIPTION, liste_blanche.FILTRE_TEXTE_ECRAN):
@@ -136,19 +152,13 @@ def construire_corps(
                     "filters": {filtre: groupe},
                 }
             )
+        # Relevé réel du 07/11 (F020) : `includesFuzzy` ne retrouve pas « pouvoir d'achat » avec « pouvoir
+        # achat » (« d'achat » est un seul mot : 35 vidéos contre 735). Un noyau de deux mots ou plus part
+        # donc aussi tel quel en phrase exacte, qui retrouve « le », « du » ou « mon » pouvoir d'achat.
+        if len(noyau.split()) >= 2:
+            enfants.extend(exactes(noyau))
     for phrase in nettoyees:
-        groupe = {liste_blanche.OPERATEUR_PHRASES: {"values": [phrase], "operator": "or"}}
-        for origine, filtre in (
-            (liste_blanche.REQUETE_DIT, liste_blanche.FILTRE_TRANSCRIPTION),
-            (liste_blanche.REQUETE_ECRIT, liste_blanche.FILTRE_TEXTE_ECRAN),
-        ):
-            enfants.append(
-                {
-                    "name": liste_blanche.nom_requete(origine, phrase),
-                    "operator": "and",
-                    "filters": {filtre: groupe},
-                }
-            )
+        enfants.extend(exactes(phrase))
     corps: dict[str, Any] = {"name": NOM_REQUETE, "operator": "and", "filters": filtres}
     if enfants:  # une recherche par lien n'a aucune phrase, donc aucune sous-requête
         corps["queries"] = [

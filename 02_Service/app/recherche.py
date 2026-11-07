@@ -122,7 +122,6 @@ _AMORCE = re.compile(
     re.I,
 )
 _MOT = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*")
-_ELISION = re.compile(r"^(?:[ldjmtsnc]|qu|jusqu|lorsqu|puisqu)['’]", re.I)
 MOTS_NOYAU_MAX = 3  # repli déterministe : trois mots pleins au plus, dans l'ordre de la question
 # Mots vides du repli déterministe (sans accent, minuscules) : articles, prépositions, pronoms, auxiliaires,
 # conjonctions, mots de la demande elle-même (« donne-moi », « infos », « récentes »).
@@ -271,8 +270,9 @@ def noyau_de(phrase: str) -> str:
     """Repli déterministe : les mots pleins de la phrase (trois au plus, dans l'ordre), sinon vide."""
     gardes: list[str] = []
     for mot in _MOT.findall(phrase):
-        mot = _ELISION.sub("", mot)
-        if mot and _sans_accent(mot) not in MOTS_VIDES:
+        # Mots entiers seulement : « d'achat » et « l'essence » restent tels qu'on les dit (Oriane les lit
+        # comme un seul mot), « de » ou « du » séparés par une espace sont retirés.
+        if _sans_accent(mot) not in MOTS_VIDES:
             gardes.append(mot)
     return " ".join(gardes[:MOTS_NOYAU_MAX])
 
@@ -433,7 +433,11 @@ def _requete_en_clair(traduction: Traduction) -> str:
     exactes = [p for p in filtres.phrases if p not in filtres.noyaux]
     citer = lambda variantes: ", ".join(f"« {v} »" for v in variantes)  # noqa: E731
     if filtres.noyaux:
-        cherche = [f"mots {citer(filtres.noyaux)} en tout ordre"]
+        aussi_tels_quels = any(len(n.split()) >= 2 for n in filtres.noyaux)
+        cherche = [
+            f"mots {citer(filtres.noyaux)} en tout ordre"
+            + (" (et aussi tels quels, en phrase exacte)" if aussi_tels_quels else "")
+        ]
         if exactes:
             nombre = "phrases exactes" if len(exactes) > 1 else "phrase exacte"
             cherche.append(f"{nombre} {citer(exactes)}")

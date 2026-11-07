@@ -245,9 +245,9 @@ def test_le_mot_sans_n_est_pas_une_exclusion(config_traduction: Configuration) -
 @pytest.mark.parametrize(
     ("phrase", "noyau"),
     [
-        ("perdre du pouvoir d'achat", "perdre pouvoir achat"),
+        ("perdre du pouvoir d'achat", "perdre pouvoir d'achat"),  # l'élision est gardée
         ("la réforme des retraites", "réforme retraites"),
-        ("le prix de l'essence en 2027 partout", "prix essence 2027"),
+        ("le prix de l'essence en 2027 partout", "prix l'essence 2027"),
         ("Donne moi les infos récentes sur la cantine", "cantine"),
         ("Marie-Claire Dupont", "Marie-Claire Dupont"),
         ("le de la", ""),
@@ -636,47 +636,31 @@ def test_corps_oriane_comptes_exclus_et_identifiants() -> None:
     assert "queries" not in sans_phrase and sans_phrase["operator"] == "and"
 
 
+def _sous_requetes(corps: dict[str, Any]) -> list[tuple[str, str, str, str]]:
+    """(nom, champ, opérateur, valeur) de chaque sous-requête, dans l'ordre."""
+    resultat = []
+    for enfant in corps["queries"][0]["queries"]:
+        ((champ, operande),) = enfant["filters"].items()
+        ((operateur, groupe),) = operande.items()
+        assert groupe["operator"] == "or" and len(groupe["values"]) == 1
+        resultat.append((enfant["name"], champ, operateur, groupe["values"][0]))
+    return resultat
+
+
 def test_corps_oriane_noyaux_en_includes_fuzzy_et_phrases_en_includes_exactly() -> None:
-    corps = construire_corps(["fin du mois difficile"], noyaux=["pouvoir achat"])
-    assert corps["queries"] == [
-        {
-            "name": "dit_ou_ecrit",
-            "operator": "or",
-            "queries": [
-                {
-                    "name": "mots:pouvoir achat",
-                    "operator": "and",
-                    "filters": {
-                        "transcript": {"includesFuzzy": {"values": ["pouvoir achat"], "operator": "or"}}
-                    },
-                },
-                {
-                    "name": "mots:pouvoir achat",
-                    "operator": "and",
-                    "filters": {
-                        "onScreenText": {"includesFuzzy": {"values": ["pouvoir achat"], "operator": "or"}}
-                    },
-                },
-                {
-                    "name": "dit:fin du mois difficile",
-                    "operator": "and",
-                    "filters": {
-                        "transcript": {
-                            "includesExactly": {"values": ["fin du mois difficile"], "operator": "or"}
-                        }
-                    },
-                },
-                {
-                    "name": "ecrit:fin du mois difficile",
-                    "operator": "and",
-                    "filters": {
-                        "onScreenText": {
-                            "includesExactly": {"values": ["fin du mois difficile"], "operator": "or"}
-                        }
-                    },
-                },
-            ],
-        }
+    corps = construire_corps(["fin du mois difficile"], noyaux=["pouvoir d'achat", "inflation"])
+    assert corps["queries"][0]["name"] == "dit_ou_ecrit" and corps["queries"][0]["operator"] == "or"
+    assert _sous_requetes(corps) == [
+        # noyau de deux mots ou plus : tous les mots en ordre libre, puis tel quel en phrase exacte
+        ("mots:pouvoir d'achat", "transcript", "includesFuzzy", "pouvoir d'achat"),
+        ("mots:pouvoir d'achat", "onScreenText", "includesFuzzy", "pouvoir d'achat"),
+        ("dit:pouvoir d'achat", "transcript", "includesExactly", "pouvoir d'achat"),
+        ("ecrit:pouvoir d'achat", "onScreenText", "includesExactly", "pouvoir d'achat"),
+        # noyau d'un seul mot : mots seulement (la phrase exacte n'apporterait rien)
+        ("mots:inflation", "transcript", "includesFuzzy", "inflation"),
+        ("mots:inflation", "onScreenText", "includesFuzzy", "inflation"),
+        ("dit:fin du mois difficile", "transcript", "includesExactly", "fin du mois difficile"),
+        ("ecrit:fin du mois difficile", "onScreenText", "includesExactly", "fin du mois difficile"),
     ]
     assert construire_corps([], noyaux=["pouvoir achat"])["queries"][0]["queries"]  # un noyau suffit
 
@@ -1090,8 +1074,16 @@ def test_la_reponse_en_cloture_de_code_est_acceptee(
 def _reponse_couverture(reponse_oriane: dict[str, Any]) -> dict[str, Any]:
     """Première vidéo trouvée par le noyau, A et B ; seconde par le noyau et B ; C ne trouve rien."""
     premiere, seconde = reponse_oriane["data"]["results"]
-    premiere["matchedQueries"] = [f"mots:{NOYAU_A}", f"dit:{PHRASE_A}", f"dit:{PHRASE_B}", "dit_ou_ecrit"]
-    seconde["matchedQueries"] = [f"mots:{NOYAU_A}", f"ecrit:{PHRASE_B}", "dit_ou_ecrit"]
+    # La première est trouvée par les deux formes du noyau, la seconde par la forme exacte seulement : le
+    # noyau n'en compte pas moins chacune une fois.
+    premiere["matchedQueries"] = [
+        f"mots:{NOYAU_A}",
+        f"dit:{NOYAU_A}",
+        f"dit:{PHRASE_A}",
+        f"dit:{PHRASE_B}",
+        "dit_ou_ecrit",
+    ]
+    seconde["matchedQueries"] = [f"ecrit:{NOYAU_A}", f"ecrit:{PHRASE_B}", "dit_ou_ecrit"]
     return reponse_oriane
 
 
@@ -1125,10 +1117,12 @@ def test_la_recherche_cherche_noyaux_et_phrases_en_une_page_et_cree_un_seul_reci
         assert len(envoye["queries"]) == 1 and envoye["queries"][0]["name"] == "dit_ou_ecrit"
         assert [e["name"] for e in enfants] == [
             *[f"mots:{NOYAU_A}"] * 2,
+            f"dit:{NOYAU_A}",
+            f"ecrit:{NOYAU_A}",
             *[f"{o}:{p}" for p in (PHRASE_B, PHRASE_A, PHRASE_C) for o in ("dit", "ecrit")],
         ]
         flous = [e for e in enfants if "includesFuzzy" in next(iter(e["filters"].values()))]
-        assert {next(iter(e["filters"])) for e in flous} == {"transcript", "onScreenText"}
+        assert len(flous) == 2 and {next(iter(e["filters"])) for e in flous} == {"transcript", "onScreenText"}
         assert all(
             next(iter(e["filters"].values())) == {"includesFuzzy": {"values": [NOYAU_A], "operator": "or"}}
             for e in flous
@@ -1138,7 +1132,7 @@ def test_la_recherche_cherche_noyaux_et_phrases_en_une_page_et_cree_un_seul_reci
             for e in enfants
             if e not in flous
         }
-        assert exactes == {PHRASE_A, PHRASE_B, PHRASE_C}
+        assert exactes == {NOYAU_A, PHRASE_A, PHRASE_B, PHRASE_C}  # le noyau part aussi tel quel
         # Un seul récit : celui de la recherche (pivot = premier noyau), union des vidéos sans doublon.
         recit = corps["recit"]
         assert recit["phrase_surveillee"] == NOYAU_A
@@ -1151,7 +1145,8 @@ def test_la_recherche_cherche_noyaux_et_phrases_en_une_page_et_cree_un_seul_reci
             (PHRASE_C, "exacte", 0),
         ]
         assert recit["requete_en_clair"].startswith(
-            f"reformulée par un modèle de langue : mots « {NOYAU_A} » en tout ordre ; phrases exactes "
+            f"reformulée par un modèle de langue : mots « {NOYAU_A} » en tout ordre (et aussi tels quels, "
+            "en phrase exacte) ; phrases exactes "
         )
         assert f"« {PHRASE_B} », « {PHRASE_A} », « {PHRASE_C} »" in recit["requete_en_clair"]
         radar = client.get("/v1/radar").json()["recits"]
@@ -1216,6 +1211,7 @@ def test_noyau_deterministe_envoye_en_includes_fuzzy_et_filtres_affiches_egaux_a
     assert prepare["reformulation"] == "deterministe"
     assert prepare["filtres"]["phrases"] == prepare["filtres"]["noyaux"] == ["réforme retraites"]
     assert "mots « réforme retraites » en tout ordre" in prepare["requete_en_clair"]
+    assert "aussi tels quels, en phrase exacte" in prepare["requete_en_clair"]
     reponse = _lancer(client, question)
     assert reponse.status_code == 201, reponse.text
     assert reponse.json()["recherche"]["filtres"] == prepare["filtres"]
@@ -1223,8 +1219,10 @@ def test_noyau_deterministe_envoye_en_includes_fuzzy_et_filtres_affiches_egaux_a
     assert envoye["filters"]["platform"] == {"includes": ["tiktok"]}
     (groupe,) = envoye["queries"]
     assert [e["filters"] for e in groupe["queries"]] == [
-        {champ: {"includesFuzzy": {"values": ["réforme retraites"], "operator": "or"}}}
-        for champ in ("transcript", "onScreenText")
+        {"transcript": {"includesFuzzy": {"values": ["réforme retraites"], "operator": "or"}}},
+        {"onScreenText": {"includesFuzzy": {"values": ["réforme retraites"], "operator": "or"}}},
+        {"transcript": {"includesExactly": {"values": ["réforme retraites"], "operator": "or"}}},
+        {"onScreenText": {"includesExactly": {"values": ["réforme retraites"], "operator": "or"}}},
     ]
     assert reponse.json()["recit"]["phrase_surveillee"] == "réforme retraites"
 
