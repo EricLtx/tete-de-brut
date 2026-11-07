@@ -354,9 +354,23 @@ SYNONYMES_REFUSES = [
     "Selon Oriane, la reprise est truquee.",
     "Selon Oriane, la première version diffère.",
     "Selon Oriane, une désinformation.",
+    "Selon Oriane, la version originelle est reprise.",
+    "Selon Oriane, la source est authentique.",
+    "Selon Oriane, la version source est la vraie.",
+    "Selon Oriane, le chiffre est erroné.",
+    "Selon Oriane, la légende est inexacte.",
+    "Selon Oriane, le propos est décontextualisé.",
+    "Selon Oriane, la reprise est trafiquée.",
+    "Selon Oriane, la reprise est bidonnée.",
+    "Selon Oriane, cela relève de l'infox.",
+    "Selon Oriane, le propos est biaisé.",
+    "Selon Oriane, le candidat a menti.",
+    "Selon Oriane, il y a une altération.",
+    "Selon Oriane, le sens est modifié.",
 ]
 TEXTES_NEUTRES = [
     TEXTE_PROPRE,
+    "Selon Oriane, la parole 2 mentionne un chiffre et le texte 3 le répète vraiment.",
     "Selon Oriane, la parole 1 retire des mots et le texte à l'écran 2 en ajoute.",
     "Selon Oriane, la légende de la reprise remplace trois mots de la source. Le constat reste humain.",
 ]
@@ -448,11 +462,11 @@ def test_modele_lent_ne_retarde_pas_une_autre_requete(client, comparaison_simule
 
     async def scenario() -> tuple[float, int]:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=client.app), base_url="http://t") as c:
+            debut = time.monotonic()  # chrono avant l'envoi : une boucle bloquée se voit
             creation = asyncio.create_task(
                 c.post("/v1/fiches", json={"comparaison": comparaison_simulee["identifiant"]})
             )
-            await asyncio.sleep(0.3)  # l'appel au modèle est en cours
-            debut = time.monotonic()
+            await asyncio.sleep(0.1)  # l'appel au modèle (1,5 s) est en cours
             sante = await c.get("/sante")
             attente = time.monotonic() - debut
             statut_creation = (await creation).status_code
@@ -460,7 +474,7 @@ def test_modele_lent_ne_retarde_pas_une_autre_requete(client, comparaison_simule
 
     attente, statut = asyncio.run(scenario())
     assert statut == 201
-    assert attente < 0.5
+    assert attente < 0.8
 
 
 def test_delai_global_depasse_gabarit_et_journal(client, comparaison_simulee, monkeypatch, mode_modele):

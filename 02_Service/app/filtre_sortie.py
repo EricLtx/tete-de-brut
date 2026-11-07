@@ -17,7 +17,17 @@ PREFIXES_REFUSES = (
     "faux",
     "fauss",
     "premier",
-    "origina",
+    "origin",
+    "authenti",
+    "veridi",
+    "errone",
+    "inexact",
+    "trafiqu",
+    "bidon",
+    "infox",
+    "biais",
+    "alterat",
+    "decontext",
     "manipul",
     "coordonn",
     "coordin",
@@ -36,12 +46,17 @@ PREFIXES_REFUSES = (
     "propagand",
     "contexte",
 )
+# Mots entiers refusés (un préfixe prendrait « mentionne » ou « vraiment »).
+MOTS_REFUSES = frozenset({"vrai", "vraie", "vrais", "vraies", "menti", "ment", "mentir"})
 # Tournures refusées, comparées sur le texte réduit à des mots désaccentués séparés par une espace.
 TOURNURES_REFUSEES = (
     "sorti de son contexte",
     "cherche a faire croire",
     "change donc le sens",
     "change le sens",
+    "sens modifie",
+    "sens est modifie",
+    "a menti",
 )
 # Valeurs de décision (`decision.v1`), sous toutes leurs formes ; `amplifi` couvre amplifier et amplifiez.
 DECISIONS_REFUSEES = ("pret a traiter", "prete a traiter", "a verifier")
@@ -57,7 +72,7 @@ def motif_libelle(texte: str) -> str | None:
     """Le premier mot ou la première tournure de qualification trouvé, ou `None`."""
     mots = mots_reduits(texte)
     for mot in mots:
-        if mot.startswith(PREFIXES_REFUSES):
+        if mot in MOTS_REFUSES or mot.startswith(PREFIXES_REFUSES):
             return mot
     plat = f" {' '.join(mots)} "
     for tournure in TOURNURES_REFUSEES:
