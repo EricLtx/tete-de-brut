@@ -24,9 +24,17 @@ Le mandat renvoie à la fiche S05 du plan (règle de regroupement fixée là, au
 
 Le radar se calcule sur les vidéos `video.v1` présentes en base : un récit par phrase surveillée, ses vidéos, ses mesures (conversations observées : vidéos, comptes distincts, vues cumulées « selon Oriane », sur la fenêtre de la requête ; échantillon ; plus ancienne version retrouvée), ce qui n'a pas été cherché ; `GET /v1/radar` et `GET /v1/recits/{id}` servent ces récits avec requête en clair, date du calcul, mode.
 
+## Ce que S02 fournit (b90aaf6)
+
+Imports : `app.modeles` → `Recit`, `Mesure`, `Fenetre`, `Echantillon`, `PlusAncienneVersion`, `Radar`, `Video`, `RECIT_V1`, `LIBELLE_PLUS_ANCIENNE_VERSION` ; `app.libelles` ; `app.base` → `lister`, `lire`, `ecrire`. Contraintes des modèles : une `Mesure` de valeur nulle exige une `raison` ; `methode` et `fenetre` obligatoires ; `enregistre_le` obligatoire en mode `enregistre`. Fixtures : `video_simulee` / `fabriquer_video` (champ `requetes_trouvees`). `GET /v1/radar` et `GET /v1/recits/{id}` sont dans `app/routes/radar.py` ; `POST /v1/radar/actualiser` est dans `app/routes/etat.py` (S04), ne pas y toucher.
+
 ## Fichiers réservés
 
 `02_Service/app/recits.py`, `app/mesures.py`, `app/routes/radar.py` (remplir `GET /v1/radar` et `GET /v1/recits/{id}` ; `POST /v1/radar/actualiser` reste à S04), `tests/test_radar.py`. Les phrases surveillées viennent d'un document `cas` en base ou, à défaut, des `requetes_trouvees` des vidéos (lecture la plus simple, à noter dans les Échanges).
+
+## Règle des contrats
+
+Aucun changement de modèle ni de signature de route n'est attendu : les modèles et les routes viennent de S02. Si `test_openapi_egal_au_contrat` échoue malgré tout, relancer `python scripts/exporter_contrats.py` et commiter `contrats/` en le déclarant dans les Échanges ; l'orchestrateur relance l'export à la fusion en cas de conflit.
 
 ## État du poste
 

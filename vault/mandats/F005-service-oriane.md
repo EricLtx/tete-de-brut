@@ -32,9 +32,19 @@ Champs à REFUSER (jamais écrits ni journalisés) : `profileDisplayName`, `prof
 
 Authentification : aucun schéma dans la spécification ; nom de l'en-tête lu dans `ORIANE_EN_TETE_AUTH` (relevé H01 ; si vide, `Authorization` avec `Bearer`, H). Codes : 402 → `CreditsEpuises` ; expiration (`ORIANE_DELAI_S`) ou autre code → `OrianeInjoignable`. Coût estimé : 15 crédits par page de 100 en `default` (F).
 
+## Ce que S02 fournit (b90aaf6)
+
+Imports : `app.modeles` → `Video`, `Transcription`, `TexteEcran`, `VIDEO_V1` ; `app.libelles` → `contient_libelle_refuse`, `LIBELLES_REFUSES` ; `app.routes` → `erreurs()`, `non_implemente()` ; `app.base` → `ecrire`, `lire`, `consigner`. Fixtures de `tests/conftest.py` : `reponse_oriane_simulee` (forme `metadata` + `data.results[].media[]`), `video_simulee` / `fabriquer_video`, constantes `CHAMPS_TIERS_ORIANE`, `CHAMPS_TIERS_MEDIA_ORIANE`. `onScreenText` (liste) se joint dans `texte_ecran.texte`. `consigner()` refuse `reponse`, les champs inconnus et les clés d'allure secrète (le motif contient `token`) : nommer les champs du journal en conséquence. Mineur de S01 à traiter ici : `securite.py` et `base.py` ne sont pas dans la réserve ; si un blocage apparaît, le noter dans les Échanges plutôt que de les modifier.
+
+Relevé H01 (07/11, orchestrateur) : vingt formes d'en-tête essayées contre `connect.oriane.xyz`, toutes 401 `{"error": {"operation": "AUTHENTICATION", "code": "UNAUTHORIZED"}}` ; le nom de l'en-tête reste à lire dans l'application Oriane. Le code lit donc `ORIANE_EN_TETE_AUTH` (nom) et un préfixe optionnel `ORIANE_PREFIXE_AUTH` (par exemple `Bearer `) ; l'enveloppe d'erreur Oriane ci-dessus est à reconnaître (401 → `OrianeInjoignable` avec raison « authentification refusée », jamais la clé dans le journal).
+
 ## Fichiers réservés
 
 `02_Service/app/oriane.py`, `app/liste_blanche.py`, `app/routes/videos.py` (remplir la route de S02), `tests/test_oriane.py` ; `tests/conftest.py` : ajout d'une fixture `transport_oriane_simule` (`httpx.MockTransport`) sans retirer les autres.
+
+## Règle des contrats
+
+Aucun changement de modèle ni de signature de route n'est attendu : les modèles et les routes viennent de S02. Si `test_openapi_egal_au_contrat` échoue malgré tout, relancer `python scripts/exporter_contrats.py` et commiter `contrats/` en le déclarant dans les Échanges ; l'orchestrateur relance l'export à la fusion en cas de conflit.
 
 ## État du poste
 

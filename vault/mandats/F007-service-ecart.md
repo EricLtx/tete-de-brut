@@ -24,9 +24,17 @@ Le mandat renvoie à la fiche S07 du plan, au complément de contrat e (idempote
 
 Deux vidéos présentes en base sont comparées mot à mot (distance d'édition par programmation dynamique en Python standard sur `mots.v1`, opérations retiré, ajouté, remplacé avec positions), ainsi que leurs légendes et textes à l'écran, sans aucun champ de qualification ; l'identifiant de la comparaison dérive des deux identifiants de vidéo (même couple, même ressource, 200 à la seconde demande) ; heure dans la vidéo « non fournie au niveau default ».
 
+## Ce que S02 fournit (b90aaf6)
+
+Imports : `app.modeles` → `Ecart`, `Operation`, `AttributionTranscription`, `TranscriptionsComparees`, `HeureDansLaVideo`, `DemandeComparaison`, `ECART_V1`, `LIBELLE_HEURE_NON_FOURNIE` ; `app.mots` → `normaliser`, `NORMALISATION_MOTS_V1` (ponctuation supprimée, apostrophe et trait d'union devenant une espace) ; `app.base` → `lire`, `ecrire`. Contrainte : une `Operation` vérifie que ses mots correspondent à son type (`retire` sans mots ajoutés, etc.). Fixture `deux_videos_comparables` : la reprise retire « si l'État paie » (quatre mots). La route de S02 rend 200 à chaque `POST` : conserver 200 et l'idempotence (identifiant dérivé des deux identifiants, ordre source puis reprise).
+
 ## Fichiers réservés
 
 `02_Service/app/ecart.py`, `app/routes/comparaisons.py` (remplir les deux routes de S02), `tests/test_ecart.py`.
+
+## Règle des contrats
+
+Aucun changement de modèle ni de signature de route n'est attendu : les modèles et les routes viennent de S02. Si `test_openapi_egal_au_contrat` échoue malgré tout, relancer `python scripts/exporter_contrats.py` et commiter `contrats/` en le déclarant dans les Échanges ; l'orchestrateur relance l'export à la fusion en cas de conflit.
 
 ## État du poste
 
