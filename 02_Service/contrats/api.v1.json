@@ -74,6 +74,101 @@
         "title": "AttributionTranscription",
         "type": "object"
       },
+      "ClassementPertinence": {
+        "additionalProperties": false,
+        "description": "Compte rendu d'un classement : ce que le modèle a jugé, ce qui reste sans jugement et pourquoi.",
+        "properties": {
+          "avertissement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Limite du classement, en clair.",
+            "title": "Avertissement"
+          },
+          "classees": {
+            "description": "Vidéos du récit classées pour cette question.",
+            "minimum": 0.0,
+            "title": "Classees",
+            "type": "integer"
+          },
+          "enregistre_le": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date d'enregistrement du cas rejoué ; obligatoire en mode enregistré.",
+            "title": "Enregistre Le"
+          },
+          "faibles": {
+            "minimum": 0.0,
+            "title": "Faibles",
+            "type": "integer"
+          },
+          "fortes": {
+            "minimum": 0.0,
+            "title": "Fortes",
+            "type": "integer"
+          },
+          "hors_sujet": {
+            "minimum": 0.0,
+            "title": "Hors Sujet",
+            "type": "integer"
+          },
+          "identifiant": {
+            "description": "Identifiant du récit.",
+            "minLength": 1,
+            "title": "Identifiant",
+            "type": "string"
+          },
+          "mode": {
+            "description": "`direct` (appel Oriane de la requête) ou `enregistre` (cas rejoué).",
+            "enum": [
+              "direct",
+              "enregistre"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "modele": {
+            "description": "Modèle qui juge ; vide quand aucun appel n'est possible.",
+            "title": "Modele",
+            "type": "string"
+          },
+          "non_classees": {
+            "description": "Vidéos du récit sans jugement pour cette question.",
+            "minimum": 0.0,
+            "title": "Non Classees",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "identifiant",
+          "question",
+          "modele",
+          "classees",
+          "fortes",
+          "faibles",
+          "hors_sujet",
+          "non_classees"
+        ],
+        "title": "ClassementPertinence",
+        "type": "object"
+      },
       "CoutActualisation": {
         "additionalProperties": false,
         "description": "Coût estimé d'une actualisation, affiché avant le geste.",
@@ -222,6 +317,34 @@
           "comparaison"
         ],
         "title": "DemandeFiche",
+        "type": "object"
+      },
+      "DemandePertinence": {
+        "additionalProperties": false,
+        "description": "Corps facultatif de `POST /v1/recits/{id}/pertinence`.",
+        "properties": {
+          "forcer": {
+            "default": false,
+            "description": "Vrai pour rejuger aussi les vidéos déjà classées pour cette question.",
+            "title": "Forcer",
+            "type": "boolean"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sujet à juger ; à défaut, la phrase surveillée du récit (et ses variantes).",
+            "title": "Question"
+          }
+        },
+        "title": "DemandePertinence",
         "type": "object"
       },
       "DemandeRecherche": {
@@ -1001,6 +1124,53 @@
           "position_reprise"
         ],
         "title": "Operation",
+        "type": "object"
+      },
+      "Pertinence": {
+        "additionalProperties": false,
+        "description": "Pertinence d'une vidéo pour une question, jugée par un modèle de langue (F021) : une annotation.",
+        "properties": {
+          "calcule_le": {
+            "format": "date-time",
+            "title": "Calcule Le",
+            "type": "string"
+          },
+          "modele": {
+            "description": "Identifiant du modèle qui a jugé.",
+            "minLength": 1,
+            "title": "Modele",
+            "type": "string"
+          },
+          "motif": {
+            "description": "Phrase factuelle du modèle, filtrée ; « motif retiré » si le filtre l'a refusée.",
+            "maxLength": 120,
+            "title": "Motif",
+            "type": "string"
+          },
+          "niveau": {
+            "description": "`forte` (la vidéo parle du sujet), `faible` (le sujet n'est qu'évoqué) ou `hors_sujet`.",
+            "enum": [
+              "forte",
+              "faible",
+              "hors_sujet"
+            ],
+            "title": "Niveau",
+            "type": "string"
+          },
+          "question": {
+            "description": "Question pour laquelle la vidéo a été jugée.",
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "niveau",
+          "motif",
+          "question",
+          "modele",
+          "calcule_le"
+        ],
+        "title": "Pertinence",
         "type": "object"
       },
       "PlusAncienneVersion": {
@@ -1793,6 +1963,17 @@
             ],
             "title": "Mode",
             "type": "string"
+          },
+          "pertinence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pertinence"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Annotation du modèle de langue pour la dernière question jugée ; absente sinon."
           },
           "plateforme": {
             "enum": [
@@ -2832,6 +3013,96 @@
         "summary": "Un récit, ses vidéos et ses mesures",
         "tags": [
           "radar"
+        ]
+      }
+    },
+    "/v1/recits/{id}/pertinence": {
+      "post": {
+        "description": "Annote chaque vidéo du récit (`pertinence`) : `forte`, `faible` ou `hors_sujet`, avec un motif court.\n\nAucune vidéo n'est supprimée ni réordonnée. Les `PERTINENCE_MAX_VIDEOS` plus récentes sont jugées ;\nune vidéo déjà jugée pour la même question n'est pas renvoyée au modèle, sauf `forcer`. Sans clé du\nmodèle ou en mode `aucun`, aucun appel. Une panne du modèle laisse les vidéos sans jugement (jamais 5xx).",
+        "operationId": "classer_les_videos_v1_recits__id__pertinence_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DemandePertinence"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Demande"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassementPertinence"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "cle_demo_invalide : l'en-tête X-Cle-Demo est absent ou incorrect."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "introuvable : la ressource demandée n'existe pas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "validation : la requête ne respecte pas le contrat."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erreur"
+                }
+              }
+            },
+            "description": "non_implemente : route prévue au contrat, pas encore implémentée."
+          }
+        },
+        "summary": "Juger la pertinence des vidéos d'un récit pour une question, par le modèle de langue",
+        "tags": [
+          "pertinence"
         ]
       }
     },

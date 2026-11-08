@@ -46,6 +46,53 @@
       "title": "Apercu",
       "type": "object"
     },
+    "Pertinence": {
+      "additionalProperties": false,
+      "description": "Pertinence d'une vidéo pour une question, jugée par un modèle de langue (F021) : une annotation.",
+      "properties": {
+        "calcule_le": {
+          "format": "date-time",
+          "title": "Calcule Le",
+          "type": "string"
+        },
+        "modele": {
+          "description": "Identifiant du modèle qui a jugé.",
+          "minLength": 1,
+          "title": "Modele",
+          "type": "string"
+        },
+        "motif": {
+          "description": "Phrase factuelle du modèle, filtrée ; « motif retiré » si le filtre l'a refusée.",
+          "maxLength": 120,
+          "title": "Motif",
+          "type": "string"
+        },
+        "niveau": {
+          "description": "`forte` (la vidéo parle du sujet), `faible` (le sujet n'est qu'évoqué) ou `hors_sujet`.",
+          "enum": [
+            "forte",
+            "faible",
+            "hors_sujet"
+          ],
+          "title": "Niveau",
+          "type": "string"
+        },
+        "question": {
+          "description": "Question pour laquelle la vidéo a été jugée.",
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "niveau",
+        "motif",
+        "question",
+        "modele",
+        "calcule_le"
+      ],
+      "title": "Pertinence",
+      "type": "object"
+    },
     "TexteEcran": {
       "additionalProperties": false,
       "description": "Texte affiché à l'écran de la vidéo, lu chez Oriane.",
@@ -183,6 +230,18 @@
       ],
       "title": "Mode",
       "type": "string"
+    },
+    "pertinence": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Pertinence"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Annotation du modèle de langue pour la dernière question jugée ; absente sinon."
     },
     "plateforme": {
       "enum": [

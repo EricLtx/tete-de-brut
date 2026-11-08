@@ -22,6 +22,7 @@ from app.ecart import comparer_textes, identifiant_comparaison
 from app.libelles import contient_libelle_refuse, desaccentuer
 from app.modeles import (
     LIMITE_TRANSCRIPTIONS,
+    ClassementPertinence,
     Ecart,
     Erreur,
     Etat,
@@ -47,6 +48,7 @@ MODELES_PAR_PREFIXE: dict[str, type[Modele]] = {
     "radar": Radar,
     "recit": Recit,
     "suppression": SuppressionRecit,
+    "pertinence": ClassementPertinence,
     "video": Video,
     "comparaison": Ecart,
     "fiche": Fiche,

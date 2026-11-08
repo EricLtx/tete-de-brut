@@ -29,6 +29,7 @@ jobs:
         working-directory: 02_Service
         env:
           ORIANE_API_KEY: ${{ secrets.ORIANE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         shell: bash # -eo pipefail : un échec de pytest n'est pas avalé par tee
         run: python -m pytest -q -m reel -s | tee "$RUNNER_TEMP/reel-pytest.log"
 
@@ -36,6 +37,7 @@ jobs:
         working-directory: 02_Service
         env:
           ORIANE_API_KEY: ${{ secrets.ORIANE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MODE_DONNEES: auto
           ORIGINES_AUTORISEES: http://localhost:5173
           PORT: "8080"

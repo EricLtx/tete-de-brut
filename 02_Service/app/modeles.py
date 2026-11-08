@@ -131,6 +131,25 @@ class Apercu(Modele):
     lue_le: datetime
 
 
+NiveauPertinence = Literal["forte", "faible", "hors_sujet"]
+LIMITE_MOTIF_PERTINENCE = 120
+
+
+class Pertinence(Modele):
+    """Pertinence d'une vidéo pour une question, jugée par un modèle de langue (F021) : une annotation."""
+
+    niveau: NiveauPertinence = Field(
+        description="`forte` (la vidéo parle du sujet), `faible` (le sujet n'est qu'évoqué) ou `hors_sujet`."
+    )
+    motif: str = Field(
+        max_length=LIMITE_MOTIF_PERTINENCE,
+        description="Phrase factuelle du modèle, filtrée ; « motif retiré » si le filtre l'a refusée.",
+    )
+    question: str = Field(description="Question pour laquelle la vidéo a été jugée.")
+    modele: TexteNonVide = Field(description="Identifiant du modèle qui a jugé.")
+    calcule_le: datetime
+
+
 class Video(Reponse):
     """Vidéo `video.v1` : seuls les champs de la liste blanche, sans aucune donnée de tiers."""
 
@@ -148,6 +167,10 @@ class Video(Reponse):
     lien: TexteNonVide
     apercu: Apercu | None = Field(
         default=None, description="Aperçu relayé par Oriane ; absent quand Oriane n'en sert aucun."
+    )
+    pertinence: Pertinence | None = Field(
+        default=None,
+        description="Annotation du modèle de langue pour la dernière question jugée ; absente sinon.",
     )
 
 
@@ -635,3 +658,34 @@ class ResultatRecherche(Reponse):
 
 
 CONTRATS[RECHERCHE_V1] = Recherche
+
+
+# --- pertinence des vidéos d'un récit (F021) ---------------------------------------------------
+
+
+class DemandePertinence(Modele):
+    """Corps facultatif de `POST /v1/recits/{id}/pertinence`."""
+
+    question: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=500,
+        description="Sujet à juger ; à défaut, la phrase surveillée du récit (et ses variantes).",
+    )
+    forcer: bool = Field(
+        default=False, description="Vrai pour rejuger aussi les vidéos déjà classées pour cette question."
+    )
+
+
+class ClassementPertinence(Reponse):
+    """Compte rendu d'un classement : ce que le modèle a jugé, ce qui reste sans jugement et pourquoi."""
+
+    identifiant: TexteNonVide = Field(description="Identifiant du récit.")
+    question: str
+    modele: str = Field(description="Modèle qui juge ; vide quand aucun appel n'est possible.")
+    classees: int = Field(ge=0, description="Vidéos du récit classées pour cette question.")
+    fortes: int = Field(ge=0)
+    faibles: int = Field(ge=0)
+    hors_sujet: int = Field(ge=0)
+    non_classees: int = Field(ge=0, description="Vidéos du récit sans jugement pour cette question.")
+    avertissement: str | None = Field(default=None, description="Limite du classement, en clair.")
