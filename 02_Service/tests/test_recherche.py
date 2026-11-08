@@ -1071,6 +1071,30 @@ def test_la_reponse_en_cloture_de_code_est_acceptee(
         assert _preparer(client, QUESTION_LIBRE)["filtres"]["phrases"] == [PHRASE_B]
 
 
+def test_deux_noyaux_du_modele_partent_tous_deux_a_oriane_en_includes_fuzzy(
+    tmp_path: Path,
+    transport_modele: Callable[..., httpx.MockTransport],
+    reponse_oriane_simulee: dict[str, Any],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+) -> None:
+    noyau_b = "âge départ"
+    transport_modele(_json_modele([PHRASE_B], noyaux=[NOYAU_A, noyau_b]))
+    oriane = transport_oriane_simule(corps=reponse_oriane_simulee)
+    with _service(tmp_path, direct=True, transport=oriane, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        prepare = _preparer(client, QUESTION_LIBRE)
+        assert prepare["filtres"]["noyaux"] == [NOYAU_A, noyau_b]
+        reponse = _lancer(client, QUESTION_LIBRE)
+        assert reponse.status_code == 201, reponse.text
+        assert reponse.json()["recherche"]["filtres"]["noyaux"] == [NOYAU_A, noyau_b]
+        enfants = _corps_envoye(oriane)["queries"][0]["queries"]
+        flous = [
+            next(iter(e["filters"].values()))["includesFuzzy"]["values"][0]
+            for e in enfants
+            if "includesFuzzy" in next(iter(e["filters"].values()))
+        ]
+        assert sorted(flous) == sorted([NOYAU_A, NOYAU_A, noyau_b, noyau_b])  # dit et écrit, pour chacun
+
+
 def _reponse_couverture(reponse_oriane: dict[str, Any]) -> dict[str, Any]:
     """Première vidéo trouvée par le noyau, A et B ; seconde par le noyau et B ; C ne trouve rien."""
     premiere, seconde = reponse_oriane["data"]["results"]
@@ -1353,7 +1377,30 @@ def test_reel_la_question_libre_donne_un_seul_recit_couvrant(
         assert [r["identifiant"] for r in radar] == [recit["identifiant"]]  # une recherche = un récit
         mots = {m for m in normaliser(recit["phrase_surveillee"])}
         assert {"pouvoir", "achat"} <= mots, recit["phrase_surveillee"]
-        assert len(recit["videos"]) >= 100
+        # Invariant relatif (données vivantes : aucun seuil absolu) : sur la même fenêtre, le récit unique
+        # couvre au moins autant que la phrase exacte seule (une page) et que chaque variante.
+        seule = asyncio.run(
+            rechercher(
+                ["pouvoir d'achat"],
+                lances["comptes"],
+                Fenetre(
+                    debut=datetime.fromisoformat(lances["fenetre"]["debut"]),
+                    fin=datetime.fromisoformat(lances["fenetre"]["fin"]),
+                ),
+                config=Configuration.depuis_environnement(
+                    {**os.environ, "CHEMIN_BASE": str(tmp_path / "phrase-seule.sqlite")}
+                ),
+                plateformes=lances["plateformes"],
+                comptes_exclus=lances["comptes_exclus"],
+            )
+        )
+        print(  # noqa: T201
+            f"REEL couverture recit={len(recit['videos'])} phrase_exacte_seule={len(seule.videos)} "
+            f"meilleure_variante={max(par_variante.values(), default=0)}"
+        )
+        assert len(recit["videos"]) >= len(seule.videos)
+        for variante, nombre in par_variante.items():
+            assert len(recit["videos"]) >= nombre, variante
 
 
 @pytest.mark.reel
