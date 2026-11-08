@@ -24,7 +24,7 @@ CORRESPONDANCE: dict[str, str] = {
     "viewsCount": "vues_selon_oriane",  # vues, telles que les compte Oriane
     "interactionsCount": "interactions_selon_oriane",  # interactions, telles que les compte Oriane
     "caption": "legende",  # légende du contenu
-    "matchedQueries": "requetes_trouvees",  # noms `dit:<phrase>` et `ecrit:<phrase>`, ramenés aux phrases
+    "matchedQueries": "requetes_trouvees",  # noms `dit:`, `ecrit:` et `mots:`, ramenés aux phrases et noyaux
     "media[].transcript": "transcription.texte",  # parole transcrite par Oriane (niveau default)
     "media[].onScreenText": "texte_ecran.texte",  # liste de chaînes, jointe par des retours à la ligne
     "thumbnailMediaUrl": "apercu.vignette",  # adresse de la vignette, relayée telle que servie
@@ -44,9 +44,15 @@ FILTRE_PLATEFORME = "platform"  # {"includes": [...]}, relevé H01 (pas exactMat
 FILTRE_IDENTIFIANT = "platformId"
 REQUETE_DIT = "dit"  # préfixe des sous-requêtes sur la parole transcrite : « dit:<phrase> »
 REQUETE_ECRIT = "ecrit"  # préfixe des sous-requêtes sur le texte à l'écran : « ecrit:<phrase> »
+REQUETE_MOTS = "mots"  # préfixe des sous-requêtes d'un noyau de mots (parole et écran) : « mots:<noyau> »
 LONGUEUR_MAX_PHRASE = 256
 REQUETE_DIT_OU_ECRIT = "dit_ou_ecrit"  # union des deux
 OPERATEUR_PHRASES = "includesExactly"  # la phrase doit apparaître telle quelle
+# Couverture (F020) : tous les mots du noyau, dans n'importe quel ordre, mots partiels compris. Citation de la
+# spécification OpenAPI d'Oriane (`SearchContentsRequest.Filters.Body`, champs `transcript`, `onScreenText`,
+# `caption`) : « Requires matches of all words in any order, including partial words, inside the field. »
+# Forme envoyée : `{"includesFuzzy": {"values": ["<noyau>"], "operator": "or"}}`.
+OPERATEUR_MOTS = "includesFuzzy"
 OPERATEUR_COMPTES = "exactMatch"  # le compte doit être exactement celui-là
 OPERATEUR_PLATEFORMES = "includes"  # la plateforme est l'une de celles-là
 OPERATEUR_COMPTES_EXCLUS = (
@@ -160,7 +166,7 @@ def _apercu(resultat: dict[str, Any], lue_le: datetime) -> dict[str, Any] | None
 
 
 def nom_requete(origine: str, phrase: str) -> str:
-    """Nom d'une sous-requête : `dit:<phrase>` ou `ecrit:<phrase>` ; Oriane le rend dans `matchedQueries`."""
+    """Nom d'une sous-requête : `dit:`, `ecrit:` ou `mots:` suivi de la variante (rendu par Oriane)."""
     return f"{origine}:{phrase}"
 
 
@@ -169,12 +175,28 @@ def _noms_trouves(resultat: dict[str, Any]) -> list[str] | None:
     return [n for n in noms if isinstance(n, str)] if isinstance(noms, list) else None
 
 
-def phrases_trouvees(resultat: dict[str, Any], phrases: Sequence[str]) -> list[str]:
-    """Phrases dont la sous-requête `dit:` ou `ecrit:` a trouvé le résultat, dans l'ordre de la recherche."""
-    noms = set(_noms_trouves(resultat) or [])
-    return [
-        p for p in phrases if nom_requete(REQUETE_DIT, p) in noms or nom_requete(REQUETE_ECRIT, p) in noms
+def phrases_trouvees(
+    resultat: dict[str, Any], phrases: Sequence[str], noyaux: Sequence[str] = ()
+) -> list[str]:
+    """Variantes (phrases exactes ou noyaux de mots) dont une sous-requête `dit:`, `ecrit:` ou `mots:` a
+    trouvé le résultat, dans l'ordre de la recherche.
+
+    Relevé réel du 09/11 (F020c) : `includesFuzzy` rend des résultats que `matchedQueries` ne nomme pas
+    (32 sur 100 pour deux noyaux, 22 sur 31 pour un seul : seuls `dit_ou_ecrit` et le nom racine figurent).
+    Une phrase exacte, elle, est toujours nommée. Un résultat rendu par Oriane (liste `matchedQueries`
+    présente) qu'aucune variante ne nomme a donc été trouvé par un noyau : on le rattache au premier noyau,
+    le plus général, plutôt que de le perdre du récit.
+    """
+    noms_trouves = _noms_trouves(resultat)
+    noms = set(noms_trouves or [])
+    trouvees = [
+        p
+        for p in phrases
+        if any(nom_requete(origine, p) in noms for origine in (REQUETE_DIT, REQUETE_ECRIT, REQUETE_MOTS))
     ]
+    if not trouvees and noms_trouves is not None and noyaux:
+        return [noyaux[0]]
+    return trouvees
 
 
 def compter_origines(resultats: list[dict[str, Any]]) -> dict[str, int]:
@@ -191,7 +213,11 @@ def compter_origines(resultats: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def projeter(
-    resultat: dict[str, Any], *, lue_le: datetime | None = None, phrases: Sequence[str] = ()
+    resultat: dict[str, Any],
+    *,
+    lue_le: datetime | None = None,
+    phrases: Sequence[str] = (),
+    noyaux: Sequence[str] = (),
 ) -> Video:
     """Projette un résultat d'Oriane (niveau `default`) vers `video.v1`, en mode direct.
 
@@ -214,7 +240,7 @@ def projeter(
         "vues_selon_oriane": _compte(resultat.get("viewsCount")),
         "interactions_selon_oriane": _compte(resultat.get("interactionsCount")),
         "legende": _texte(resultat.get("caption")),
-        "requetes_trouvees": phrases_trouvees(resultat, phrases),
+        "requetes_trouvees": phrases_trouvees(resultat, phrases, noyaux),
         "transcription": {
             "texte": _transcription(resultat),
             "source": "Oriane",

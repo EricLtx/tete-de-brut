@@ -283,3 +283,181 @@ def test_suppression_reponse_sans_libelle_refuse(client: TestClient) -> None:
     base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A]})
     corps = client.delete(f"/v1/recits/{_id_recit(client, PHRASE_A)}").json()
     assert contient_libelle_refuse(corps["avertissement"]) is None
+
+
+# --- une recherche = un récit, variantes comprises (F020) ---
+
+NOYAU = "pouvoir achat"
+VARIANTE_EXACTE = "le pouvoir d'achat"
+AUTRE_VARIANTE = "fin du mois difficile"
+
+
+def _poser_recherche(
+    identifiant: str = "recherche-x", pivot: str = NOYAU, variantes: list[str] | None = None
+):
+    base.ecrire(
+        "cas",
+        identifiant,
+        "cas.v1",
+        {
+            "pivot": pivot,
+            "variantes": variantes or [NOYAU, VARIANTE_EXACTE, AUTRE_VARIANTE],
+            "noyaux": [NOYAU],
+            "requete": "requête de recherche",
+        },
+    )
+
+
+def _videos_de_recherche():
+    return (
+        fabriquer_video(
+            identifiant="v-deux-variantes",
+            publie_le="2026-11-03T10:00:00+00:00",
+            requetes_trouvees=[NOYAU, VARIANTE_EXACTE],
+        ),
+        fabriquer_video(
+            identifiant="v-noyau",
+            compte="compte_simule_b",
+            publie_le="2026-11-04T10:00:00+00:00",
+            requetes_trouvees=[NOYAU],
+        ),
+        fabriquer_video(
+            identifiant="v-fin-du-mois",
+            compte="compte_simule_c",
+            publie_le="2026-11-05T10:00:00+00:00",
+            requetes_trouvees=[AUTRE_VARIANTE],
+        ),
+        fabriquer_video(
+            identifiant="v-ailleurs",
+            compte="compte_simule_d",
+            publie_le="2026-11-06T10:00:00+00:00",
+            requetes_trouvees=[PHRASE_B],
+        ),
+    )
+
+
+def test_une_recherche_est_un_seul_recit_et_une_video_trouvee_deux_fois_compte_une_fois(
+    client: TestClient,
+) -> None:
+    _poser(*_videos_de_recherche())
+    _poser_recherche()
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_B]})
+    recits = {r["phrase_surveillee"]: r for r in client.get("/v1/radar").json()["recits"]}
+    assert set(recits) == {NOYAU, PHRASE_B}
+    recit = recits[NOYAU]
+    assert recit["variantes"] == [NOYAU, VARIANTE_EXACTE, AUTRE_VARIANTE]
+    assert recit["videos"] == ["v-deux-variantes", "v-noyau", "v-fin-du-mois"]  # union, sans doublon
+    assert _mesure(recit, "videos_trouvees")["valeur"] == 3
+    assert recit["requete_en_clair"] == "requête de recherche"
+    assert recits[PHRASE_B]["variantes"] is None  # la phrase d'un cas n'a pas de variantes
+    assert recits[PHRASE_B]["sous_recherches"] is None
+    assert [(s["libelle"], s["type"], s["videos"]) for s in recit["sous_recherches"]] == [
+        (NOYAU, "mots", 2),
+        (VARIANTE_EXACTE, "exacte", 1),
+        (AUTRE_VARIANTE, "exacte", 1),
+    ]
+    _valider_recit(recit)
+    assert client.get(f"/v1/recits/{recit['identifiant']}").json()["variantes"] == recit["variantes"]
+
+
+def test_sous_recherches_comptent_chaque_variante_et_le_total_reste_l_union(client: TestClient) -> None:
+    # Deux variantes, une vidéo commune : 2 et 1 vidéos par variante, total 2 (la commune compte une fois).
+    _poser(
+        fabriquer_video(identifiant="v-commune", requetes_trouvees=[NOYAU, VARIANTE_EXACTE]),
+        fabriquer_video(identifiant="v-noyau", compte="compte_simule_b", requetes_trouvees=[NOYAU]),
+    )
+    _poser_recherche(variantes=[NOYAU, VARIANTE_EXACTE])
+    (recit,) = client.get("/v1/radar").json()["recits"]
+    assert recit["sous_recherches"] == [
+        {"libelle": NOYAU, "type": "mots", "videos": 2},
+        {"libelle": VARIANTE_EXACTE, "type": "exacte", "videos": 1},
+    ]
+    assert len(recit["videos"]) == 2 and _mesure(recit, "videos_trouvees")["valeur"] == 2
+    _valider_recit(recit)
+
+
+def test_une_recherche_sans_resultat_reste_au_radar_avec_ses_variantes(client: TestClient) -> None:
+    _poser_recherche()
+    (recit,) = client.get("/v1/radar").json()["recits"]
+    assert recit["videos"] == [] and recit["variantes"] == [NOYAU, VARIANTE_EXACTE, AUTRE_VARIANTE]
+    assert _mesure(recit, "videos_trouvees")["valeur"] == 0
+
+
+def test_le_pivot_d_une_recherche_egal_a_une_phrase_du_cas_garde_la_priorite_du_cas(
+    client: TestClient,
+) -> None:
+    _poser(*_videos_de_recherche())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [NOYAU], "requete": "requête de cas lisible"})
+    _poser_recherche()  # écrit après : le pivot est la même clé que la phrase du cas
+    (recit,) = client.get("/v1/radar").json()["recits"]
+    assert recit["requete_en_clair"] == "requête de cas lisible"
+    assert recit["variantes"] == [NOYAU, VARIANTE_EXACTE, AUTRE_VARIANTE]
+    assert len(recit["videos"]) == 3
+
+
+def test_le_cas_ecrit_apres_la_recherche_prend_aussi_la_priorite(client: TestClient) -> None:
+    _poser_recherche("a-recherche")
+    base.ecrire(
+        "cas", "z-cas", "cas.v1", {"phrases": ["Pouvoir  Achat"], "requete": "requête de cas lisible"}
+    )
+    (recit,) = client.get("/v1/radar").json()["recits"]
+    assert recit["phrase_surveillee"] == "Pouvoir  Achat"
+    assert recit["requete_en_clair"] == "requête de cas lisible"
+    assert recit["variantes"][0] == NOYAU
+
+
+def test_deux_cles_differentes_restent_deux_recits(client: TestClient) -> None:
+    _poser(*_videos_de_recherche())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [VARIANTE_EXACTE]})
+    _poser_recherche()
+    recits = {r["phrase_surveillee"]: r for r in client.get("/v1/radar").json()["recits"]}
+    assert set(recits) == {VARIANTE_EXACTE, NOYAU}
+    assert recits[VARIANTE_EXACTE]["videos"] == ["v-deux-variantes"]
+    assert len(recits[NOYAU]["videos"]) == 3
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        {"pivot": 3, "variantes": [NOYAU]},
+        {"pivot": NOYAU, "variantes": NOYAU},
+        {"pivot": NOYAU, "variantes": [NOYAU, ""]},
+    ],
+)
+def test_recherche_mal_formee_ignoree(client: TestClient, document: dict) -> None:
+    base.ecrire("cas", "recherche-x", "cas.v1", document)
+    assert client.get("/v1/radar").json()["recits"] == []
+
+
+def test_suppression_d_un_recit_a_variantes_retire_toutes_ses_variantes(client: TestClient) -> None:
+    _poser(*_videos_de_recherche())
+    _poser(
+        fabriquer_video(
+            identifiant="v-aussi-b", compte="compte_simule_e", requetes_trouvees=[NOYAU, PHRASE_B]
+        )
+    )
+    _poser_recherche()
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_B]})
+    identifiant = _id_recit(client, NOYAU)
+    corps = client.delete(f"/v1/recits/{identifiant}").json()
+    assert corps["phrase_surveillee"] == NOYAU
+    assert corps["videos_retirees"] == 3 and corps["videos_conservees"] == 1
+    assert base.lire("cas", "recherche-x") is None
+    assert base.lire("cas", "cas-1")["phrases"] == [PHRASE_B]
+    restantes = {d["identifiant"]: d["requetes_trouvees"] for d in base.lister("video")}
+    assert restantes == {"v-ailleurs": [PHRASE_B], "v-aussi-b": [PHRASE_B]}
+    assert [r["phrase_surveillee"] for r in client.get("/v1/radar").json()["recits"]] == [PHRASE_B]
+    assert client.get(f"/v1/recits/{identifiant}").status_code == 404
+
+
+def test_suppression_d_un_recit_a_variantes_garde_la_phrase_d_un_autre_recit(client: TestClient) -> None:
+    _poser(*_videos_de_recherche())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [VARIANTE_EXACTE]})
+    _poser_recherche()
+    corps = client.delete(f"/v1/recits/{_id_recit(client, NOYAU)}").json()
+    # `le pouvoir d'achat` est aussi la phrase d'un autre récit : elle reste sur sa vidéo.
+    assert corps["videos_retirees"] == 2 and corps["videos_conservees"] == 1
+    restantes = {d["identifiant"]: d["requetes_trouvees"] for d in base.lister("video")}
+    assert restantes == {"v-deux-variantes": [VARIANTE_EXACTE], "v-ailleurs": [PHRASE_B]}
+    (recit,) = client.get("/v1/radar").json()["recits"]
+    assert recit["phrase_surveillee"] == VARIANTE_EXACTE and recit["videos"] == ["v-deux-variantes"]

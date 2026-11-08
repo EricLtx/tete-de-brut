@@ -3,16 +3,18 @@
 Deux temps, deux fonctions :
 
 - `preparer` traduit la question en filtres (`recherche.v1`) sans appeler Oriane ;
-- `executer` rejoue cette traduction auprès d'Oriane (une page), écrit les vidéos, ajoute le récit de la
-  phrase au radar, ou rend la vidéo du lien. En mode enregistré, il sert le cas sans appel.
+- `executer` rejoue cette traduction auprès d'Oriane (une page), écrit les vidéos, ajoute au radar le récit
+  unique de la recherche, ou rend la vidéo du lien. En mode enregistré, il sert le cas sans appel.
 
 Deux traductions, jamais mêlées. Déterministe : guillemets, expressions de temps, exclusion de comptes,
 plateformes, liens ; une expression de temps ou de plateforme écrite hors guillemets est lue comme une
-consigne, la phrase entre guillemets n'est jamais retouchée. Par le modèle de langue (F018) : une question
-libre, sans guillemets ni lien, est reformulée en une à trois phrases exactes courtes, avec une fenêtre,
-des exclusions et des plateformes (`app/recherche_modele.py`) ; toute erreur du modèle ramène à la
-traduction déterministe. Les filtres affichés sont ceux qui partent : `executer` les passe tels quels à
-`oriane.rechercher`.
+consigne, la phrase entre guillemets n'est jamais retouchée (phrase exacte, jamais un noyau). Par le modèle
+de langue (F018, F020) : une question libre, sans guillemets ni lien, est reformulée en noyaux de mots
+(cherchés dans n'importe quel ordre : la couverture) et en phrases exactes (la précision), avec une
+fenêtre, des exclusions et des plateformes (`app/recherche_modele.py`) ; toute erreur du modèle ramène à la
+traduction déterministe, dont le noyau est formé des mots pleins de la question. Les filtres affichés sont
+ceux qui partent : `executer` les passe tels quels à `oriane.rechercher`. Une recherche = un récit, quel que
+soit le nombre de variantes.
 """
 
 from __future__ import annotations
@@ -62,7 +64,17 @@ from app.oriane import (
     rechercher,
 )
 from app.recherche_modele import Reformulation, reformuler
-from app.recits import calculer_recits, cle_phrase, identifiant_recit
+from app.recits import (
+    NON_CHERCHE,
+    calculer_recits,
+    cle_phrase,
+    construire_recit,
+    identifiant_recit,
+    phrases_surveillees,
+    recherche_de,
+    reunir_variantes,
+    verifier_cas,
+)
 
 journal = logging.getLogger("tete_de_brut")
 
@@ -110,6 +122,20 @@ _AMORCE = re.compile(
     re.I,
 )
 _MOT = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*")
+MOTS_NOYAU_MAX = 3  # repli déterministe : trois mots pleins au plus, dans l'ordre de la question
+# Mots vides du repli déterministe (sans accent, minuscules) : articles, prépositions, pronoms, auxiliaires,
+# conjonctions, mots de la demande elle-même (« donne-moi », « infos », « récentes »).
+MOTS_VIDES = frozenset(
+    """
+    le la les l un une des du de d au aux en et ou a sur sous dans par pour avec ce cet cette ces se
+    sa son ses mon ma mes ton ta tes notre nos votre vos leur leurs qui que quoi dont est sont etre ete
+    avoir ont ai as ne pas plus tres moi toi lui elle il ils elles on nous vous je tu y ca cela ceci
+    donne donnez dis dites parle parlez montre montrez trouve trouvez cherche cherchez info infos
+    information informations recent recente recents recentes dernier derniere derniers dernieres
+    actualite actualites tout tous toute toutes vers chez entre apres avant depuis pendant comme mais
+    donc car si ni quand comment pourquoi
+    """.split()
+)
 _HOTES = {
     "tiktok.com": "tiktok",
     "instagram.com": "instagram",
@@ -233,9 +259,22 @@ def _fenetre(jours: int | None, maintenant: datetime) -> Fenetre:
     return Fenetre(debut=debut, fin=maintenant.replace(microsecond=0))
 
 
-def _phrases_du_modele(reformulation: Reformulation) -> list[str]:
-    """Phrases du modèle, RG-02 appliquée à chacune : un nom seul est écarté, jamais cherché."""
-    return [p for p in reformulation.phrases if not est_nom_seul(p)]
+def _variantes_du_modele(reformulation: Reformulation) -> tuple[list[str], list[str]]:
+    """Noyaux et phrases du modèle, RG-02 appliquée à chacun : un nom seul est écarté, jamais cherché."""
+    noyaux = [n for n in reformulation.noyaux if not est_nom_seul(n)]
+    phrases = [p for p in reformulation.phrases if not est_nom_seul(p)]
+    return noyaux, phrases
+
+
+def noyau_de(phrase: str) -> str:
+    """Repli déterministe : les mots pleins de la phrase (trois au plus, dans l'ordre), sinon vide."""
+    gardes: list[str] = []
+    for mot in _MOT.findall(phrase):
+        # Mots entiers seulement : « d'achat » et « l'essence » restent tels qu'on les dit (Oriane les lit
+        # comme un seul mot), « de » ou « du » séparés par une espace sont retirés.
+        if _sans_accent(mot) not in MOTS_VIDES:
+            gardes.append(mot)
+    return " ".join(gardes[:MOTS_NOYAU_MAX])
 
 
 def traduire(
@@ -247,7 +286,8 @@ def traduire(
     """Traduit la question en filtres ; ne lit que la question, la reformulation et la liste de comptes.
 
     `reformulation` n'est prise en compte que pour une question sans lien ni guillemets, et seulement si
-    elle porte au moins une phrase qui n'est pas un nom seul ; sinon la traduction est déterministe.
+    elle porte au moins un noyau ou une phrase qui n'est pas un nom seul ; sinon la traduction est
+    déterministe. Un modèle qui dit `personne_seule` fait refuser la question (RG-02), sans appel à Oriane.
     """
     lien = _lire_lien(question)
     if lien is False:
@@ -276,13 +316,17 @@ def traduire(
     reste = _PLATEFORMES.sub(lire_plateformes, reste)
     plateformes = list(dict.fromkeys(p.lower() for p in plateformes))
 
-    phrases_modele = (
-        _phrases_du_modele(reformulation) if reformulation is not None and not entre_guillemets else []
-    )
-    if reformulation is not None and phrases_modele:
+    avec_modele = reformulation is not None and not entre_guillemets
+    if avec_modele and reformulation.personne_seule:  # type: ignore[union-attr]
+        refus_nom = RefusRecherche(code="nom_seul", detail=DETAIL_NOM_SEUL)
+        return Traduction("phrase", FiltresRecherche(), refus_nom, reformulation=REFORMULATION_MODELE)
+    noyaux_modele, phrases_modele = _variantes_du_modele(reformulation) if avec_modele else ([], [])  # type: ignore[arg-type]
+    noyaux: list[str]
+    phrases: list[str]
+    if reformulation is not None and (noyaux_modele or phrases_modele):
         # Ce que la question dit en toutes lettres (« depuis hier », « sur TikTok », « hors comptes de
         # partis ») prime ; le modèle complète ce qu'elle exprime autrement (« cette semaine »).
-        phrases, mode_reformulation = phrases_modele, REFORMULATION_MODELE
+        noyaux, phrases, mode_reformulation = noyaux_modele, phrases_modele, REFORMULATION_MODELE
         jours = jours if jours is not None else reformulation.jours
         plateformes = plateformes or list(reformulation.plateformes)
         categories = [categorie] if categorie is not None else list(reformulation.exclusions)
@@ -311,7 +355,10 @@ def traduire(
             return _refuser(
                 "phrase_trop_longue", f"La phrase dépasse {LONGUEUR_MAX_PHRASE} caractères : raccourcis-la."
             )
-        phrases = [phrase]
+        # Une phrase entre guillemets reste une phrase exacte ; une question libre devient un noyau de
+        # mots pleins, ou, faute de mot plein, la question nettoyée en phrase exacte.
+        noyau = "" if entre_guillemets else noyau_de(phrase)
+        noyaux, phrases = ([noyau], []) if noyau else ([], [phrase])
 
     notes: list[str] = []
     comptes_exclus: list[str] = []
@@ -328,7 +375,8 @@ def traduire(
                 notes.append(f"exclusion « comptes de {demandee} » non appliquée : {pourquoi}")
 
     filtres = FiltresRecherche(
-        phrases=phrases,
+        phrases=[*noyaux, *phrases],
+        noyaux=noyaux,
         dans=DANS_PAROLE_OU_ECRAN,
         fenetre=_fenetre(jours, maintenant),
         comptes_exclus=comptes_exclus,
@@ -336,7 +384,7 @@ def traduire(
     )
     refus = (
         RefusRecherche(code="nom_seul", detail=DETAIL_NOM_SEUL)
-        if any(est_nom_seul(p) for p in phrases)
+        if any(est_nom_seul(p) for p in filtres.phrases)
         else None
     )
     return Traduction(
@@ -382,11 +430,22 @@ def _requete_en_clair(traduction: Traduction) -> str:
         )
     if not filtres.phrases or filtres.fenetre is None:
         return "recherche refusée : rien n'est envoyé à Oriane"
-    if len(filtres.phrases) == 1:
-        phrases = f"phrase exacte « {filtres.phrases[0]} », dite ou écrite à l'écran"
+    exactes = [p for p in filtres.phrases if p not in filtres.noyaux]
+    citer = lambda variantes: ", ".join(f"« {v} »" for v in variantes)  # noqa: E731
+    if filtres.noyaux:
+        aussi_tels_quels = any(len(n.split()) >= 2 for n in filtres.noyaux)
+        cherche = [
+            f"mots {citer(filtres.noyaux)} en tout ordre"
+            + (" (et aussi tels quels, en phrase exacte)" if aussi_tels_quels else "")
+        ]
+        if exactes:
+            nombre = "phrases exactes" if len(exactes) > 1 else "phrase exacte"
+            cherche.append(f"{nombre} {citer(exactes)}")
+        phrases = " ; ".join(cherche) + ", dits ou écrits à l'écran"
+    elif len(exactes) == 1:
+        phrases = f"phrase exacte « {exactes[0]} », dite ou écrite à l'écran"
     else:
-        citees = ", ".join(f"« {p} »" for p in filtres.phrases)
-        phrases = f"phrases exactes {citees}, dites ou écrites à l'écran"
+        phrases = f"phrases exactes {citer(exactes)}, dites ou écrites à l'écran"
     morceaux = [
         f"{phrases}, niveau default, "
         f"du {filtres.fenetre.debut.date().isoformat()} au {filtres.fenetre.fin.date().isoformat()}"
@@ -448,17 +507,26 @@ def _couples(recherche: Recherche) -> list[tuple[str, str]]:
     return [(filtres.plateformes[0], filtres.identifiant_plateforme)]
 
 
-def _recits_de(phrases: list[str], mode: str) -> list[Any]:
-    """Récits des phrases tels que le radar les sert maintenant (un par phrase connue), dans l'ordre."""
-    recits, _ = calculer_recits(mode)
-    par_identifiant = {r.identifiant: r for r in recits}
-    trouves = (par_identifiant.get(identifiant_recit(p)) for p in dict.fromkeys(phrases))
-    return [r for r in trouves if r is not None]
+def _pivot(filtres: FiltresRecherche) -> str:
+    """Pivot de la recherche : le premier noyau, sinon la première phrase (c'est la phrase du récit)."""
+    return filtres.noyaux[0] if filtres.noyaux else filtres.phrases[0]
 
 
-def _recit_le_plus_fourni(recits: list[Any]) -> Any:
-    """Le récit qui a le plus de vidéos ; à égalité, le premier (l'ordre des phrases est celui du modèle)."""
-    return max(recits, key=lambda r: len(r.videos), default=None)
+def _recit_rejoue(variantes: list[str]) -> Any | None:
+    """Récit du cas rejoué pour des variantes connues du cas : l'union de leurs vidéos, comptées une fois."""
+    recits, calcule_le = calculer_recits("enregistre")
+    premier = next((r for r in recits if r.identifiant == identifiant_recit(variantes[0])), None)
+    if premier is None or len(variantes) == 1:
+        return premier
+    videos = [Video.model_validate(d) for d in base.lister("video")]
+    cas_valides = [d for d in base.lister(cas.TYPE_CAS) if verifier_cas(d) is None]
+    entree = phrases_surveillees(cas_valides, videos).get(cle_phrase(variantes[0]))
+    if entree is None:
+        return premier
+    ignores = [s.texte for s in premier.non_cherche[len(NON_CHERCHE) :] if s.texte]
+    return construire_recit(
+        {**entree, "variantes": variantes}, videos, calcule_le, "enregistre", premier.enregistre_le, ignores
+    )
 
 
 def _rejouer(config: Configuration, recherche: Recherche) -> ResultatRecherche:
@@ -488,7 +556,7 @@ def _rejouer(config: Configuration, recherche: Recherche) -> ResultatRecherche:
         if rejoue is not None:
             connues = {cle_phrase(p) for p in rejoue.phrases}
             dans_le_cas = [p for p in filtres.phrases if cle_phrase(p) in connues]
-            recit = _recit_le_plus_fourni(_recits_de(dans_le_cas, "enregistre"))
+            recit = _recit_rejoue(dans_le_cas) if dans_le_cas else None
         if recit is None:
             raise ErreurApi("recherche_indisponible", MESSAGE_HORS_CAS, 409)
         video = None
@@ -524,21 +592,35 @@ def _fusionner(avant: dict[str, list[str]], videos: list[Video]) -> list[Video]:
     return fusionnees
 
 
-def _surveiller(recherche: Recherche) -> None:
-    """Ajoute chaque phrase aux phrases surveillées, même sans vidéo : le radar sert ensuite son récit."""
+def _surveiller(recherche: Recherche) -> str:
+    """Écrit le document de la recherche (pivot et variantes) : une recherche = un récit au radar, même vide.
+
+    Une recherche qui reprend un pivot déjà surveillé garde les variantes de la précédente. Rend le pivot.
+    """
     fenetre = recherche.filtres.fenetre
     assert fenetre is not None
-    for phrase in dict.fromkeys(recherche.filtres.phrases):
-        base.ecrire(
-            cas.TYPE_CAS,
-            PREFIXE_DOCUMENT + identifiant_recit(phrase),
-            cas.CAS_V1,
-            {
-                "phrases": [phrase],
-                "requete": recherche.requete_en_clair,
-                "fenetre": fenetre.model_dump(mode="json"),
-            },
-        )
+    pivot = _pivot(recherche.filtres)
+    identifiant = PREFIXE_DOCUMENT + identifiant_recit(pivot)
+    variantes = list(recherche.filtres.phrases)
+    noyaux = list(recherche.filtres.noyaux)
+    ancien = base.lire(cas.TYPE_CAS, identifiant)
+    anciennes = recherche_de(ancien) if isinstance(ancien, dict) else None
+    if anciennes is not None:
+        variantes = reunir_variantes(variantes, anciennes[1])
+        noyaux = reunir_variantes(noyaux, ancien.get("noyaux") or [])
+    base.ecrire(
+        cas.TYPE_CAS,
+        identifiant,
+        cas.CAS_V1,
+        {
+            "pivot": pivot,
+            "variantes": variantes,
+            "noyaux": noyaux,
+            "requete": recherche.requete_en_clair,
+            "fenetre": fenetre.model_dump(mode="json"),
+        },
+    )
+    return pivot
 
 
 async def _preparer_en_fil(question: str, config: Configuration) -> Recherche:
@@ -549,8 +631,8 @@ async def _preparer_en_fil(question: str, config: Configuration) -> Recherche:
 async def executer(app: FastAPI, question: str) -> ResultatRecherche:
     """Prépare la question puis la lance : appel Oriane en direct, cas rejoué en mode enregistré.
 
-    Une question libre cherche toutes les phrases rendues en une page (sous-requête `or`) et rend le
-    récit qui a le plus de vidéos ; les autres récits sont aussi ajoutés au radar.
+    Une question libre cherche tous les noyaux et toutes les phrases rendus en une page (sous-requête `or`)
+    et rend un récit unique, celui de la recherche (pivot et variantes), même s'il est vide.
 
     Refus (RG-02 et autres) : 422 `validation` avec le libellé du refus, sans aucun appel. Mêmes
     bascules en mode enregistré que l'actualisation du radar : plafond de crédits du jour atteint,
@@ -577,13 +659,14 @@ async def executer(app: FastAPI, question: str) -> ResultatRecherche:
     suivi = suivi_de(app)
     try:
         resultat = await rechercher(
-            filtres.phrases,
+            [p for p in filtres.phrases if p not in filtres.noyaux],
             filtres.comptes,
             filtres.fenetre,
             config=config,
             plateformes=filtres.plateformes,
             comptes_exclus=filtres.comptes_exclus,
             identifiants_plateforme=_couples(recherche),
+            noyaux=filtres.noyaux,
             transport=getattr(app.state, "transport_oriane", None),
         )
     except CreditsEpuises:
@@ -618,6 +701,7 @@ async def executer(app: FastAPI, question: str) -> ResultatRecherche:
         if video is None:
             raise ErreurApi("introuvable", "Oriane n'a retrouvé aucune vidéo avec ce lien.", 404)
         return ResultatRecherche(mode="direct", recherche=recherche, video=video)
-    _surveiller(recherche)
-    recit = _recit_le_plus_fourni(_recits_de(filtres.phrases, "direct"))
+    pivot = _surveiller(recherche)
+    recits, _ = calculer_recits("direct")
+    recit = next((r for r in recits if r.identifiant == identifiant_recit(pivot)), None)
     return ResultatRecherche(mode="direct", recherche=recherche, recit=recit)

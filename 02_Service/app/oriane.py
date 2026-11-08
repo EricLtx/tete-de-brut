@@ -79,20 +79,25 @@ def construire_corps(
     plateformes: Sequence[str] = (),
     comptes_exclus: Sequence[str] = (),
     identifiants_plateforme: Sequence[tuple[str, str]] = (),
+    noyaux: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """Corps de `POST /rest/contents/search` : une phrase exacte, dite ou écrite à l'écran.
+    """Corps de `POST /rest/contents/search` : phrases exactes et noyaux de mots, dits ou écrits à l'écran.
 
-    `comptes_exclus` écarte des comptes ; `identifiants_plateforme` (couples plateforme et identifiant)
-    cherche des vidéos par leur lien, sans phrase.
+    Une phrase part en `includesExactly` ; un noyau (F020) part en `includesFuzzy` : tous ses mots, dans
+    n'importe quel ordre, mots partiels compris. `comptes_exclus` écarte des comptes ;
+    `identifiants_plateforme` (couples plateforme et identifiant) cherche des vidéos par leur lien, sans
+    phrase.
     """
     nettoyees = [p.strip() for p in phrases if p and p.strip()]
-    if not nettoyees and not identifiants_plateforme:
+    mots = [n.strip() for n in noyaux if n and n.strip()]
+    if not nettoyees and not mots and not identifiants_plateforme:
         raise RequeteInvalide("requête refusée : au moins une phrase est nécessaire")
-    if any(len(p) > liste_blanche.LONGUEUR_MAX_PHRASE for p in nettoyees):
+    if any(len(p) > liste_blanche.LONGUEUR_MAX_PHRASE for p in (*nettoyees, *mots)):
         raise RequeteInvalide(
             f"requête refusée : une phrase dépasse {liste_blanche.LONGUEUR_MAX_PHRASE} caractères"
         )
-    nettoyees = list(dict.fromkeys(nettoyees))
+    mots = list(dict.fromkeys(mots))
+    nettoyees = [p for p in dict.fromkeys(nettoyees) if p not in mots]
     filtres: dict[str, Any] = {}
     filtre_compte: dict[str, Any] = {}
     if comptes:
@@ -118,22 +123,42 @@ def construire_corps(
             raise RequeteInvalide("requête refusée : la fenêtre se termine avant de commencer")
         filtres[liste_blanche.FILTRE_DATE] = {"after": _date(fenetre.debut), "before": _date(fenetre.fin)}
     # Cadre (compte, plateforme, dates) à la racine en `and` ; « dit ou écrit » en sous-requête `or`
-    # dont chaque enfant porte une phrase (`dit:<phrase>`, `ecrit:<phrase>`) : Oriane rend ces noms
-    # dans `matchedQueries`. Un `or` racine s'appliquerait aussi au cadre (relevé réel du 07/11).
+    # dont chaque enfant porte une variante (`dit:<phrase>`, `ecrit:<phrase>`, `mots:<noyau>`) : Oriane
+    # rend ces noms dans `matchedQueries`. Un `or` racine s'appliquerait aussi au cadre (relevé du 07/11).
     enfants: list[dict[str, Any]] = []
-    for phrase in nettoyees:
+
+    def exactes(phrase: str) -> list[dict[str, Any]]:
+        """Les deux sous-requêtes d'une phrase exacte : parole (`dit:`) et texte à l'écran (`ecrit:`)."""
         groupe = {liste_blanche.OPERATEUR_PHRASES: {"values": [phrase], "operator": "or"}}
-        for origine, filtre in (
-            (liste_blanche.REQUETE_DIT, liste_blanche.FILTRE_TRANSCRIPTION),
-            (liste_blanche.REQUETE_ECRIT, liste_blanche.FILTRE_TEXTE_ECRAN),
-        ):
+        return [
+            {
+                "name": liste_blanche.nom_requete(origine, phrase),
+                "operator": "and",
+                "filters": {filtre: groupe},
+            }
+            for origine, filtre in (
+                (liste_blanche.REQUETE_DIT, liste_blanche.FILTRE_TRANSCRIPTION),
+                (liste_blanche.REQUETE_ECRIT, liste_blanche.FILTRE_TEXTE_ECRAN),
+            )
+        ]
+
+    for noyau in mots:  # couverture : les noyaux d'abord, du plus général au plus précis
+        groupe = {liste_blanche.OPERATEUR_MOTS: {"values": [noyau], "operator": "or"}}
+        for filtre in (liste_blanche.FILTRE_TRANSCRIPTION, liste_blanche.FILTRE_TEXTE_ECRAN):
             enfants.append(
                 {
-                    "name": liste_blanche.nom_requete(origine, phrase),
+                    "name": liste_blanche.nom_requete(liste_blanche.REQUETE_MOTS, noyau),
                     "operator": "and",
                     "filters": {filtre: groupe},
                 }
             )
+        # Relevé réel du 07/11 (F020) : `includesFuzzy` ne retrouve pas « pouvoir d'achat » avec « pouvoir
+        # achat » (« d'achat » est un seul mot : 35 vidéos contre 735). Un noyau de deux mots ou plus part
+        # donc aussi tel quel en phrase exacte, qui retrouve « le », « du » ou « mon » pouvoir d'achat.
+        if len(noyau.split()) >= 2:
+            enfants.extend(exactes(noyau))
+    for phrase in nettoyees:
+        enfants.extend(exactes(phrase))
     corps: dict[str, Any] = {"name": NOM_REQUETE, "operator": "and", "filters": filtres}
     if enfants:  # une recherche par lien n'a aucune phrase, donc aucune sous-requête
         corps["queries"] = [
@@ -142,13 +167,15 @@ def construire_corps(
     return corps
 
 
-def _phrases_du_corps(corps: dict[str, Any]) -> list[dict[str, Any]]:
-    """Phrases cherchées, dans l'ordre, lues dans les sous-requêtes `dit:` du corps."""
-    return [
-        q["filters"][liste_blanche.FILTRE_TRANSCRIPTION][liste_blanche.OPERATEUR_PHRASES]
-        for q in (corps["queries"][0]["queries"] if "queries" in corps else [])
-        if liste_blanche.FILTRE_TRANSCRIPTION in q["filters"]
-    ]
+def _phrases_du_corps(corps: dict[str, Any]) -> list[str]:
+    """Variantes cherchées (noyaux puis phrases), dans l'ordre, lues dans les sous-requêtes du corps."""
+    lues: list[str] = []
+    for q in corps["queries"][0]["queries"] if "queries" in corps else []:
+        for operande in q["filters"].values():
+            for operateur in (liste_blanche.OPERATEUR_MOTS, liste_blanche.OPERATEUR_PHRASES):
+                if operateur in operande and operande[operateur]["values"][0] not in lues:
+                    lues.append(operande[operateur]["values"][0])
+    return lues
 
 
 def _raison_400(reponse: httpx.Response) -> str:
@@ -195,6 +222,7 @@ async def rechercher(
     plateformes: Sequence[str] = (),
     comptes_exclus: Sequence[str] = (),
     identifiants_plateforme: Sequence[tuple[str, str]] = (),
+    noyaux: Sequence[str] = (),
     limite: int = TAILLE_PAGE,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> ResultatRecherche:
@@ -203,7 +231,9 @@ async def rechercher(
     Lève `RequeteInvalide` (avant tout appel), `CreditsEpuises` (402) ou `OrianeInjoignable`
     (clé absente, 401, 400, expiration, autre code). Chaque appel parti laisse une ligne au journal.
     """
-    corps = construire_corps(phrases, comptes, fenetre, plateformes, comptes_exclus, identifiants_plateforme)
+    corps = construire_corps(
+        phrases, comptes, fenetre, plateformes, comptes_exclus, identifiants_plateforme, noyaux
+    )
     cible = (
         f"POST {liste_blanche.CHEMIN_RECHERCHE}?sort={TRI}&offset=0&limit={limite}&projection={PROJECTION}"
     )
@@ -248,7 +278,8 @@ async def rechercher(
         raise OrianeInjoignable("réponse d'Oriane illisible") from exc
 
     lue_le = datetime.now(UTC)
-    phrases_cherchees = [f["values"][0] for f in _phrases_du_corps(corps)]
+    phrases_cherchees = _phrases_du_corps(corps)
+    noyaux_cherches = list(dict.fromkeys(n.strip() for n in noyaux if n and n.strip()))
     videos: list[Video] = []
     ecartees = 0
     videos_brutes: list[dict[str, Any]] = []
@@ -256,7 +287,11 @@ async def rechercher(
         try:
             if not isinstance(element, dict):
                 raise liste_blanche.ResultatIllisible("résultat inattendu")
-            videos.append(liste_blanche.projeter(element, lue_le=lue_le, phrases=phrases_cherchees))
+            videos.append(
+                liste_blanche.projeter(
+                    element, lue_le=lue_le, phrases=phrases_cherchees, noyaux=noyaux_cherches
+                )
+            )
             videos_brutes.append(element)
         except liste_blanche.ResultatIllisible:
             ecartees += 1
