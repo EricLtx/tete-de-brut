@@ -45,3 +45,4 @@ sha ; `git diff --stat` ; dernière ligne de pytest ; écarts ; points ouverts.
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-09 | orchestrateur | Ajout au périmètre : les lignes `REEL` imprimées par les tests réels (`tests/test_recherche.py`, liens collés) affichent l'URL complète d'une vidéo, compte compris, dans le journal public du run `reel` 42534842980 ; n'imprimer que la plateforme et l'identifiant de la vidéo. Même critère : aucune sortie publique ne contient un compte. |

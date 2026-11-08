@@ -1,7 +1,7 @@
 ---
 mandat: F020
 titre: S17 — Recherche : couverture maximale (noyaux de mots en ordre libre par `includesFuzzy`, variantes multiples) et un seul récit par recherche
-statut: lance
+statut: no-go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S17
 branche: feat/service-recherche-couverture (part de main)
@@ -11,9 +11,9 @@ effort: high
 relecteur: sonnet / high (config)
 cree: 2026-11-07
 lance_a: 2026-11-07T16:40Z
-rendu_a:
+rendu_a: 2026-11-07T17:00Z
 go_a:
-allers_retours: 0
+allers_retours: 1
 ---
 
 # F020 — S17, couverture de la recherche et un récit par recherche
@@ -64,3 +64,5 @@ sha ; diff ; tests (dont `reel`) ; écarts ; exemple obtenu (question → noyaux
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-09 | orchestrateur | Branche raccordée à `main` (55992e7, 597 tests, run `pipeline` vert). Doublage `vault/revues/F020-55992e7.md` : NO-GO, 1 bloquant (run `reel` 42534842980 : 68 vidéos pour 100 exigées), 1 majeur (noyaux aussi envoyés en phrase exacte, acté au plan le 09/11), 4 mineurs. |
+| 2026-11-09 | orchestrateur | **F020b**, correctif sur la même branche, `sonnet` / low. (1) Critère de fin révisé : le seuil absolu de 100 vidéos sur données vivantes est remplacé par un invariant relatif. Sur la même fenêtre, le récit unique couvre au moins autant de vidéos que la phrase exacte « pouvoir d'achat » seule, et au moins autant que chacune de ses variantes. Le test `reel` le vérifie en une seule exécution, avec au plus une sous-requête de plus. (2) Test hors réseau qui envoie deux noyaux de bout en bout : la mutation `noyaux=filtres.noyaux[:1]` doit le faire échouer (constat 4). Réserve : `tests/test_recherche.py`, et `app/recherche.py` seulement si la comparaison l'exige. Fin : ruff, pytest hors `reel` et run `pipeline` verts, puis `gh workflow run reel.yml --ref feat/service-recherche-couverture` vert, deux lancements au plus (15 à 45 crédits Oriane chacun). Relu sur le seul diff entre 55992e7 et le nouveau sha. |
