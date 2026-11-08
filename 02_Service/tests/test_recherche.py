@@ -18,7 +18,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import modele_langue
+from app import base, modele_langue
 from app import recherche as module_recherche
 from app.config import Configuration, ErreurConfiguration
 from app.libelles import contient_libelle_refuse
@@ -1093,6 +1093,46 @@ def test_deux_noyaux_du_modele_partent_tous_deux_a_oriane_en_includes_fuzzy(
             if "includesFuzzy" in next(iter(e["filters"].values()))
         ]
         assert sorted(flous) == sorted([NOYAU_A, NOYAU_A, noyau_b, noyau_b])  # dit et écrit, pour chacun
+
+
+def test_un_resultat_flou_que_oriane_ne_nomme_pas_reste_dans_le_recit_unique(
+    tmp_path: Path,
+    transport_modele: Callable[..., httpx.MockTransport],
+    reponse_oriane_simulee: dict[str, Any],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+) -> None:
+    """F020c : Oriane rend des résultats `includesFuzzy` sans nom de variante dans `matchedQueries`.
+
+    La recherche combinée reste un sur-ensemble de chacune de ses sous-requêtes : ces résultats vont au
+    premier noyau, et le récit unique couvre autant de vidéos que la page rendue.
+    """
+    premiere, seconde = reponse_oriane_simulee["data"]["results"]
+    premiere["matchedQueries"] = [f"dit:{PHRASE_B}", "dit_ou_ecrit", "tete-de-brut-recherche"]
+    seconde["matchedQueries"] = ["dit_ou_ecrit", "tete-de-brut-recherche"]
+    transport_modele(_json_modele([PHRASE_B], noyaux=[NOYAU_A]))
+    oriane = transport_oriane_simule(corps=reponse_oriane_simulee)
+    with _service(tmp_path, direct=True, transport=oriane, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        reponse = _lancer(client, QUESTION_LIBRE)
+        assert reponse.status_code == 201, reponse.text
+        recit = reponse.json()["recit"]
+        assert len(recit["videos"]) == 2  # autant que de résultats rendus par Oriane
+        trouvees = {i: client.get(f"/v1/videos/{i}").json()["requetes_trouvees"] for i in recit["videos"]}
+        assert sorted(trouvees.values()) == sorted([[NOYAU_A], [PHRASE_B]])
+
+
+def test_sans_noyau_un_resultat_non_nomme_n_est_rattache_a_aucune_variante(
+    tmp_path: Path,
+    reponse_oriane_simulee: dict[str, Any],
+    transport_oriane_simule: Callable[..., httpx.MockTransport],
+) -> None:
+    for resultat in reponse_oriane_simulee["data"]["results"]:
+        resultat["matchedQueries"] = ["dit_ou_ecrit", "tete-de-brut-recherche"]
+    config = construire_config(tmp_path, ORIANE_API_KEY="cle-fictive-pour-les-tests-0001")
+    base.configurer(config.chemin_base)
+    base.initialiser()
+    transport = transport_oriane_simule(corps=reponse_oriane_simulee)
+    trouves = asyncio.run(rechercher([PHRASE_B], config=config, transport=transport))
+    assert [v.requetes_trouvees for v in trouves.videos] == [[], []]
 
 
 def _reponse_couverture(reponse_oriane: dict[str, Any]) -> dict[str, Any]:

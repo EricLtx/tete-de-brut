@@ -279,6 +279,7 @@ async def rechercher(
 
     lue_le = datetime.now(UTC)
     phrases_cherchees = _phrases_du_corps(corps)
+    noyaux_cherches = list(dict.fromkeys(n.strip() for n in noyaux if n and n.strip()))
     videos: list[Video] = []
     ecartees = 0
     videos_brutes: list[dict[str, Any]] = []
@@ -286,7 +287,11 @@ async def rechercher(
         try:
             if not isinstance(element, dict):
                 raise liste_blanche.ResultatIllisible("résultat inattendu")
-            videos.append(liste_blanche.projeter(element, lue_le=lue_le, phrases=phrases_cherchees))
+            videos.append(
+                liste_blanche.projeter(
+                    element, lue_le=lue_le, phrases=phrases_cherchees, noyaux=noyaux_cherches
+                )
+            )
             videos_brutes.append(element)
         except liste_blanche.ResultatIllisible:
             ecartees += 1

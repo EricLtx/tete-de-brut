@@ -175,15 +175,28 @@ def _noms_trouves(resultat: dict[str, Any]) -> list[str] | None:
     return [n for n in noms if isinstance(n, str)] if isinstance(noms, list) else None
 
 
-def phrases_trouvees(resultat: dict[str, Any], phrases: Sequence[str]) -> list[str]:
+def phrases_trouvees(
+    resultat: dict[str, Any], phrases: Sequence[str], noyaux: Sequence[str] = ()
+) -> list[str]:
     """Variantes (phrases exactes ou noyaux de mots) dont une sous-requête `dit:`, `ecrit:` ou `mots:` a
-    trouvé le résultat, dans l'ordre de la recherche."""
-    noms = set(_noms_trouves(resultat) or [])
-    return [
+    trouvé le résultat, dans l'ordre de la recherche.
+
+    Relevé réel du 09/11 (F020c) : `includesFuzzy` rend des résultats que `matchedQueries` ne nomme pas
+    (32 sur 100 pour deux noyaux, 22 sur 31 pour un seul : seuls `dit_ou_ecrit` et le nom racine figurent).
+    Une phrase exacte, elle, est toujours nommée. Un résultat rendu par Oriane (liste `matchedQueries`
+    présente) qu'aucune variante ne nomme a donc été trouvé par un noyau : on le rattache au premier noyau,
+    le plus général, plutôt que de le perdre du récit.
+    """
+    noms_trouves = _noms_trouves(resultat)
+    noms = set(noms_trouves or [])
+    trouvees = [
         p
         for p in phrases
         if any(nom_requete(origine, p) in noms for origine in (REQUETE_DIT, REQUETE_ECRIT, REQUETE_MOTS))
     ]
+    if not trouvees and noms_trouves is not None and noyaux:
+        return [noyaux[0]]
+    return trouvees
 
 
 def compter_origines(resultats: list[dict[str, Any]]) -> dict[str, int]:
@@ -200,7 +213,11 @@ def compter_origines(resultats: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def projeter(
-    resultat: dict[str, Any], *, lue_le: datetime | None = None, phrases: Sequence[str] = ()
+    resultat: dict[str, Any],
+    *,
+    lue_le: datetime | None = None,
+    phrases: Sequence[str] = (),
+    noyaux: Sequence[str] = (),
 ) -> Video:
     """Projette un résultat d'Oriane (niveau `default`) vers `video.v1`, en mode direct.
 
@@ -223,7 +240,7 @@ def projeter(
         "vues_selon_oriane": _compte(resultat.get("viewsCount")),
         "interactions_selon_oriane": _compte(resultat.get("interactionsCount")),
         "legende": _texte(resultat.get("caption")),
-        "requetes_trouvees": phrases_trouvees(resultat, phrases),
+        "requetes_trouvees": phrases_trouvees(resultat, phrases, noyaux),
         "transcription": {
             "texte": _transcription(resultat),
             "source": "Oriane",
