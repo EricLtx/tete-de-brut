@@ -1,7 +1,7 @@
 ---
 mandat: F020
 titre: S17 — Recherche : couverture maximale (noyaux de mots en ordre libre par `includesFuzzy`, variantes multiples) et un seul récit par recherche
-statut: go
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S17
 branche: feat/service-recherche-couverture (part de main)
