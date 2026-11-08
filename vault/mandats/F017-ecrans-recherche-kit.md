@@ -43,3 +43,4 @@ sha ; diff ; tests ; écarts ; points ouverts.
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-09 | orchestrateur | Périmètre complété depuis la rédaction : le kit cite aussi `DELETE /v1/recits/{id}` (S16, bouton « Supprimer le récit »), `POST /v1/recits/{id}/pertinence` (S18) et le champ optionnel `Recit.variantes` (S17) dans `README.md` et `AGENTS.md`, d'après `contrats/api.v1.json` ; retirer l'exemption `SANS_EXEMPLE_JUSQU_A_S14` de `tests/test_exemples_ecrans.py`. Part de `main` après fusion de F020. Fichiers réservés inchangés. |
