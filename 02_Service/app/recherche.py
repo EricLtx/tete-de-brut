@@ -646,50 +646,50 @@ async def executer(app: FastAPI, question: str) -> ResultatRecherche:
     if config.mode == "enregistre":
         return _rejouer(config, recherche)
 
+    # Le verrou décide de la bascule ; le rejeu, qui peut rappeler le modèle de langue, se fait après.
+    suivi = suivi_de(app)
     async with verrou_credits(app):
-        if app.state.config.mode == "enregistre":  # une autre demande a basculé pendant l'attente du verrou
-            return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
-        config = app.state.config
-        depenses = credits_du_jour()
-        if depenses + recherche.cout_estime.credits_estimes > config.plafond_credits_jour:
-            raison = (
-                f"plafond de crédits du jour atteint ({depenses} sur {config.plafond_credits_jour}) : "
-                "le service rejoue le cas enregistré"
-            )
-            basculer(app, raison)
-            return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
-
-        filtres = recherche.filtres
-        avant = {d["identifiant"]: d.get("requetes_trouvees", []) for d in base.lister("video")}
-        suivi = suivi_de(app)
-        try:
-            resultat = await rechercher(
-                [p for p in filtres.phrases if p not in filtres.noyaux],
-                filtres.comptes,
-                filtres.fenetre,
-                config=config,
-                plateformes=filtres.plateformes,
-                comptes_exclus=filtres.comptes_exclus,
-                identifiants_plateforme=_couples(recherche),
-                noyaux=filtres.noyaux,
-                transport=getattr(app.state, "transport_oriane", None),
-            )
-        except CreditsEpuises:
-            basculer(app, "crédits Oriane épuisés (402) : le service rejoue le cas enregistré")
-            return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
-        except OrianeInjoignable as exc:
-            if not exc.raison.startswith(PANNES):
-                raise  # clé refusée, requête refusée : une panne de configuration, pas de bascule
-            suivi.pannes_de_suite += 1
-            if suivi.pannes_de_suite < ECHECS_AVANT_BASCULE:
-                raise
-            basculer(
-                app,
-                f"Oriane injoignable : {suivi.pannes_de_suite} échecs de suite (dernier : {exc.raison}) ; "
-                "le service rejoue le cas enregistré",
-            )
-            suivi.pannes_de_suite = 0
-            return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
+        resultat = None
+        if app.state.config.mode != "enregistre":  # sinon une autre demande a basculé pendant l'attente
+            config = app.state.config
+            depenses = credits_du_jour()
+            if depenses + recherche.cout_estime.credits_estimes > config.plafond_credits_jour:
+                raison = (
+                    f"plafond de crédits du jour atteint ({depenses} sur {config.plafond_credits_jour}) : "
+                    "le service rejoue le cas enregistré"
+                )
+                basculer(app, raison)
+            else:
+                filtres = recherche.filtres
+                avant = {d["identifiant"]: d.get("requetes_trouvees", []) for d in base.lister("video")}
+                try:
+                    resultat = await rechercher(
+                        [p for p in filtres.phrases if p not in filtres.noyaux],
+                        filtres.comptes,
+                        filtres.fenetre,
+                        config=config,
+                        plateformes=filtres.plateformes,
+                        comptes_exclus=filtres.comptes_exclus,
+                        identifiants_plateforme=_couples(recherche),
+                        noyaux=filtres.noyaux,
+                        transport=getattr(app.state, "transport_oriane", None),
+                    )
+                except CreditsEpuises:
+                    basculer(app, "crédits Oriane épuisés (402) : le service rejoue le cas enregistré")
+                except OrianeInjoignable as exc:
+                    if not exc.raison.startswith(PANNES):
+                        raise  # clé refusée, requête refusée : une panne de configuration, pas de bascule
+                    suivi.pannes_de_suite += 1
+                    if suivi.pannes_de_suite < ECHECS_AVANT_BASCULE:
+                        raise
+                    basculer(
+                        app,
+                        f"Oriane injoignable : {suivi.pannes_de_suite} échecs de suite "
+                        f"(dernier : {exc.raison}) ; le service rejoue le cas enregistré",
+                    )
+                    suivi.pannes_de_suite = 0
+    if resultat is None:
+        return _rejouer(app.state.config, await _preparer_en_fil(question, app.state.config))
     suivi.pannes_de_suite = 0
 
     videos = _fusionner(avant, resultat.videos)

@@ -7,6 +7,7 @@ deux vidéos synthétiques et sans crédit Oriane.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import threading
@@ -696,6 +697,72 @@ def test_question_qui_ressemble_a_une_cle_ne_fait_pas_echouer_le_journal(client_
     transport_modele()
     reponse = _classer(client_modele, {"question": "token: abc et api_key=zzz"})
     assert reponse.status_code == 200 and reponse.json()["classees"] == 1
+
+
+# --- pertinence enregistrée mal formée : tolérée de bout en bout (F027) -------------------------------
+
+FORMES_MAL_FORMEES = [
+    pytest.param({"question": PHRASE}, id="niveau-absent"),
+    pytest.param({"question": PHRASE, "niveau": "superbe"}, id="niveau-inconnu"),
+    pytest.param("forte", id="chaine"),
+]
+
+
+def _abimer_pertinence(identifiant: str, annotation: Any) -> None:
+    document = base.lire("video", identifiant)
+    base.ecrire("video", identifiant, "video.v1", {**document, "pertinence": annotation})
+
+
+@pytest.mark.parametrize("annotation", FORMES_MAL_FORMEES)
+def test_radar_tolere_une_pertinence_mal_formee(tmp_path, annotation, caplog):
+    with _service(tmp_path, PERTINENCE_MODE="aucun") as client:
+        _poser_recit(3)
+        _abimer_pertinence("v1", annotation)
+        with caplog.at_level(logging.WARNING, logger="tete_de_brut"):
+            reponse = client.get("/v1/radar")
+    assert reponse.status_code == 200, reponse.text
+    recits = reponse.json()["recits"]
+    assert [r["identifiant"] for r in recits] == [ID_RECIT]
+    assert recits[0]["videos"] == ["v0", "v1", "v2"]
+    signalements = [m for m in caplog.messages if "pertinence mal formée" in m]
+    assert signalements and all("v1" in m and "compte_simule" not in m for m in signalements)
+
+
+@pytest.mark.parametrize("annotation", FORMES_MAL_FORMEES)
+def test_classement_tolere_une_pertinence_mal_formee(tmp_path, annotation):
+    with _service(tmp_path, PERTINENCE_MODE="aucun") as client:
+        _poser_recit(3)
+        _abimer_pertinence("v1", annotation)
+        reponse = _classer(client)
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    ClassementPertinence.model_validate(corps)
+    assert corps["identifiant"] == ID_RECIT
+    assert corps["classees"] == 0 and corps["non_classees"] == 3
+
+
+def test_une_pertinence_bien_formee_voisine_reste_lue(tmp_path):
+    """La tolérance ne vaut que pour la vidéo fautive : sa voisine garde son jugement."""
+    with _service(tmp_path, PERTINENCE_MODE="aucun") as client:
+        _poser_recit(2)
+        base.ecrire(
+            "video",
+            "v0",
+            "video.v1",
+            {
+                **base.lire("video", "v0"),
+                "pertinence": {
+                    "niveau": "forte",
+                    "motif": "parle du sujet",
+                    "question": PHRASE,
+                    "modele": "claude-haiku-5-5",
+                    "calcule_le": LUE_LE_TEST,
+                },
+            },
+        )
+        _abimer_pertinence("v1", {"question": PHRASE})
+        corps = _classer(client).json()
+    assert corps["classees"] == 1 and corps["fortes"] == 1 and corps["non_classees"] == 1
 
 
 # --- contrat ------------------------------------------------------------------------------------------
