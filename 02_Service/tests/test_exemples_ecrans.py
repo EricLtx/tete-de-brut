@@ -251,6 +251,18 @@ def test_exemples_de_la_recherche() -> None:
     assert recit.get("variantes") in (None, filtres["phrases"])
 
 
+def test_suppression_et_pertinence_visent_un_recit_affiche() -> None:
+    """Les données d'essai de la suppression et de la pertinence se raccordent au récit montré."""
+    radar, executee = _lire("radar.json"), _lire("recherche-executee.json")
+    recits = {r["identifiant"]: r["phrase_surveillee"] for r in radar["recits"]}
+    recits[executee["recit"]["identifiant"]] = executee["recit"]["phrase_surveillee"]
+    suppression, pertinence = _lire("suppression-recit.json"), _lire("pertinence-recit.json")
+    assert suppression["identifiant"] in recits
+    assert pertinence["identifiant"] in recits
+    assert suppression["phrase_surveillee"] == recits[suppression["identifiant"]]
+    assert pertinence["question"] == recits[pertinence["identifiant"]]
+
+
 def test_le_kit_cite_toutes_les_routes_du_contrat() -> None:
     """`AGENTS.md` liste chaque route de `api.v1` : une route absente est une route que l'écran ignore."""
     contrat = json.loads(CONTRAT_API.read_text(encoding="utf-8"))
@@ -274,6 +286,9 @@ def test_le_kit_compte_quatre_ecrans() -> None:
     for route in ("`/` Recherche", "`/radar` Radar", "`/versions/:id`", "`/fiche/:id`"):
         assert route in instructions, route
     assert "trois écrans" not in instructions.lower()
+    projet = (DOSSIER_KIT / "prompts" / "00-projet.md").read_text(encoding="utf-8")
+    assert "exactement quatre routes" in projet and "trois routes" not in projet
+    assert "`X-Cle-Demo` sur POST, PATCH et DELETE seulement" in projet
     radar = (DOSSIER_KIT / "prompts" / "01-radar.md").read_text(encoding="utf-8")
     recherche = (DOSSIER_KIT / "prompts" / "04-recherche.md").read_text(encoding="utf-8")
     assert "sur la route `/radar`" in radar

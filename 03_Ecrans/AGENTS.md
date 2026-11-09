@@ -26,13 +26,13 @@ Exactement quatre écrans, aucun de plus : `/` Recherche, `/radar` Radar des ré
 
 ## Recherche (écran `/`) et gestes sur un récit
 
-- Une zone de texte reçoit une question libre ou un lien TikTok, Instagram ou YouTube. Aucun appel sans geste : jamais à la frappe ni au chargement. Le geste « Préparer » envoie `POST /v1/recherches/preparer` (rien n'est dépensé, rien n'est écrit).
-- Affiche avant tout lancement, en clair, ce qui partira : `filtres` (`phrases`, `noyaux`, `dans`, `fenetre`, `plateformes`, `comptes_exclus`, `identifiant_plateforme`), `requete_en_clair`, `reformulation` (`modele` : « reformulée par un modèle de langue ») et le coût (`cout_estime.credits_estimes`, `cout_estime.methode`).
+- Une zone de texte reçoit une question libre ou un lien TikTok, Instagram ou YouTube. Aucun appel sans geste, ni à la frappe ni au chargement. Le geste « Préparer » envoie `POST /v1/recherches/preparer` (rien n'est dépensé, rien n'est écrit).
+- Affiche avant tout lancement, en clair, ce qui partira : `filtres` (`phrases`, `noyaux`, `dans`, `fenetre`, `plateformes`, `comptes`, `comptes_exclus`, `identifiant_plateforme`), `requete_en_clair`, `reformulation` (`modele` : « reformulée par un modèle de langue ») et le coût (`cout_estime.credits_estimes`, `cout_estime.methode`).
 - « Lancer » demande une confirmation avec le coût, puis envoie `POST /v1/recherches` (même corps) ; il est désactivé si `refus` existe. Une phrase donne `recit` (ajouté au radar) ; un lien donne `video`.
 - `refus` : affiche `refus.detail` tel quel, n'offre pas de lancer, n'écris aucune formulation de remplacement.
 - Mode enregistré : 409 `recherche_indisponible` ou 404 s'affichent tels quels ; le 422 d'une recherche refusée aussi.
 - `recit.variantes` (facultatif) : toutes les variantes cherchées ; ses vidéos sont l'union, comptées une fois.
-- « Supprimer le récit » : confirmation, puis `DELETE /v1/recits/{id}` ; affiche `videos_retirees`, `videos_conservees` et `avertissement` tel quel.
+- « Supprimer le récit » : confirmation, puis `DELETE /v1/recits/{id}` ; affiche `videos_retirees`, `videos_conservees` et `avertissement` tel quel, puis rends la saisie vide, sans recharger le radar.
 - Pertinence : `POST /v1/recits/{id}/pertinence` sur geste, après confirmation ; annotation d'un modèle de langue (`video.pertinence.niveau`, `motif`, `modele`, `question`, `calcule_le`), affichée comme texte « jugée par {modele} ». Elle ne masque, ne trie ni ne supprime aucune vidéo.
 
 ## Le mode, sur chaque écran
@@ -46,7 +46,7 @@ Exactement quatre écrans, aucun de plus : `/` Recherche, `/radar` Radar des ré
 - Toute erreur arrive dans l'enveloppe `{"erreur": "<code>", "detail": "<phrase>", "mode": "…"}`. Affiche `detail` tel quel, sans le reformuler, avec le code `erreur` en petit et le mode. N'invente aucun message à sa place.
 - Codes : `validation` 422, `introuvable` 404, `cle_demo_invalide` 401, `decision_manquante`, `version_non_tranchee`, `constat_manquant`, `recherche_indisponible` 409, `non_implemente` 501, `oriane_injoignable`, `credits_epuises` 503.
 - Service injoignable : « Service injoignable à l'adresse configurée ». Aucun nouvel essai automatique en boucle.
-- Données d'essai : chaque écran embarque son exemple JSON (`src/donnees-essai/`). Utilise-le uniquement quand la route répond 501 `non_implemente`, avec un bandeau visible « Données d'essai fictives du kit : la route n'est pas encore servie » en plus du mode. Jamais sur une autre erreur, jamais quand le service est injoignable.
+- Données d'essai : chaque écran embarque son exemple JSON (`src/donnees-essai/`). Utilise-le uniquement quand la route répond 501 `non_implemente`, avec un bandeau visible « Données d'essai fictives du kit : la route n'est pas encore servie » en plus du mode. Jamais sur une autre erreur, ni service injoignable. Recherche, suppression, pertinence : routes servies, l'exemple n'est jamais un repli.
 
 ## Contenu des vidéos : texte seul
 
