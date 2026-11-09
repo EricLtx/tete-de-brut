@@ -1,7 +1,7 @@
 ---
 mandat: F028
 titre: Ergonomie des onglets Versions et Fiche de l'espace du récit (actions regroupées, information resserrée)
-statut: lance
+statut: go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: lot 2, ergonomie (veille § 6), hors ADR-0003
 depot: EricLtx/tete-de-brut-6a69202a (écrans Lovable)
@@ -41,3 +41,5 @@ sha ; `git diff --stat` ; dernières lignes de `bun run test` et `bun run build`
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-09 | orchestrateur | Ajout avant doublage : onglets du récit sans opacité (majeur de contraste du doublage F025, `EspaceRecit.tsx`). |
+| 2026-11-09 | orchestrateur | F028b (sonnet / medium) après le doublage de ea909dd (GO conditionnel, majeur M1) : positions collantes calées sur la hauteur réelle des barres ; réserve élargie à `src/lib/hauteurs.ts`. Doublage de b0c4565 : GO. |

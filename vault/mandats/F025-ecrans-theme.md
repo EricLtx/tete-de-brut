@@ -1,7 +1,7 @@
 ---
 mandat: F025
 titre: S24 — Écrans en clair, sombre ou système (jetons sémantiques, contrastes vérifiés)
-statut: go-conditionnel (majeur de contraste traité dans F028)
+statut: go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S24
 depot: EricLtx/tete-de-brut-6a69202a (écrans Lovable)
@@ -45,3 +45,4 @@ sha ; `git diff --stat` ; dernières lignes de `bun run test` et `bun run build`
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-09 | orchestrateur | Majeur du doublage (onglets inactifs à 2,2:1 en clair) traité dans F028 ; fusion d'essai F025 et F028 relue : 10,83:1. Condition du GO levée. |
