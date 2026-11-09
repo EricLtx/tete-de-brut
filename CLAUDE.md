@@ -5,7 +5,7 @@ préfixe stable que le cache de prompt réutilise d'une session à l'autre ; met
 
 ## 1. Projet
 
-« Tête de Brut. » : service d'API de la démonstration du hackathon Hack the Feed (piste éditoriale Brut, 07/11/2026). Il lit l'intérieur des vidéos sociales par Oriane (transcriptions, texte à l'écran), regroupe les récits, compare deux versions mot à mot et porte la fiche de vérification d'une rédaction. Trois écrans Lovable, hors dépôt, consomment son contrat OpenAPI `api.v1`. Ce dépôt public ne contient que le code et son harnais ; la documentation de cadrage (cahier des charges, business case, veille) reste dans un dépôt privé. Documentation en français. **Phase actuelle :** construction du service (plan `01_Docs/08_Plans/plan-service-demonstration.md`).
+« Tête de Brut. » : service d'API de la démonstration du hackathon Hack the Feed (piste éditoriale Brut, 07/11/2026). Il lit l'intérieur des vidéos sociales par Oriane (transcriptions, texte à l'écran), regroupe les récits, compare deux versions mot à mot et porte la fiche de vérification d'une rédaction. Quatre écrans Lovable, hors dépôt, consomment son contrat OpenAPI `api.v1`. Ce dépôt public ne contient que le code et son harnais ; la documentation de cadrage (cahier des charges, business case, veille) reste dans un dépôt privé. Documentation en français. **Phase actuelle :** construction du service (plan `01_Docs/08_Plans/plan-service-demonstration.md`).
 
 ## 2. Carte du dépôt
 
@@ -51,7 +51,7 @@ cd 02_Service && python -m uvicorn app.main:app --port 8080  # service local ; v
 
 ## 5. État courant (section vivante, mise à jour par les plans)
 
-Dépôt créé et équipé le 07/11/2026 (canon 1.0.3, workflow GitHub qui rejoue `ci.sh`). Plan actif : `01_Docs/08_Plans/plan-service-demonstration.md` ; ADR-0001 acceptée le 07/11 ; licence commerciale « Tête de Brut. » (`LICENSE`). Construction lancée : mandat F002 (S01, `feat/service-socle`). Prochaine porte : S02 dès S01 rendu, jonction 1 à 12 h, jonction 2 et gel à 15 h 30.
+Dépôt créé et équipé le 07/11/2026 (canon 1.0.3, workflow GitHub qui rejoue `ci.sh`). Plan actif : `01_Docs/08_Plans/plan-service-demonstration.md`. Après le hackathon (09/11) : lot 1 clos (S14, S20 et suites fusionnés), S22 (banc d'évaluation) et S24 (thème) faits, base en WAL ; écrans à quatre routes, thème clair, sombre ou système, onglets Versions et Fiche refondus. ADR-0003 (pipeline à phases), ADR-0004 (versions rapprochées, intendance des transcriptions) et ADR-0005 (hébergement durable) au statut « Proposée » : S21 et suivants, S40 et suivants attendent leur acceptation. Production : Codespace de démonstration, en attendant l'ADR-0005.
 
 ## Harnais (ajouté par le plugin harnais-pipeline)
 
