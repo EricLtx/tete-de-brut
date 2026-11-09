@@ -10,9 +10,11 @@ from fastapi.testclient import TestClient
 
 from app import base
 from app.libelles import contient_libelle_refuse
+from app.main import creer_application
 from app.mesures import mesures_de_volume
 from app.modeles import LIBELLE_PLUS_ANCIENNE_VERSION, Fenetre, Mesure, Recit
-from tests.conftest import CLE_DEMO_TEST, fabriquer_video
+from app.recits import identifiant_recit, supprimer_recit
+from tests.conftest import CLE_DEMO_TEST, construire_config, fabriquer_video
 
 PHRASE_A = "dix mille postes"
 PHRASE_B = "la réforme passe"
@@ -283,6 +285,55 @@ def test_suppression_reponse_sans_libelle_refuse(client: TestClient) -> None:
     base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A]})
     corps = client.delete(f"/v1/recits/{_id_recit(client, PHRASE_A)}").json()
     assert contient_libelle_refuse(corps["avertissement"]) is None
+
+
+def test_suppression_en_mode_direct_ne_dit_ni_date_ni_avertissement(tmp_path: Path) -> None:
+    config = construire_config(tmp_path, ORIANE_API_KEY="cle-fictive-pour-les-tests-0001")
+    with TestClient(creer_application(config)) as direct:
+        _poser(*_trois_videos())
+        base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A, PHRASE_B]})
+        reponse = direct.delete(f"/v1/recits/{_id_recit(direct, PHRASE_A)}")
+        assert reponse.status_code == 200
+        corps = reponse.json()
+        assert corps["mode"] == "direct" and corps["enregistre_le"] is None
+        assert corps["avertissement"] is None
+        assert corps["phrase_surveillee"] == PHRASE_A
+        assert corps["videos_retirees"] == 2 and corps["videos_conservees"] == 0
+        assert [r["phrase_surveillee"] for r in direct.get("/v1/radar").json()["recits"]] == [PHRASE_B]
+        (entree,) = [
+            e for e in direct.get("/v1/journal").json()["entrees"] if e["route"] == "recit:suppression"
+        ]
+        assert entree["mode"] == "direct"
+
+
+def _etat_de_la_base() -> dict[str, list]:
+    return {t: base.lister_avec_identifiants(t) for t in ("cas", "video")}
+
+
+def test_suppression_interrompue_ne_laisse_rien_a_moitie(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _poser(*_trois_videos())
+    base.ecrire("cas", "cas-1", "cas.v1", {"phrases": [PHRASE_A, PHRASE_B]})
+    base.ecrire("cas", "recherche-x", "cas.v1", {"phrases": [PHRASE_A], "requete": "requête de recherche"})
+    avant = _etat_de_la_base()
+    appels = []
+    suppression = base.Transaction.supprimer
+
+    def interrompue(self, type: str, identifiant: str) -> bool:
+        appels.append((type, identifiant))
+        if len(appels) == 2:  # le document `cas` et une écriture sont déjà passés : une vidéo saute
+            raise RuntimeError("arrêt en cours de suppression")
+        return suppression(self, type, identifiant)
+
+    monkeypatch.setattr(base.Transaction, "supprimer", interrompue)
+    with pytest.raises(RuntimeError, match="arrêt en cours"):
+        supprimer_recit(identifiant_recit(PHRASE_A))
+    assert len(appels) == 2
+    assert _etat_de_la_base() == avant  # ni phrase retirée du cas, ni vidéo supprimée
+    monkeypatch.undo()
+    assert supprimer_recit(identifiant_recit(PHRASE_A)) is not None  # le nettoyage peut être relancé
+    assert sorted(d["identifiant"] for d in base.lister("video")) == ["v-b"]
 
 
 # --- une recherche = un récit, variantes comprises (F020) ---

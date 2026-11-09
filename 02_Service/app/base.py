@@ -98,6 +98,46 @@ def _transaction(chemin: str | Path | None = None) -> Iterator[sqlite3.Connectio
             connexion.execute("COMMIT")
 
 
+class Transaction:
+    """Lectures et écritures d'une même transaction : tout est validé ensemble, ou rien ne l'est."""
+
+    def __init__(self, connexion: sqlite3.Connection) -> None:
+        self._connexion = connexion
+
+    def ecrire(self, type: str, identifiant: str, version_contrat: str, objet: Any) -> None:
+        """Enregistre (ou remplace) un document JSON identifié par (type, identifiant)."""
+        self._connexion.execute(
+            "INSERT OR REPLACE INTO documents (type, identifiant, version_contrat, json, cree_le)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (type, identifiant, version_contrat, json.dumps(objet, ensure_ascii=False), maintenant()),
+        )
+
+    def supprimer(self, type: str, identifiant: str) -> bool:
+        """Supprime le document (type, identifiant) ; rend vrai s'il existait."""
+        curseur = self._connexion.execute(
+            "DELETE FROM documents WHERE type = ? AND identifiant = ?", (type, identifiant)
+        )
+        return curseur.rowcount > 0
+
+    def lister_avec_identifiants(self, type: str) -> list[tuple[str, Any]]:
+        """Rend les documents d'un type avec leur identifiant, du plus ancien au plus récent."""
+        lignes = self._connexion.execute(
+            "SELECT identifiant, json FROM documents WHERE type = ? ORDER BY cree_le, identifiant", (type,)
+        ).fetchall()
+        return [(ligne["identifiant"], json.loads(ligne["json"])) for ligne in lignes]
+
+
+@contextmanager
+def transaction(chemin: str | Path | None = None) -> Iterator[Transaction]:
+    """Une transaction pour plusieurs lectures et écritures de documents : une erreur les annule toutes.
+
+    La transaction prend le verrou d'écriture dès son ouverture : aucune autre écriture ne s'intercale
+    entre une lecture et l'écriture qui en dépend.
+    """
+    with _transaction(chemin) as connexion:
+        yield Transaction(connexion)
+
+
 def initialiser(chemin: str | Path | None = None) -> None:
     """Crée le dossier, le fichier et les deux tables s'ils n'existent pas."""
     with _transaction(chemin):
@@ -113,13 +153,8 @@ def ecrire(
     chemin: str | Path | None = None,
 ) -> None:
     """Enregistre (ou remplace) un document JSON identifié par (type, identifiant)."""
-    contenu = json.dumps(objet, ensure_ascii=False)
-    with _transaction(chemin) as connexion:
-        connexion.execute(
-            "INSERT OR REPLACE INTO documents (type, identifiant, version_contrat, json, cree_le)"
-            " VALUES (?, ?, ?, ?, ?)",
-            (type, identifiant, version_contrat, contenu, maintenant()),
-        )
+    with transaction(chemin) as t:
+        t.ecrire(type, identifiant, version_contrat, objet)
 
 
 def lire(type: str, identifiant: str, *, chemin: str | Path | None = None) -> Any | None:
@@ -142,20 +177,14 @@ def purger(type: str, a_garder: set[str], *, chemin: str | Path | None = None) -
 
 def supprimer(type: str, identifiant: str, *, chemin: str | Path | None = None) -> bool:
     """Supprime le document (type, identifiant) ; rend vrai s'il existait."""
-    with _transaction(chemin) as connexion:
-        curseur = connexion.execute(
-            "DELETE FROM documents WHERE type = ? AND identifiant = ?", (type, identifiant)
-        )
-    return curseur.rowcount > 0
+    with transaction(chemin) as t:
+        return t.supprimer(type, identifiant)
 
 
 def lister_avec_identifiants(type: str, *, chemin: str | Path | None = None) -> list[tuple[str, Any]]:
     """Rend les documents d'un type avec leur identifiant, du plus ancien au plus récent."""
-    with _transaction(chemin) as connexion:
-        lignes = connexion.execute(
-            "SELECT identifiant, json FROM documents WHERE type = ? ORDER BY cree_le, identifiant", (type,)
-        ).fetchall()
-    return [(ligne["identifiant"], json.loads(ligne["json"])) for ligne in lignes]
+    with transaction(chemin) as t:
+        return t.lister_avec_identifiants(type)
 
 
 def lister(type: str, *, chemin: str | Path | None = None) -> list[Any]:

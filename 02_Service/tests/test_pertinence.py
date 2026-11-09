@@ -28,7 +28,7 @@ from app.main import creer_application
 from app.modeles import ClassementPertinence, Video
 from app.pertinence import extrait_transcription, message_utilisateur
 from app.recits import identifiant_recit
-from app.routes.pertinence import question_du_recit
+from app.routes.pertinence import _classee_pour, question_du_recit
 from tests.conftest import CLE_DEMO_TEST, LUE_LE_TEST, construire_config, fabriquer_video
 
 CLE_MODELE_TEST = "cle-modele-fictive-pour-les-tests-0001"
@@ -258,6 +258,29 @@ def test_niveau_inconnu_ignore(client_modele, transport_modele):
     transport_modele(lambda _r, _ids: verdicts({"v0": "forte", "v1": "superbe"}))
     corps = _classer(client_modele).json()
     assert corps["classees"] == 1 and corps["non_classees"] == 1
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        None,
+        {},
+        {"pertinence": None},
+        {"pertinence": "forte"},
+        {"pertinence": {"question": PHRASE}},  # niveau absent
+        {"pertinence": {"question": PHRASE, "niveau": None}},
+        {"pertinence": {"question": PHRASE, "niveau": "superbe"}},  # niveau inconnu
+        {"pertinence": {"niveau": "forte"}},  # question absente
+        {"pertinence": {"question": "autre question", "niveau": "forte"}},
+    ],
+)
+def test_pertinence_mal_formee_n_est_pas_un_jugement_et_ne_leve_rien(document):
+    assert _classee_pour(document, PHRASE) is False
+
+
+@pytest.mark.parametrize("niveau", ["forte", "faible", "hors_sujet"])
+def test_pertinence_bien_formee_est_un_jugement(niveau):
+    assert _classee_pour({"pertinence": {"question": PHRASE, "niveau": niveau}}, PHRASE) is True
 
 
 def test_seul_le_champ_pertinence_change(client_modele, transport_modele):

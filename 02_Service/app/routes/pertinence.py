@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, get_args
 
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
@@ -12,13 +12,21 @@ from pydantic import ValidationError
 from app import base, pertinence
 from app.config import Configuration
 from app.erreurs import ErreurApi
-from app.modeles import VIDEO_V1, ClassementPertinence, DemandePertinence, Recit, Video
+from app.modeles import (
+    VIDEO_V1,
+    ClassementPertinence,
+    DemandePertinence,
+    NiveauPertinence,
+    Recit,
+    Video,
+)
 from app.recits import TYPE_VIDEO, calculer_recits
 from app.routes import erreurs
 
 routeur = APIRouter(tags=["pertinence"])
 
 ROUTE_JOURNAL = "pertinence:classement"
+NIVEAUX = get_args(NiveauPertinence)
 
 
 def question_du_recit(recit: Recit) -> str:
@@ -33,9 +41,17 @@ def question_du_recit(recit: Recit) -> str:
 
 
 def _classee_pour(document: dict[str, Any] | None, question: str) -> bool:
-    """Vrai si la vidéo porte déjà une pertinence jugée pour cette même question."""
+    """Vrai si la vidéo porte déjà une pertinence jugée pour cette même question.
+
+    Une annotation mal formée (niveau absent ou inconnu) n'est pas un jugement : la vidéo reste non classée
+    et sera rejugée, jamais lue au risque d'une `KeyError`.
+    """
     annotation = (document or {}).get("pertinence")
-    return isinstance(annotation, dict) and annotation.get("question") == question
+    return (
+        isinstance(annotation, dict)
+        and annotation.get("question") == question
+        and annotation.get("niveau") in NIVEAUX
+    )
 
 
 def _avertissement(config: Configuration, sans_jugement: int, hors_limite: int, echecs: int) -> str | None:

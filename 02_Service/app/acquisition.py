@@ -9,6 +9,7 @@ qui porte la raison : toutes les routes lisent alors le même mode et la même r
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import logging
 from datetime import UTC, datetime
@@ -51,6 +52,21 @@ def suivi_de(app: FastAPI) -> Suivi:
     if not hasattr(app.state, "suivi_acquisition"):
         app.state.suivi_acquisition = Suivi()
     return app.state.suivi_acquisition
+
+
+def verrou_credits(app: FastAPI) -> asyncio.Lock:
+    """Verrou qui garde le plafond de crédits : lecture des dépenses, comparaison et appel à Oriane d'un bloc.
+
+    Partagé par l'actualisation du radar et la recherche : sans lui, trois appels simultanés lisent tous
+    les mêmes dépenses et dépassent le plafond. Un verrou asyncio est lié à la boucle qui l'attend : il est
+    refait si la boucle change (autre client de test), jamais en service.
+    """
+    boucle = asyncio.get_running_loop()
+    courant = getattr(app.state, "verrou_credits", None)
+    if courant is None or courant[0] is not boucle:
+        courant = (boucle, asyncio.Lock())
+        app.state.verrou_credits = courant
+    return courant[1]
 
 
 def credits_du_jour() -> int:
@@ -115,41 +131,45 @@ async def actualiser(app: FastAPI) -> Radar:
     if raison_rg02:
         raise RequeteInvalide(raison_rg02)
 
-    depenses = credits_du_jour()
-    if depenses + CREDITS_PAR_PAGE_DEFAULT > config.plafond_credits_jour:
-        basculer(
-            app,
-            f"plafond de crédits du jour atteint ({depenses} sur {config.plafond_credits_jour}) : "
-            "le service rejoue le cas enregistré",
-        )
-        return _radar_enregistre(app.state.config)
+    async with verrou_credits(app):
+        if app.state.config.mode == "enregistre":  # une autre demande a basculé pendant l'attente du verrou
+            return _radar_enregistre(app.state.config)
+        config = app.state.config
+        depenses = credits_du_jour()
+        if depenses + CREDITS_PAR_PAGE_DEFAULT > config.plafond_credits_jour:
+            basculer(
+                app,
+                f"plafond de crédits du jour atteint ({depenses} sur {config.plafond_credits_jour}) : "
+                "le service rejoue le cas enregistré",
+            )
+            return _radar_enregistre(app.state.config)
 
-    suivi = suivi_de(app)
-    try:
-        resultat = await rechercher(
-            rejoue.phrases,
-            rejoue.comptes,
-            rejoue.fenetre,
-            config=config,
-            plateformes=rejoue.plateformes,
-            transport=getattr(app.state, "transport_oriane", None),
-        )
-    except CreditsEpuises:
-        basculer(app, "crédits Oriane épuisés (402) : le service rejoue le cas enregistré")
-        return _radar_enregistre(app.state.config)
-    except OrianeInjoignable as exc:
-        if not exc.raison.startswith(PANNES):
-            raise  # clé refusée, requête refusée : une panne de configuration, pas de bascule
-        suivi.pannes_de_suite += 1
-        if suivi.pannes_de_suite < ECHECS_AVANT_BASCULE:
-            raise
-        basculer(
-            app,
-            f"Oriane injoignable : {suivi.pannes_de_suite} échecs de suite (dernier : {exc.raison}) ; "
-            "le service rejoue le cas enregistré",
-        )
-        suivi.pannes_de_suite = 0
-        return _radar_enregistre(app.state.config)
+        suivi = suivi_de(app)
+        try:
+            resultat = await rechercher(
+                rejoue.phrases,
+                rejoue.comptes,
+                rejoue.fenetre,
+                config=config,
+                plateformes=rejoue.plateformes,
+                transport=getattr(app.state, "transport_oriane", None),
+            )
+        except CreditsEpuises:
+            basculer(app, "crédits Oriane épuisés (402) : le service rejoue le cas enregistré")
+            return _radar_enregistre(app.state.config)
+        except OrianeInjoignable as exc:
+            if not exc.raison.startswith(PANNES):
+                raise  # clé refusée, requête refusée : une panne de configuration, pas de bascule
+            suivi.pannes_de_suite += 1
+            if suivi.pannes_de_suite < ECHECS_AVANT_BASCULE:
+                raise
+            basculer(
+                app,
+                f"Oriane injoignable : {suivi.pannes_de_suite} échecs de suite (dernier : {exc.raison}) ; "
+                "le service rejoue le cas enregistré",
+            )
+            suivi.pannes_de_suite = 0
+            return _radar_enregistre(app.state.config)
 
     suivi.pannes_de_suite = 0
     cas.oublier_chargement()

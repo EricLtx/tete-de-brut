@@ -17,13 +17,14 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import cas
+from app import acquisition, base, cas
 from app.main import creer_application
 from app.oriane import ResultatRecherche
 from tests.conftest import (
     CAS_ENREGISTRE_LE,
     CAS_PHRASE,
     CLE_DEMO_TEST,
+    ORIGINE_LOVABLE,
     construire_config,
     fabriquer_video,
 )
@@ -439,3 +440,55 @@ def test_rejeu_laisse_une_ligne_au_journal_et_sante_donne_la_date(service):
     assert c.get("/sante").json()["enregistre_le"] == DATE_DU_CAS.replace("Z", "+00:00")
     c.post("/v1/radar/actualiser")
     assert c.get("/v1/journal").json()["entrees"][0]["route"] == "acquisition.rejeu"
+
+
+# --- plafond sous appels simultanés, purge ciblée, sortie du script de parcours (F023, S20) ----------------
+
+
+def test_trois_actualisations_simultanees_sous_un_plafond_de_20_une_seule_appelle_oriane(
+    service, reponse_oriane_simulee
+):
+    requetes: list[httpx.Request] = []
+
+    async def repondre(requete: httpx.Request) -> httpx.Response:
+        requete.read()
+        requetes.append(requete)
+        await asyncio.sleep(0.05)  # des appels non gardés se chevaucheraient ici
+        return httpx.Response(200, json=reponse_oriane_simulee)
+
+    c = service(transport=httpx.MockTransport(repondre), PLAFOND_CREDITS_JOUR="20")
+
+    async def trois():
+        return await asyncio.gather(*(acquisition.actualiser(c.app) for _ in range(3)))
+
+    radars = asyncio.run(trois())
+    assert len(requetes) == 1
+    assert sorted(r.mode for r in radars) == ["direct", "enregistre", "enregistre"]
+    assert acquisition.credits_du_jour() == 15
+    assert "plafond" in c.get("/v1/etat").json()["raison"]
+
+
+def test_la_bascule_ne_purge_que_les_documents_de_recherche(service, transport_oriane_simule):
+    c = service()
+    assert c.post("/v1/radar/actualiser").json()["mode"] == "direct"
+    base.ecrire("cas", "recherche-x", "cas.v1", {"phrases": ["phrase d'une recherche"]})
+    base.ecrire("cas", "cas-futur", "cas.v1", {"phrases": ["phrase d'un autre émetteur"]})
+    c.app.state.transport_oriane = transport_oriane_simule(statut=402, corps={})
+    assert c.post("/v1/radar/actualiser").json()["mode"] == "enregistre"
+    identifiants = sorted(i for i, _ in base.lister_avec_identifiants("cas"))
+    assert identifiants == ["cas-futur", cas.IDENTIFIANT_CAS]
+
+
+def test_le_script_de_parcours_n_imprime_aucun_compte(client_avec_cas, capsys):
+    spec = importlib.util.spec_from_file_location(
+        "verifier_parcours", RACINE_SERVICE / "scripts/verifier_parcours.py"
+    )
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    parcours = script.Parcours(client_avec_cas, ORIGINE_LOVABLE, "")
+    sortie = []
+    for nom, geste in script.GESTES:
+        sortie.append(f"OK  {nom} : {geste(parcours)}")  # un geste en échec lèverait `Echec`
+    texte = " ".join(sortie) + capsys.readouterr().out
+    assert "compte_simule" not in texte
+    assert ID_VIDEO in texte  # les vidéos restent nommées par leur identifiant
