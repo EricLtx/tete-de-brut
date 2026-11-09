@@ -1,7 +1,7 @@
 ---
 mandat: F028
 titre: Ergonomie des onglets Versions et Fiche de l'espace du récit (actions regroupées, information resserrée)
-statut: go
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: lot 2, ergonomie (veille § 6), hors ADR-0003
 depot: EricLtx/tete-de-brut-6a69202a (écrans Lovable)

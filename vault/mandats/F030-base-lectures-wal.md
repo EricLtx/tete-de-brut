@@ -1,7 +1,7 @@
 ---
 mandat: F030
 titre: Base SQLite en WAL, lectures sans verrou d'écriture, connexion et schéma préparés une fois
-statut: lance
+statut: go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: préalable de S21 (revue d'architecture du 09/11)
 branche: fix/service-base-wal
@@ -45,3 +45,4 @@ sha ; `git diff --stat` ; dernière ligne de pytest ; écarts ; points ouverts.
 
 | Date | De | Message |
 |---|---|---|
+| 2026-11-09 | orchestrateur | Doublage de 4630a3e : GO avec un majeur hors réserve (`.gitignore` sans `*.sqlite-wal`, `*.sqlite-shm`) ; réserve élargie à `.gitignore` et correctif dans la branche. Doublage de 02eb02b : GO. |
