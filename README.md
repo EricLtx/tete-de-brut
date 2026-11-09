@@ -5,7 +5,7 @@ Service d'API de la démonstration « Tête de Brut. » (hackathon Hack the Feed
 Ce dépôt ne contient que le code du service et son harnais de construction. La documentation de cadrage reste dans un dépôt privé.
 
 - `02_Service/` : le service (Python, FastAPI, SQLite), ses contrats JSON et OpenAPI, ses tests.
-- `03_Ecrans/` : kit des trois écrans Lovable (brief sur le contrat, instructions de projet, exemples de réponses, prompts) ; le code des écrans vit dans le dépôt créé par Lovable.
+- `03_Ecrans/` : kit des quatre écrans Lovable (brief sur le contrat, instructions de projet, exemples de réponses, prompts) ; le code des écrans vit dans le dépôt créé par Lovable.
 - `01_Docs/` : décisions (ADR), plan de construction, registres.
 - `04_Pipeline/` : pipeline locale et gardes git ; le workflow GitHub Actions rejoue le même script.
 - `vault/` : mandats et rapports de relecture.

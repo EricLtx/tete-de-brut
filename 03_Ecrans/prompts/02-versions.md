@@ -38,7 +38,7 @@ Affiche les mots rendus par `motsV1` : dans la colonne source, les mots `positio
 
 **Ouvrir la fiche** : bouton « Ouvrir la fiche de vérification » : `POST /v1/fiches` avec `{"comparaison": identifiant}` et `X-Cle-Demo` ; réponse 201 ; naviguer vers `/fiche/{identifiant}` de la fiche rendue. Erreur : `detail` tel quel.
 
-**États** : les trois listes vides → « Aucun écart au mot relevé entre les deux versions. » ; vidéo en 404 → `detail` dans sa colonne ; comparaison en 404 → `detail` et un lien « Revenir au radar ».
+**États** : les trois listes vides → « Aucun écart au mot relevé entre les deux versions. » ; vidéo en 404 → `detail` dans sa colonne ; comparaison en 404 → `detail` et un lien « Revenir au radar » vers `/radar`.
 
 **Donnée d'essai** : dans `exemples/comparaison.json`, la parole a un mot remplacé (« trois » ↔ « cinq ») et huit mots retirés (« si le budget annexe est voté en décembre ») ; la légende et le texte à l'écran ont chacun un remplacement (« 300 » ↔ « 500 ») et un retrait.
 
