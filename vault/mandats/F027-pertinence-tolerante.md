@@ -1,7 +1,7 @@
 ---
 mandat: F027
 titre: Pertinence mal formée tolérée de bout en bout (suite du doublage F023, constat 1)
-statut: lance
+statut: go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S20 (suite)
 branche: fix/service-pertinence-tolerante
