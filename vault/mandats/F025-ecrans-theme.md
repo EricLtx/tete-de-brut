@@ -1,7 +1,7 @@
 ---
 mandat: F025
 titre: S24 — Écrans en clair, sombre ou système (jetons sémantiques, contrastes vérifiés)
-statut: en-doublage
+statut: go-conditionnel (majeur de contraste traité dans F028)
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S24
 depot: EricLtx/tete-de-brut-6a69202a (écrans Lovable)
