@@ -17,10 +17,13 @@ deux clés différentes (« pouvoir achat » et « le pouvoir d'achat ») resten
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+
+from pydantic import ValidationError
 
 from app import base
 from app.cas import CAS_V1
@@ -38,6 +41,8 @@ from app.modeles import (
 )
 from app.mots import normaliser
 from app.vitesse import mesures_de_vitesse
+
+journal = logging.getLogger("tete_de_brut")
 
 TYPE_CAS = "cas"
 TYPE_VIDEO = "video"
@@ -276,10 +281,30 @@ def _enregistre_le(cas: Sequence[dict[str, Any]], videos: Sequence[Video], repli
     return max(dates) if dates else repli
 
 
+def lire_videos(documents: Iterable[dict[str, Any]]) -> list[Video]:
+    """Vidéos des documents, tolérantes à une `pertinence` mal formée.
+
+    Une annotation de pertinence qui ne valide pas est écartée pour cette vidéo seule (rendue sans
+    pertinence) et signalée au journal par l'identifiant de la vidéo, jamais par son contenu. Tout autre
+    défaut du document lève comme avant.
+    """
+    videos = []
+    for document in documents:
+        try:
+            videos.append(Video.model_validate(document))
+        except ValidationError:
+            if "pertinence" not in document:
+                raise
+            sans_pertinence = {cle: valeur for cle, valeur in document.items() if cle != "pertinence"}
+            videos.append(Video.model_validate(sans_pertinence))  # lève si le défaut est ailleurs
+            journal.warning("pertinence mal formée ignorée pour la vidéo %s", document.get("identifiant"))
+    return videos
+
+
 def calculer_recits(mode: str, calcule_le: datetime | None = None) -> tuple[list[Recit], datetime]:
     """Récits calculés sur les vidéos et cas en base, avec la date du calcul."""
     calcule_le = calcule_le or datetime.fromisoformat(base.maintenant())
-    videos = [Video.model_validate(d) for d in base.lister(TYPE_VIDEO)]
+    videos = lire_videos(base.lister(TYPE_VIDEO))
     cas, ignores = [], []
     for document in base.lister(TYPE_CAS):
         raison = verifier_cas(document)
@@ -355,7 +380,7 @@ def supprimer_recit(identifiant: str) -> RecitSupprime | None:
         documents_cas = transaction.lister_avec_identifiants(TYPE_CAS)
         documents_video = transaction.lister_avec_identifiants(TYPE_VIDEO)
         valides = [d for _, d in documents_cas if verifier_cas(d) is None]
-        videos = [Video.model_validate(d) for _, d in documents_video]
+        videos = lire_videos(d for _, d in documents_video)
         entrees = phrases_surveillees(valides, videos)
         cible = next(
             (

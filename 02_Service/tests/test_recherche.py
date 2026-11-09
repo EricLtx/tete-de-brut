@@ -812,6 +812,32 @@ def test_la_demande_qui_attendait_le_verrou_ne_rebascule_pas(
         assert len(bascules) == 1  # la seconde demande a trouvé le service déjà basculé
 
 
+def test_le_rejeu_apres_bascule_prepare_la_question_verrou_libre(
+    tmp_path: Path,
+    reponse_oriane_simulee: dict[str, Any],
+    cas_simule: Callable[..., Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """La bascule se décide sous le verrou des crédits ; la préparation de la question n'y retient rien."""
+    transport = _oriane_lent(reponse_oriane_simulee)
+    verrou_tenu: list[bool] = []
+    preparer = module_recherche._preparer_en_fil
+
+    with _service(tmp_path, direct=True, transport=transport, PLAFOND_CREDITS_JOUR="20") as client:
+        cas_simule(client.app.state.config)
+        base.consigner(route="oriane.recherche", credits_estimes=10)
+
+        async def espion(question: str, config: Any) -> Any:
+            verrou_tenu.append(acquisition.verrou_credits(client.app).locked())
+            return await preparer(question, config)
+
+        monkeypatch.setattr(module_recherche, "_preparer_en_fil", espion)
+        resultat = asyncio.run(module_recherche.executer(client.app, f"« {CAS_PHRASE} »"))
+
+    assert resultat.mode == "enregistre" and transport.requetes == []  # type: ignore[attr-defined]
+    assert verrou_tenu == [False, False]  # la préparation de départ, puis celle du rejeu
+
+
 # --- reformulation par le modèle de langue (F018) ---------------------------------------------------------
 
 CLE_MODELE_TEST = "cle-modele-fictive-pour-les-tests-0002"
