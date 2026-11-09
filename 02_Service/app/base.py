@@ -98,7 +98,9 @@ def _ouvrir(cible: Path) -> sqlite3.Connection:
 def _creer_schema(cible: Path) -> None:
     """Passe le fichier en WAL (mode durable, propre au fichier) et crée les tables absentes."""
     with closing(_ouvrir(cible)) as connexion:
-        connexion.execute("PRAGMA journal_mode = WAL")
+        mode = connexion.execute("PRAGMA journal_mode = WAL").fetchone()[0]
+        if str(mode).lower() != "wal":
+            raise sqlite3.OperationalError(f"le mode WAL n'a pas pu être activé (mode obtenu : {mode})")
         connexion.executescript(_SCHEMA)
 
 

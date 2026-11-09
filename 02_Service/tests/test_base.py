@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import shutil
 import sqlite3
+import subprocess
 import threading
 import time
 from collections.abc import Iterator
@@ -19,10 +21,12 @@ def chemin_base(tmp_path: Path) -> Iterator[Path]:
     """Base temporaire, courante le temps du test ; le chemin précédent est rétabli ensuite."""
     precedent = base._chemin_courant
     chemin = tmp_path / "base-wal.sqlite"
+    base._schemas_prets.clear()
     base.configurer(chemin)
     base.initialiser()
     yield chemin
     base.configurer(precedent)
+    base._schemas_prets.clear()
 
 
 def test_journal_en_wal(chemin_base: Path) -> None:
@@ -110,3 +114,17 @@ def test_base_supprimee_est_recreee(tmp_path: Path) -> None:
         assert base.lire("video", "v1") is None
     finally:
         base.configurer(precedent)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git absent")
+@pytest.mark.parametrize("suffixe", ["sqlite", "sqlite-wal", "sqlite-shm", "sqlite-journal"])
+def test_fichiers_de_base_ignores_par_git(suffixe: str) -> None:
+    """Les fichiers annexes du WAL portent des documents du cas réel : jamais suivis par Git."""
+    racine = Path(__file__).resolve().parents[2]
+    resultat = subprocess.run(
+        ["git", "check-ignore", "-q", f"02_Service/donnees/x.{suffixe}"],
+        cwd=racine,
+        capture_output=True,
+        check=False,
+    )
+    assert resultat.returncode == 0, f"x.{suffixe} n'est pas ignoré par .gitignore"
