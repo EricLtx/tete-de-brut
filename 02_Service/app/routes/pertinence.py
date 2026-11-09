@@ -20,7 +20,7 @@ from app.modeles import (
     Recit,
     Video,
 )
-from app.recits import TYPE_VIDEO, calculer_recits
+from app.recits import TYPE_VIDEO, calculer_recits, lire_videos
 from app.routes import erreurs
 
 routeur = APIRouter(tags=["pertinence"])
@@ -118,7 +118,7 @@ async def classer_les_videos(
         if document is None:
             continue
         try:
-            presentes.append(Video.model_validate(document))
+            presentes.extend(lire_videos([document]))
         except ValidationError:
             continue
         documents[identifiant] = document

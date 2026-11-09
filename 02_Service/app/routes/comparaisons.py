@@ -8,6 +8,7 @@ from app import base
 from app.ecart import TYPE_DOCUMENT, calculer_ecart, identifiant_comparaison
 from app.erreurs import ErreurApi, mode_courant
 from app.modeles import ECART_V1, DemandeComparaison, Ecart, Video
+from app.recits import lire_videos
 from app.routes import erreurs
 
 routeur = APIRouter(tags=["comparaisons"])
@@ -30,7 +31,7 @@ async def creer_comparaison(demande: DemandeComparaison, request: Request) -> Ec
         brut = base.lire("video", cle)
         if brut is None:
             raise ErreurApi("introuvable", f"La vidéo {cle} n'est pas connue du service.", 404)
-        videos.append(Video.model_validate(brut))
+        videos.extend(lire_videos([brut]))
     mode = mode_courant(request)
     ecart = calculer_ecart(
         videos[0], videos[1], mode=mode, enregistre_le=base.maintenant() if mode == "enregistre" else None

@@ -19,7 +19,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import acquisition, base, modele_langue, recherche_modele
+from app import acquisition, base, cas, modele_langue, recherche_modele
 from app import recherche as module_recherche
 from app.config import Configuration, ErreurConfiguration
 from app.libelles import contient_libelle_refuse
@@ -1533,6 +1533,37 @@ def test_en_mode_enregistre_la_recherche_regroupe_les_variantes_du_cas_en_un_rec
         assert [(s["type"], s["videos"]) for s in recit["sous_recherches"]] == [("exacte", 2), ("exacte", 2)]
         assert len(recit["videos"]) == 2 and len(set(recit["videos"])) == 2
         ResultatRecherche.model_validate(reponse.json())
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        pytest.param({"question": CAS_PHRASE}, id="niveau-absent"),
+        pytest.param({"question": CAS_PHRASE, "niveau": "superbe"}, id="niveau-inconnu"),
+        pytest.param("forte", id="chaine"),
+    ],
+)
+def test_le_rejeu_a_variantes_tolere_une_pertinence_mal_formee(
+    tmp_path: Path,
+    transport_modele: Callable[..., httpx.MockTransport],
+    cas_simule: Callable[..., Path],
+    annotation: Any,
+) -> None:
+    # Le rejeu d'un cas à plusieurs variantes relit toutes les vidéos de la base : une pertinence mal formée
+    # ne fait pas rendre 500, la vidéo reste dans le récit (F029).
+    transport_modele(_json_modele([CAS_PHRASE, "autre phrase du cas"]))
+    with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        cas_simule(client.app.state.config, (CAS_PHRASE, "autre phrase du cas"))
+        cas.charger(client.app.state.config, avec_videos=True)  # ses vidéos entrent en base
+        documents = base.lister("video")
+        assert documents, "le cas simulé doit avoir posé des vidéos en base"
+        cible = documents[0]["identifiant"]
+        base.ecrire("video", cible, "video.v1", {**documents[0], "pertinence": annotation})
+        reponse = _lancer(client, "Que dit-on des postes à créer ?")
+        assert reponse.status_code == 201, reponse.text
+        recit = reponse.json()["recit"]
+        assert recit["variantes"] == [CAS_PHRASE, "autre phrase du cas"]
+        assert cible in recit["videos"] and len(recit["videos"]) == 2
 
 
 # --- appels réels (sautés sans clés, exclus de la pipeline) ----------------------------------------------

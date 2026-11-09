@@ -765,6 +765,72 @@ def test_une_pertinence_bien_formee_voisine_reste_lue(tmp_path):
     assert corps["classees"] == 1 and corps["fortes"] == 1 and corps["non_classees"] == 1
 
 
+# --- pertinence mal formée : lectures restantes, suppression et rejugement (F029) ---------------------
+
+
+@pytest.mark.parametrize("annotation", FORMES_MAL_FORMEES)
+def test_lire_une_video_tolere_une_pertinence_mal_formee(tmp_path, annotation):
+    with _service(tmp_path, PERTINENCE_MODE="aucun") as client:
+        _poser_recit(2)
+        _abimer_pertinence("v1", annotation)
+        reponse = client.get("/v1/videos/v1")
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    assert corps["identifiant"] == "v1" and corps.get("pertinence") is None
+    assert corps["mode"] == "enregistre" and corps["enregistre_le"]
+
+
+@pytest.mark.parametrize("annotation", FORMES_MAL_FORMEES)
+def test_comparer_deux_videos_tolere_une_pertinence_mal_formee(tmp_path, annotation):
+    with _service(tmp_path, PERTINENCE_MODE="aucun") as client:
+        _poser_recit(2)
+        _abimer_pertinence("v1", annotation)
+        reponse = client.post("/v1/comparaisons", json={"video_source": "v0", "video_reprise": "v1"})
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["video_reprise"] == "v1"
+
+
+@pytest.mark.parametrize("annotation", FORMES_MAL_FORMEES)
+def test_creer_une_fiche_tolere_une_pertinence_mal_formee(tmp_path, annotation):
+    with _service(tmp_path, PERTINENCE_MODE="aucun") as client:
+        _poser_recit(2)
+        reponse_comparaison = client.post(
+            "/v1/comparaisons", json={"video_source": "v0", "video_reprise": "v1"}
+        )
+        assert reponse_comparaison.status_code == 200, reponse_comparaison.text
+        _abimer_pertinence("v1", annotation)
+        reponse = client.post("/v1/fiches", json={"comparaison": reponse_comparaison.json()["identifiant"]})
+    assert reponse.status_code == 201, reponse.text
+
+
+@pytest.mark.parametrize("annotation", FORMES_MAL_FORMEES)
+def test_supprimer_un_recit_tolere_une_pertinence_mal_formee(tmp_path, annotation):
+    with _service(tmp_path, PERTINENCE_MODE="aucun") as client:
+        _poser_recit(3)
+        _abimer_pertinence("v1", annotation)
+        reponse = client.delete(f"/v1/recits/{ID_RECIT}")
+        restantes = base.lister("video")
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["videos_retirees"] == 3
+    assert restantes == []
+
+
+@pytest.mark.parametrize("annotation", FORMES_MAL_FORMEES)
+def test_la_video_a_pertinence_mal_formee_est_rejugee(tmp_path, transport_modele, annotation):
+    transport = transport_modele(lambda _r, _ids: verdicts({"v0": "forte", "v1": "faible", "v2": "forte"}))
+    with _service(tmp_path) as client:
+        _poser_recit(3)
+        _abimer_pertinence("v1", annotation)
+        reponse = _classer(client)
+        jugee = base.lire("video", "v1")["pertinence"]
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    assert corps["classees"] == 3 and corps["non_classees"] == 0
+    assert corps["fortes"] == 2 and corps["faibles"] == 1
+    assert "v1" in identifiants_du_lot(transport.requetes[0])
+    assert jugee["niveau"] == "faible" and jugee["question"] == PHRASE
+
+
 # --- contrat ------------------------------------------------------------------------------------------
 
 
