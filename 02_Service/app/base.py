@@ -10,6 +10,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from datetime import UTC, datetime
@@ -80,15 +81,50 @@ def maintenant() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-@contextmanager
-def _transaction(chemin: str | Path | None = None) -> Iterator[sqlite3.Connection]:
-    """Ouvre une connexion pour un appel, dans une transaction explicite (validée ou annulée)."""
-    cible = Path(chemin) if chemin is not None else _chemin_courant
-    cible.parent.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(cible, isolation_level=None, check_same_thread=False)) as connexion:
-        connexion.row_factory = sqlite3.Row
+DELAI_VERROU_MS = 5000
+
+_schemas_prets: set[Path] = set()
+_verrou_schemas = threading.Lock()
+
+
+def _ouvrir(cible: Path) -> sqlite3.Connection:
+    """Ouvre une connexion : transactions gérées à la main, attente bornée si le fichier est occupé."""
+    connexion = sqlite3.connect(cible, isolation_level=None, check_same_thread=False)
+    connexion.row_factory = sqlite3.Row
+    connexion.execute(f"PRAGMA busy_timeout = {DELAI_VERROU_MS}")
+    return connexion
+
+
+def _creer_schema(cible: Path) -> None:
+    """Passe le fichier en WAL (mode durable, propre au fichier) et crée les tables absentes."""
+    with closing(_ouvrir(cible)) as connexion:
+        connexion.execute("PRAGMA journal_mode = WAL")
         connexion.executescript(_SCHEMA)
-        connexion.execute("BEGIN IMMEDIATE")
+
+
+def _preparer(cible: Path) -> None:
+    """Prépare le fichier une seule fois par processus (et de nouveau s'il a disparu)."""
+    if cible in _schemas_prets and cible.exists():
+        return
+    with _verrou_schemas:
+        if cible in _schemas_prets and cible.exists():
+            return
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        _creer_schema(cible)
+        _schemas_prets.add(cible)
+
+
+@contextmanager
+def _transaction(chemin: str | Path | None = None, *, ecriture: bool = True) -> Iterator[sqlite3.Connection]:
+    """Ouvre une connexion pour un appel, dans une transaction explicite (validée ou annulée).
+
+    Une écriture prend le verrou d'écriture dès l'ouverture (`BEGIN IMMEDIATE`) ; une lecture ouvre une
+    transaction différée : en WAL, elle lit un instantané cohérent sans jamais attendre un écrivain.
+    """
+    cible = Path(chemin) if chemin is not None else _chemin_courant
+    _preparer(cible)
+    with closing(_ouvrir(cible)) as connexion:
+        connexion.execute("BEGIN IMMEDIATE" if ecriture else "BEGIN")
         try:
             yield connexion
         except BaseException:
@@ -139,9 +175,8 @@ def transaction(chemin: str | Path | None = None) -> Iterator[Transaction]:
 
 
 def initialiser(chemin: str | Path | None = None) -> None:
-    """Crée le dossier, le fichier et les deux tables s'ils n'existent pas."""
-    with _transaction(chemin):
-        pass
+    """Crée le dossier, le fichier, le mode WAL et les deux tables s'ils n'existent pas."""
+    _preparer(Path(chemin) if chemin is not None else _chemin_courant)
 
 
 def ecrire(
@@ -159,7 +194,7 @@ def ecrire(
 
 def lire(type: str, identifiant: str, *, chemin: str | Path | None = None) -> Any | None:
     """Rend le document (objet JSON décodé), ou `None` s'il n'existe pas."""
-    with _transaction(chemin) as connexion:
+    with _transaction(chemin, ecriture=False) as connexion:
         ligne = connexion.execute(
             "SELECT json FROM documents WHERE type = ? AND identifiant = ?", (type, identifiant)
         ).fetchone()
@@ -189,7 +224,7 @@ def lister_avec_identifiants(type: str, *, chemin: str | Path | None = None) -> 
 
 def lister(type: str, *, chemin: str | Path | None = None) -> list[Any]:
     """Rend les documents d'un type, du plus ancien au plus récent."""
-    with _transaction(chemin) as connexion:
+    with _transaction(chemin, ecriture=False) as connexion:
         lignes = connexion.execute(
             "SELECT json FROM documents WHERE type = ? ORDER BY cree_le, identifiant", (type,)
         ).fetchall()
@@ -240,7 +275,7 @@ def consigner(**champs: Any) -> int:
 
 def lire_journal(limite: int = 100) -> list[dict[str, Any]]:
     """Rend les dernières lignes du journal, la plus récente d'abord."""
-    with _transaction() as connexion:
+    with _transaction(ecriture=False) as connexion:
         lignes = connexion.execute(
             "SELECT id, " + ", ".join(CHAMPS_JOURNAL) + " FROM journal_appels ORDER BY id DESC LIMIT ?",
             (limite,),
