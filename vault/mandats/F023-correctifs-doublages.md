@@ -1,7 +1,7 @@
 ---
 mandat: F023
 titre: S20 — Correctifs d'après les doublages (plafond sous verrou, purge ciblée, cache, suppression atomique, sortie du script de parcours)
-statut: lance
+statut: go
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S20
 branche: fix/service-correctifs-doublages (part de main après fusion de F020)
