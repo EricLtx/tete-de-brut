@@ -288,6 +288,7 @@ def test_le_kit_compte_quatre_ecrans() -> None:
     assert "trois écrans" not in instructions.lower()
     projet = (DOSSIER_KIT / "prompts" / "00-projet.md").read_text(encoding="utf-8")
     assert "exactement quatre routes" in projet and "trois routes" not in projet
+    assert "`X-Cle-Demo` sur POST, PATCH et DELETE seulement" in projet
     radar = (DOSSIER_KIT / "prompts" / "01-radar.md").read_text(encoding="utf-8")
     recherche = (DOSSIER_KIT / "prompts" / "04-recherche.md").read_text(encoding="utf-8")
     assert "sur la route `/radar`" in radar
