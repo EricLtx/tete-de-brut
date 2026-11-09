@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -18,7 +19,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import base, modele_langue
+from app import acquisition, base, modele_langue, recherche_modele
 from app import recherche as module_recherche
 from app.config import Configuration, ErreurConfiguration
 from app.libelles import contient_libelle_refuse
@@ -725,6 +726,92 @@ def test_apres_la_bascule_le_radar_n_a_pas_de_recit_vide(
         assert all(r["videos"] for r in radar["recits"])
 
 
+# --- plafond de crédits sous appels simultanés (F023, S20) ----------------------------------------------
+
+
+def _oriane_lent(reponse: dict[str, Any]) -> httpx.MockTransport:
+    """Oriane simulée qui répond après un délai : des appels non gardés se chevaucheraient."""
+    requetes: list[httpx.Request] = []
+
+    async def repondre(requete: httpx.Request) -> httpx.Response:
+        requete.read()
+        requetes.append(requete)
+        await asyncio.sleep(0.05)
+        return httpx.Response(200, json=reponse)
+
+    transport = httpx.MockTransport(repondre)
+    transport.requetes = requetes  # type: ignore[attr-defined]
+    return transport
+
+
+def test_trois_recherches_simultanees_sous_un_plafond_de_20_une_seule_appelle_oriane(
+    tmp_path: Path,
+    reponse_oriane_simulee: dict[str, Any],
+    cas_simule: Callable[..., Path],
+) -> None:
+    transport = _oriane_lent(reponse_oriane_simulee)
+    with _service(tmp_path, direct=True, transport=transport, PLAFOND_CREDITS_JOUR="20") as client:
+        cas_simule(client.app.state.config)
+
+        async def trois() -> list[ResultatRecherche]:
+            return list(
+                await asyncio.gather(
+                    *(module_recherche.executer(client.app, f"« {CAS_PHRASE} »") for _ in range(3))
+                )
+            )
+
+        resultats = asyncio.run(trois())
+        assert len(transport.requetes) == 1  # type: ignore[attr-defined]
+        assert sorted(r.mode for r in resultats) == ["direct", "enregistre", "enregistre"]
+        assert acquisition.credits_du_jour() == 15
+        assert client.get("/v1/etat").json()["mode"] == "enregistre"
+
+
+def test_une_recherche_et_une_actualisation_simultanees_partagent_le_verrou(
+    tmp_path: Path,
+    reponse_oriane_simulee: dict[str, Any],
+    cas_simule: Callable[..., Path],
+) -> None:
+    transport = _oriane_lent(reponse_oriane_simulee)
+    with _service(tmp_path, direct=True, transport=transport, PLAFOND_CREDITS_JOUR="20") as client:
+        cas_simule(client.app.state.config)
+
+        async def les_deux() -> tuple[Any, Any]:
+            return await asyncio.gather(
+                acquisition.actualiser(client.app),
+                module_recherche.executer(client.app, f"« {CAS_PHRASE} »"),
+            )
+
+        radar, recherche = asyncio.run(les_deux())
+        assert len(transport.requetes) == 1  # type: ignore[attr-defined]
+        assert sorted([radar.mode, recherche.mode]) == ["direct", "enregistre"]
+        assert acquisition.credits_du_jour() == 15
+
+
+def test_la_demande_qui_attendait_le_verrou_ne_rebascule_pas(
+    tmp_path: Path,
+    reponse_oriane_simulee: dict[str, Any],
+    cas_simule: Callable[..., Path],
+) -> None:
+    transport = _oriane_lent(reponse_oriane_simulee)
+    with _service(tmp_path, direct=True, transport=transport, PLAFOND_CREDITS_JOUR="20") as client:
+        cas_simule(client.app.state.config)
+        base.consigner(route="oriane.recherche", credits_estimes=10)  # 10 sur 20 : une page de plus dépasse
+
+        async def deux() -> list[ResultatRecherche]:
+            return list(
+                await asyncio.gather(
+                    *(module_recherche.executer(client.app, f"« {CAS_PHRASE} »") for _ in range(2))
+                )
+            )
+
+        resultats = asyncio.run(deux())
+        assert transport.requetes == []  # type: ignore[attr-defined]
+        assert [r.mode for r in resultats] == ["enregistre", "enregistre"]
+        bascules = [e for e in base.lire_journal(50) if e["route"] == acquisition.ROUTE_BASCULE]
+        assert len(bascules) == 1  # la seconde demande a trouvé le service déjà basculé
+
+
 # --- reformulation par le modèle de langue (F018) ---------------------------------------------------------
 
 CLE_MODELE_TEST = "cle-modele-fictive-pour-les-tests-0002"
@@ -942,6 +1029,76 @@ def test_une_reformulation_inutilisable_est_gardee_comme_un_repli(
         seconde = _preparer(client, "places de crèche en 2027")
     assert premiere["filtres"] == seconde["filtres"]
     assert len(_appels_modele(transport)) == 1
+
+
+def test_une_reformulation_en_echec_est_gardee_moins_longtemps_qu_une_reussie(
+    tmp_path: Path, transport_modele: Callable[..., httpx.MockTransport]
+) -> None:
+    assert recherche_modele.DUREE_CACHE_ECHEC_S < recherche_modele.DUREE_CACHE_S
+    ecart = recherche_modele.DUREE_CACHE_ECHEC_S + 1  # plus que le repli, moins qu'une réussite
+
+    def vieillir() -> None:
+        for cle, (instant, resultat) in list(recherche_modele._cache.items()):
+            recherche_modele._cache[cle] = (instant - ecart, resultat)
+
+    with _service(tmp_path, direct=False, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST) as client:
+        echec = transport_modele(statut=500)
+        _preparer(client, "places de crèche en 2027")
+        _preparer(client, "places de crèche en 2027")
+        assert len(_appels_modele(echec)) == 1  # gardé tant qu'il est jeune
+        vieillir()
+        _preparer(client, "places de crèche en 2027")
+        assert len(_appels_modele(echec)) == 2  # le repli a expiré : le modèle est rappelé
+
+        reussite = transport_modele()
+        _preparer(client, QUESTION_LIBRE)
+        vieillir()
+        _preparer(client, QUESTION_LIBRE)
+        assert len(_appels_modele(reussite)) == 1  # une réussite de même âge est encore gardée
+
+
+def test_l_eviction_du_cache_de_reformulation_se_fait_sous_verrou(
+    tmp_path: Path, transport_modele: Callable[..., httpx.MockTransport], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    evictions: list[tuple[Any, ...]] = []
+
+    class CacheSurveille(dict):  # type: ignore[type-arg]
+        def pop(self, *args: Any) -> Any:
+            assert recherche_modele._verrou_cache.locked(), "éviction hors verrou"
+            evictions.append(args)
+            return super().pop(*args)
+
+    monkeypatch.setattr(recherche_modele, "_cache", CacheSurveille())
+    monkeypatch.setattr(recherche_modele, "TAILLE_CACHE", 3)
+    transport_modele(statut=500)
+    config = construire_config(tmp_path, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST)
+    for i in range(6):
+        assert recherche_modele.reformuler(f"question distincte numéro {i}", config) is None
+    assert len(evictions) == 3 and len(recherche_modele._cache) == 3
+
+
+def test_des_reformulations_simultanees_ne_cassent_pas_le_cache(
+    tmp_path: Path, transport_modele: Callable[..., httpx.MockTransport], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(recherche_modele, "TAILLE_CACHE", 4)
+    transport_modele(statut=500)
+    config = construire_config(tmp_path, MODELE_LANGUE_API_KEY=CLE_MODELE_TEST)
+    erreurs: list[BaseException] = []
+
+    def travailler(numero: int) -> None:
+        try:
+            for i in range(25):
+                recherche_modele.reformuler(f"question distincte {numero} numéro {i}", config)
+        except BaseException as exc:  # noqa: BLE001 - le test garde toute exception d'un fil
+            erreurs.append(exc)
+
+    fils = [threading.Thread(target=travailler, args=(n,)) for n in range(8)]
+    for fil in fils:
+        fil.start()
+    for fil in fils:
+        fil.join()
+    assert erreurs == []
+    assert len(recherche_modele._cache) <= 4
 
 
 def test_aucun_appel_au_modele_sans_cle_ni_en_mode_deterministe_ni_pour_guillemets_ou_lien(
@@ -1467,7 +1624,8 @@ def test_reel_un_lien_colle_rend_la_video_de_l_index(tmp_path: Path) -> None:
             assert reponse.status_code == 201, reponse.text
             video = reponse.json()["video"]
             print(  # noqa: T201
-                f"REEL lien {plateforme} {attendue.lien} -> video {video['identifiant_plateforme']} "
+                f"REEL lien {plateforme} {attendue.identifiant_plateforme} -> video "
+                f"{video['identifiant_plateforme']} "
                 f"({video['plateforme']}, {video['publie_le'][:10]})"
             )
             assert video["identifiant_plateforme"] == attendue.identifiant_plateforme

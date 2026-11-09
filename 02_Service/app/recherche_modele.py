@@ -10,8 +10,9 @@ valide ; toute erreur, expiration, refus ou JSON invalide rend `None` et l'appel
 traduction déterministe. La clé ne sort que dans l'en-tête `x-api-key` ; aucune réponse brute n'est
 gardée ni journalisée, et le journal ne reçoit que la raison en clair, le modèle, le code et la durée.
 
-Le résultat (réussite ou repli) est gardé quelques minutes en mémoire : la question préparée puis lancée
-part avec les mêmes phrases que celles affichées, et un même texte ne coûte qu'un appel.
+Le résultat est gardé en mémoire : cinq minutes pour une réussite, trente secondes pour un repli. La question
+préparée puis lancée part avec les mêmes phrases que celles affichées, un même texte ne coûte qu'un appel, et
+un incident passager du modèle ne fige pas la traduction déterministe de la question.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ import concurrent.futures
 import json
 import logging
 import re
+import threading
 import time
 from typing import Literal
 
@@ -44,7 +46,8 @@ NOYAU_MOTS_MAX = 4
 MOTS_MIN = 2  # phrases exactes : de deux à dix mots (la consigne en demande deux à six)
 MOTS_MAX = 10
 JOURS_MAX = 365
-DUREE_CACHE_S = 300.0
+DUREE_CACHE_S = 300.0  # reformulation réussie
+DUREE_CACHE_ECHEC_S = 30.0  # repli après une erreur : assez pour la question préparée puis lancée
 TAILLE_CACHE = 128
 
 CONSIGNE = (
@@ -80,6 +83,8 @@ CONSIGNE = (
 
 # Reformulations gardées (question, modèle, adresse) vers (instant, résultat ou `None` après un repli).
 _cache: dict[tuple[str, str, str], tuple[float, Reformulation | None]] = {}
+# `preparer` tourne dans le pool de fils : lecture, éviction et écriture du cache passent par ce verrou.
+_verrou_cache = threading.Lock()
 
 
 class ErreurReformulation(Exception):
@@ -168,7 +173,8 @@ class Reformulation(BaseModel):
 
 def vider_cache() -> None:
     """Oublie les reformulations gardées (tests)."""
-    _cache.clear()
+    with _verrou_cache:
+        _cache.clear()
 
 
 def _neutraliser(texte: str) -> str:
@@ -275,15 +281,19 @@ def reformuler(
     """Reformulation de la question par le modèle, ou `None` : le repli déterministe prend la suite.
 
     `None` sans appel quand la clé manque. Toute erreur est consignée au journal (raison en clair) et
-    rend `None`. Un résultat, repli compris, est gardé `DUREE_CACHE_S` secondes pour la même question.
+    rend `None`. Une réussite est gardée `DUREE_CACHE_S` secondes pour la même question, un repli
+    `DUREE_CACHE_ECHEC_S`.
     """
     if not config.modele_langue_cle:
         return None
     cle = (question, config.modele_langue_id, config.modele_langue_url)
     maintenant = time.monotonic()
-    garde = _cache.get(cle)
-    if garde is not None and maintenant - garde[0] < DUREE_CACHE_S:
-        return garde[1]
+    with _verrou_cache:
+        garde = _cache.get(cle)
+    if garde is not None:
+        duree = DUREE_CACHE_S if garde[1] is not None else DUREE_CACHE_ECHEC_S
+        if maintenant - garde[0] < duree:
+            return garde[1]
     debut = maintenant
     try:
         resultat: Reformulation | None = _appeler(question, config, transport)
@@ -291,7 +301,8 @@ def reformuler(
     except ErreurReformulation as exc:
         resultat = None
         _consigner(exc.raison, config, debut, exc.code)
-    if len(_cache) >= TAILLE_CACHE:
-        _cache.pop(next(iter(_cache)))
-    _cache[cle] = (time.monotonic(), resultat)
+    with _verrou_cache:
+        if cle not in _cache and len(_cache) >= TAILLE_CACHE:
+            _cache.pop(next(iter(_cache)), None)
+        _cache[cle] = (time.monotonic(), resultat)
     return resultat

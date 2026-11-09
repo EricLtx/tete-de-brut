@@ -13,7 +13,8 @@ comparaison, une fiche, des versions tranchées, un constat et une décision « 
 service vérifié.
 
 Si `CLE_DEMO` est dans l'environnement du script, elle est envoyée dans `X-Cle-Demo`.
-Sortie : neuf lignes sur la sortie standard ; code 0 seulement si les neuf sont OK, sinon 1.
+Sortie : neuf lignes sur la sortie standard, sans aucun compte (le journal d'un run est public) ;
+code 0 seulement si les neuf sont OK, sinon 1.
 Bibliothèque standard et `httpx` seulement : le script n'importe rien du service.
 """
 
@@ -127,7 +128,7 @@ def verifier_video(p: Parcours) -> str:
         for cle in ("transcription", "texte_ecran", "lien", "publie_le"):
             if not video.get(cle):
                 raise Echec(f"vidéo {video.get('identifiant')} sans {cle}")
-    return ", ".join(f"{v['identifiant']} ({v['compte']})" for v in p.videos)
+    return ", ".join(v["identifiant"] for v in p.videos)  # jamais le compte : la sortie est publique
 
 
 def verifier_comparaison(p: Parcours) -> str:

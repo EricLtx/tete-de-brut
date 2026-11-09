@@ -347,54 +347,58 @@ def supprimer_recit(identifiant: str) -> RecitSupprime | None:
 
     Rend `None` si aucune phrase surveillée ne porte cet identifiant. Une vidéo trouvée aussi par une autre
     phrase est conservée, et une variante qui est aussi la phrase d'un autre récit reste sur ses vidéos. Le
-    fichier du cas sur disque n'est pas modifié.
+    fichier du cas sur disque n'est pas modifié. Lectures et écritures forment une seule transaction : une
+    interruption ne laisse rien à moitié, et aucune écriture concurrente ne s'intercale.
     """
     maintenant = datetime.fromisoformat(base.maintenant())
-    documents_cas = base.lister_avec_identifiants(TYPE_CAS)
-    documents_video = base.lister_avec_identifiants(TYPE_VIDEO)
-    valides = [d for _, d in documents_cas if verifier_cas(d) is None]
-    videos = [Video.model_validate(d) for _, d in documents_video]
-    entrees = phrases_surveillees(valides, videos)
-    cible = next(
-        (
-            (cle, details)
-            for cle, details in entrees.items()
-            if identifiant_recit(details["phrase"]) == identifiant
-        ),
-        None,
-    )
-    if cible is None:
-        return None
-    cle, details = cible
-    phrase = details["phrase"]
-    # Clés à retirer des vidéos : celles du récit, sauf celles que porte aussi un autre récit.
-    a_retirer = cles_du_recit(details)
-    for autre_cle, autre in entrees.items():
-        if autre_cle != cle:
-            a_retirer -= cles_du_recit(autre)
-    enregistre_le = _enregistre_le(valides, videos, maintenant)
+    with base.transaction() as transaction:
+        documents_cas = transaction.lister_avec_identifiants(TYPE_CAS)
+        documents_video = transaction.lister_avec_identifiants(TYPE_VIDEO)
+        valides = [d for _, d in documents_cas if verifier_cas(d) is None]
+        videos = [Video.model_validate(d) for _, d in documents_video]
+        entrees = phrases_surveillees(valides, videos)
+        cible = next(
+            (
+                (cle, details)
+                for cle, details in entrees.items()
+                if identifiant_recit(details["phrase"]) == identifiant
+            ),
+            None,
+        )
+        if cible is None:
+            return None
+        cle, details = cible
+        phrase = details["phrase"]
+        # Clés à retirer des vidéos : celles du récit, sauf celles que porte aussi un autre récit.
+        a_retirer = cles_du_recit(details)
+        for autre_cle, autre in entrees.items():
+            if autre_cle != cle:
+                a_retirer -= cles_du_recit(autre)
+        enregistre_le = _enregistre_le(valides, videos, maintenant)
 
-    for id_cas, document in documents_cas:
-        if verifier_cas(document) is not None:
-            continue
-        reste = _sans_la_phrase(document, cle)
-        if reste is None:
-            continue
-        if reste.get("phrases") or reste.get("phrase"):
-            base.ecrire(TYPE_CAS, id_cas, CAS_V1, reste)
-        else:
-            base.supprimer(TYPE_CAS, id_cas)
+        for id_cas, document in documents_cas:
+            if verifier_cas(document) is not None:
+                continue
+            reste = _sans_la_phrase(document, cle)
+            if reste is None:
+                continue
+            if reste.get("phrases") or reste.get("phrase"):
+                transaction.ecrire(TYPE_CAS, id_cas, CAS_V1, reste)
+            else:
+                transaction.supprimer(TYPE_CAS, id_cas)
 
-    retirees = conservees = 0
-    for id_video, document in documents_video:
-        trouvees = document.get("requetes_trouvees") or []
-        if not any(cle_phrase(r) in a_retirer for r in trouvees):
-            continue
-        restantes = [r for r in trouvees if cle_phrase(r) not in a_retirer]
-        if restantes:
-            base.ecrire(TYPE_VIDEO, id_video, VIDEO_V1, {**document, "requetes_trouvees": restantes})
-            conservees += 1
-        else:
-            base.supprimer(TYPE_VIDEO, id_video)
-            retirees += 1
+        retirees = conservees = 0
+        for id_video, document in documents_video:
+            trouvees = document.get("requetes_trouvees") or []
+            if not any(cle_phrase(r) in a_retirer for r in trouvees):
+                continue
+            restantes = [r for r in trouvees if cle_phrase(r) not in a_retirer]
+            if restantes:
+                transaction.ecrire(
+                    TYPE_VIDEO, id_video, VIDEO_V1, {**document, "requetes_trouvees": restantes}
+                )
+                conservees += 1
+            else:
+                transaction.supprimer(TYPE_VIDEO, id_video)
+                retirees += 1
     return RecitSupprime(phrase, retirees, conservees, enregistre_le)

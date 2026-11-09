@@ -29,6 +29,7 @@ from app.mots import normaliser
 CAS_V1 = "cas.v1"
 TYPE_CAS = "cas"
 IDENTIFIANT_CAS = "cas-principal"
+PREFIXE_RECHERCHE = "recherche-"  # documents `cas` écrits par une recherche en direct (S13)
 NOM_FICHIER = "cas.json"
 MOTS_MINIMUM = 3  # RG-02 : en l'absence de détection de noms, moins de trois mots est refusé
 CHAMPS_AUTORISES = frozenset(
@@ -288,8 +289,12 @@ def charger(config: Configuration, *, avec_videos: bool) -> CasEnregistre | None
         # Mode enregistré pur : seules les vidéos du cas restent en base, jamais celles lues en direct.
         base.purger("video", {v.identifiant for v in cas.videos})
         # Les phrases ajoutées par une recherche en direct (S13) n'ont plus de vidéos ici : sans leur
-        # document, le radar enregistré ne montre pas de récit vide.
-        base.purger(TYPE_CAS, {IDENTIFIANT_CAS})
+        # document, le radar enregistré ne montre pas de récit vide. Seuls les documents `recherche-*`
+        # sont retirés : tout autre document `cas` survit à la bascule.
+        with base.transaction() as transaction:
+            for id_document, _ in transaction.lister_avec_identifiants(TYPE_CAS):
+                if id_document.startswith(PREFIXE_RECHERCHE):
+                    transaction.supprimer(TYPE_CAS, id_document)
         for video in cas.videos:
             base.ecrire("video", video.identifiant, VIDEO_V1, video.model_dump(mode="json"))
     base.ecrire(TYPE_CAS, IDENTIFIANT_CAS, CAS_V1, document)
