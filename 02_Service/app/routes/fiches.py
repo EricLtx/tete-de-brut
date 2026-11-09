@@ -13,6 +13,7 @@ from app.export import exporter
 from app.fiche import TYPE_DOCUMENT, construire_fiche, identifiant_fiche, modifier
 from app.fiche import decider as decider_fiche
 from app.modeles import FICHE_V1, DemandeDecision, DemandeFiche, Ecart, Fiche, ModificationFiche, Video
+from app.recits import lire_videos
 from app.routes import erreurs
 
 routeur = APIRouter(tags=["fiches"])
@@ -55,7 +56,7 @@ async def creer_fiche(demande: DemandeFiche, request: Request, response: Respons
         video = base.lire("video", cle)
         if video is None:
             raise ErreurApi("introuvable", f"La vidéo {cle} n'est pas connue du service.", 404)
-        videos.append(Video.model_validate(video))
+        videos.extend(lire_videos([video]))
     mode = mode_courant(request)
     enregistre_le = None
     if mode == "enregistre":

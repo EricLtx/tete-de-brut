@@ -71,6 +71,7 @@ from app.recits import (
     cle_phrase,
     construire_recit,
     identifiant_recit,
+    lire_videos,
     phrases_surveillees,
     recherche_de,
     reunir_variantes,
@@ -519,7 +520,7 @@ def _recit_rejoue(variantes: list[str]) -> Any | None:
     premier = next((r for r in recits if r.identifiant == identifiant_recit(variantes[0])), None)
     if premier is None or len(variantes) == 1:
         return premier
-    videos = [Video.model_validate(d) for d in base.lister("video")]
+    videos = lire_videos(base.lister("video"))
     cas_valides = [d for d in base.lister(cas.TYPE_CAS) if verifier_cas(d) is None]
     entree = phrases_surveillees(cas_valides, videos).get(cle_phrase(variantes[0]))
     if entree is None:

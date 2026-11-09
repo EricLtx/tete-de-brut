@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from app import base
 from app.erreurs import ErreurApi
 from app.modeles import Video
+from app.recits import lire_videos
 from app.routes import erreurs
 
 routeur = APIRouter(tags=["vidéos"])
@@ -30,4 +31,4 @@ async def lire_video(id: str, request: Request) -> Video:
     else:
         document["mode"] = "enregistre"
         document["enregistre_le"] = document.get("enregistre_le") or document["transcription"]["lue_le"]
-    return Video.model_validate(document)
+    return lire_videos([document])[0]
