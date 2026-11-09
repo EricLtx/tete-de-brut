@@ -1,0 +1,36 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "question": "que dit-on des places de crèche en 2027 depuis 7 jours sur tiktok hors comptes de partis",
+  "type": "phrase",
+  "filtres": {
+    "phrases": [
+      "places crèche 2027",
+      "places de crèche en 2027"
+    ],
+    "noyaux": [
+      "places crèche 2027"
+    ],
+    "dans": "parole ou texte à l'écran",
+    "fenetre": {
+      "debut": "2026-10-31T00:00:00Z",
+      "fin": "2026-11-07T08:00:00Z"
+    },
+    "comptes": [],
+    "comptes_exclus": [
+      "compte_fictif_parti_a",
+      "compte_fictif_parti_b"
+    ],
+    "plateformes": [
+      "tiktok"
+    ],
+    "identifiant_plateforme": null
+  },
+  "requete_en_clair": "reformulée par un modèle de langue : mots « places crèche 2027 » en tout ordre (et aussi tels quels, en phrase exacte) ; phrase exacte « places de crèche en 2027 », dits ou écrits à l'écran, niveau default, du 2026-10-31 au 2026-11-07, sur tiktok, hors 2 comptes de la liste « partis »",
+  "cout_estime": {
+    "credits_estimes": 15,
+    "methode": "15 crédits par page de 100 résultats au niveau default (estimation) ; en mode enregistré, aucun appel n'est fait : 0 crédit dépensé"
+  },
+  "refus": null,
+  "reformulation": "modele"
+}

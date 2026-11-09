@@ -1,4 +1,4 @@
-"""Kit des écrans Lovable (S11) : exemples de réponses validés par le contrat, textes du kit filtrés.
+"""Kit des écrans Lovable (S11, S14) : exemples de réponses validés par le contrat, textes du kit filtrés.
 
 Les exemples de `03_Ecrans/exemples/` servent de données d'essai aux écrans tant qu'une route
 répond 501. Chaque exemple doit être exactement ce que le service sérialiserait : il est validé
@@ -30,7 +30,9 @@ from app.modeles import (
     Journal,
     Modele,
     Radar,
+    Recherche,
     Recit,
+    ResultatRecherche,
     SuppressionRecit,
     Video,
 )
@@ -55,13 +57,24 @@ MODELES_PAR_PREFIXE: dict[str, type[Modele]] = {
     "journal": Journal,
     "erreur": Erreur,
 }
+# Exemples de la recherche (S14) : le préfixe `recherche` ne suffit pas, la réponse dépend du fichier.
+MODELES_PAR_NOM: dict[str, type[Modele]] = {
+    "recherche-preparee": Recherche,
+    "recherche-refus": Recherche,
+    "recherche-executee": ResultatRecherche,
+}
+PROMPTS_ATTENDUS = {
+    "00-projet.md",
+    "01-radar.md",
+    "02-versions.md",
+    "03-fiche.md",
+    "04-recherche.md",
+}
 NOMS_ORIANE = ("platformId", "publishedAt", "onScreenText", "transcript", "profileHandle", "viewsCount")
 MOTS_INTERDITS_KIT = frozenset(
     {"tendance", "tendances", "viral", "virale", "viraux", "virales", "sentiment", "sentiments"}
 )
 ENREGISTRE_LE = "2026-11-07T08:00:00Z"
-# Réponses de S13 (recherche) : leurs exemples viennent de S14 (F017), qui retire cette exemption.
-SANS_EXEMPLE_JUSQU_A_S14 = frozenset({"Recherche", "ResultatRecherche"})
 
 FICHIERS_EXEMPLES = sorted(DOSSIER_EXEMPLES.glob("*.json"))
 TEXTES_KIT = [
@@ -76,7 +89,7 @@ def _lire(nom: str) -> Any:
 
 
 def _modele_de(chemin: Path) -> type[Modele]:
-    return MODELES_PAR_PREFIXE[chemin.stem.split("-")[0]]
+    return MODELES_PAR_NOM.get(chemin.stem) or MODELES_PAR_PREFIXE[chemin.stem.split("-")[0]]
 
 
 def _parcourir(valeur: Any):
@@ -103,16 +116,14 @@ def test_le_kit_est_complet() -> None:
         "journal.json",
         "erreur-401-cle-demo.json",
         "erreur-409-decision-manquante.json",
+        "recherche-preparee.json",
+        "recherche-executee.json",
+        "recherche-refus.json",
     }
     assert attendus <= {f.name for f in FICHIERS_EXEMPLES}
     for chemin in TEXTES_KIT:
         assert chemin.is_file(), chemin
-    assert {p.name for p in (DOSSIER_KIT / "prompts").glob("*.md")} == {
-        "00-projet.md",
-        "01-radar.md",
-        "02-versions.md",
-        "03-fiche.md",
-    }
+    assert {p.name for p in (DOSSIER_KIT / "prompts").glob("*.md")} == PROMPTS_ATTENDUS
 
 
 def test_chaque_reponse_du_contrat_a_son_exemple() -> None:
@@ -125,8 +136,6 @@ def test_chaque_reponse_du_contrat_a_son_exemple() -> None:
                 ref = schema.get("$ref", "")
                 if statut.startswith("2") and ref:
                     nom = ref.rsplit("/", 1)[-1]
-                    if nom in SANS_EXEMPLE_JUSQU_A_S14:
-                        continue
                     assert nom in modeles_exemples, f"{methode.upper()} {chemin} : aucun exemple {nom}"
 
 
@@ -214,6 +223,68 @@ def test_exemples_coherents_entre_eux() -> None:
 
     assert _lire("erreur-409-decision-manquante.json")["erreur"] == "decision_manquante"
     assert _lire("erreur-401-cle-demo.json")["erreur"] == "cle_demo_invalide"
+
+
+def test_exemples_de_la_recherche() -> None:
+    preparee, refus = _lire("recherche-preparee.json"), _lire("recherche-refus.json")
+    executee = _lire("recherche-executee.json")
+    radar = _lire("radar.json")
+
+    assert preparee["refus"] is None and preparee["type"] == "phrase"
+    filtres = preparee["filtres"]
+    assert filtres["phrases"] and set(filtres["noyaux"]) < set(filtres["phrases"]), "noyaux + phrases"
+    assert filtres["fenetre"] and filtres["plateformes"] and filtres["comptes_exclus"]
+    assert preparee["reformulation"] == "modele"
+    assert preparee["requete_en_clair"].startswith("reformulée par un modèle de langue")
+    assert all(p in preparee["requete_en_clair"] for p in filtres["phrases"]), "les filtres affichés partent"
+    assert preparee["cout_estime"]["credits_estimes"] > 0
+
+    assert refus["refus"]["code"] == "nom_seul" and refus["refus"]["detail"].strip()
+    assert refus["cout_estime"]["credits_estimes"] == 0, "une recherche refusée ne coûte rien"
+    assert "rien n'est envoyé" in refus["requete_en_clair"]
+
+    assert executee["recherche"] == preparee, "le lancement rend la recherche préparée"
+    assert executee["video"] is None, "type phrase : un récit, pas de vidéo"
+    recit = executee["recit"]
+    assert recit in radar["recits"], "le récit lancé est déjà au radar"
+    assert recit["phrase_surveillee"] in preparee["filtres"]["phrases"]
+    assert recit.get("variantes") in (None, filtres["phrases"])
+
+
+def test_le_kit_cite_toutes_les_routes_du_contrat() -> None:
+    """`AGENTS.md` liste chaque route de `api.v1` : une route absente est une route que l'écran ignore."""
+    contrat = json.loads(CONTRAT_API.read_text(encoding="utf-8"))
+    instructions = (DOSSIER_KIT / "AGENTS.md").read_text(encoding="utf-8")
+    absentes = [
+        f"{methode.upper()} {chemin}"
+        for chemin, operations in contrat["paths"].items()
+        for methode in operations
+        if f"`{methode.upper()} {chemin}" not in instructions
+    ]
+    assert not absentes, f"AGENTS.md ne cite pas : {absentes}"
+    for route in ("DELETE /v1/recits/{id}", "/v1/recits/{id}/pertinence", "/v1/recherches/preparer"):
+        assert route in instructions
+    assert "recit.variantes" in instructions
+    assert "recit.variantes" in (DOSSIER_KIT / "README.md").read_text(encoding="utf-8")
+
+
+def test_le_kit_compte_quatre_ecrans() -> None:
+    instructions = (DOSSIER_KIT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Exactement quatre écrans" in instructions
+    for route in ("`/` Recherche", "`/radar` Radar", "`/versions/:id`", "`/fiche/:id`"):
+        assert route in instructions, route
+    assert "trois écrans" not in instructions.lower()
+    radar = (DOSSIER_KIT / "prompts" / "01-radar.md").read_text(encoding="utf-8")
+    recherche = (DOSSIER_KIT / "prompts" / "04-recherche.md").read_text(encoding="utf-8")
+    assert "sur la route `/radar`" in radar
+    assert "sur la route `/`" in recherche
+
+
+@pytest.mark.parametrize("chemin", TEXTES_KIT, ids=lambda p: p.name)
+def test_exemples_cites_par_le_kit_existent(chemin: Path) -> None:
+    cites = set(re.findall(r"exemples/([\w.-]+\.json)", chemin.read_text(encoding="utf-8")))
+    presents = {f.name for f in FICHIERS_EXEMPLES}
+    assert cites <= presents, f"{chemin.name} cite des exemples absents : {sorted(cites - presents)}"
 
 
 def _hors_code(texte: str) -> str:

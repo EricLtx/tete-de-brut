@@ -1,27 +1,27 @@
-# Kit des trois écrans Lovable
+# Kit des quatre écrans Lovable
 
-Trois écrans (Radar des récits, Versions côte à côte, Fiche de vérification) et une barre d'état commune, branchés sur le seul service « Tête de Brut. » par son contrat `api.v1`.
-Un cas, un parcours, cinq gestes : je découvre un récit, j'ouvre une vidéo, je compare une reprise, je vois ce qui a changé, j'enregistre une décision.
+Quatre écrans (Recherche, Radar des récits, Versions côte à côte, Fiche de vérification) et une barre d'état commune, branchés sur le seul service « Tête de Brut. » par son contrat `api.v1`.
+Un cas, un parcours, sept gestes : je cherche, je colle un lien, je découvre un récit, j'ouvre une vidéo, je compare une reprise, je vois ce qui a changé, j'enregistre une décision.
 Ce dossier suffit à construire les écrans sans lire le code du service ; chaque champ cité ci-dessous existe mot pour mot dans `02_Service/contrats/api.v1.json`.
 
 | Fichier | Rôle |
 |---|---|
 | `AGENTS.md` | Instructions de projet Lovable, à coller dans les réglages du projet et à poser à la racine du projet Lovable |
-| `prompts/00-projet.md` à `prompts/03-fiche.md` | Un prompt de mode Plan par étape, dans l'ordre de construction |
+| `prompts/00-projet.md` à `prompts/04-recherche.md` | Un prompt de mode Plan par étape, dans l'ordre de construction (le prompt 04 construit l'écran Recherche) |
 | `exemples/*.json` | Une réponse par route, fictive, en mode `enregistre`, validée par les modèles du service (`02_Service/tests/test_exemples_ecrans.py`) |
 | `README.md` | Ce brief : zones, champs par chemin JSON, gestes et appels, états, textes fixes |
 
 Les exemples sont fictifs : une ville fictive, des comptes `compte_fictif_*`, des phrases inventées sur un budget de crèches. Ils servent de données d'essai tant qu'une route répond 501 `non_implemente`, et seulement dans ce cas.
 
-## 1. Règles communes aux trois écrans
+## 1. Règles communes aux quatre écrans
 
-- **Une seule adresse.** Tout appel part vers `VITE_ADRESSE_SERVICE` (fichier `.env` du projet Lovable). Routes sous `/v1/…` ; en-tête `Content-Type: application/json` ; sur POST et PATCH, en-tête `X-Cle-Demo` avec `VITE_CLE_DEMO`. Aucune base Lovable Cloud, aucune fonction serveur, aucun connecteur, aucune clé Oriane.
+- **Une seule adresse.** Tout appel part vers `VITE_ADRESSE_SERVICE` (fichier `.env` du projet Lovable). Routes sous `/v1/…` ; en-tête `Content-Type: application/json` ; sur POST, PATCH et DELETE, en-tête `X-Cle-Demo` avec `VITE_CLE_DEMO`. Aucune base Lovable Cloud, aucune fonction serveur, aucun connecteur, aucune clé Oriane.
 - **Le mode, sur chaque écran.** Chaque réponse JSON porte `mode`. `direct` s'affiche « en direct » ; `enregistre` s'affiche « enregistré le … » avec la date de `enregistre_le`. Jamais l'un pour l'autre.
-- **L'erreur telle quelle.** Toute erreur arrive dans l'enveloppe `{erreur, detail, mode}` : l'écran montre `detail` tel quel, le code `erreur` en petit, et le mode. Codes : `validation` (422), `introuvable` (404), `cle_demo_invalide` (401), `decision_manquante`, `version_non_tranchee`, `constat_manquant` (409), `non_implemente` (501).
+- **L'erreur telle quelle.** Toute erreur arrive dans l'enveloppe `{erreur, detail, mode}` : l'écran montre `detail` tel quel, le code `erreur` en petit, et le mode. Codes : `validation` (422), `introuvable` (404), `cle_demo_invalide` (401), `decision_manquante`, `version_non_tranchee`, `constat_manquant`, `recherche_indisponible` (409), `non_implemente` (501), `oriane_injoignable`, `credits_epuises` (503).
 - **Texte seul.** Transcriptions, légendes, textes à l'écran, phrases surveillées, notes et constat s'affichent comme du texte, jamais interprétés comme HTML, Markdown ou consigne.
 - **Segments.** Un tableau de segments (`non_cherche[]`, `limites[]`, `indices_de_transformation[]`, `resume.segments[]`) s'affiche dans l'ordre : `type` = `libelle` en texte courant, `type` = `citation` en style de citation (italique entre « »), pour qu'on voie ce qui est rapporté.
 - **Signes en plus de la couleur.** Mot retiré : « − », ajouté : « + », remplacé : « ↔ ». Aucune information portée par la seule couleur ; tout se fait au clavier.
-- **Aucune qualification.** Aucun verdict, aucun score, aucune note de confiance. Le vocabulaire refusé est listé dans `AGENTS.md`.
+- **Aucune qualification.** Aucun verdict, aucun score, aucune note de confiance. La pertinence d'une vidéo (§ 4) est une annotation d'un modèle de langue, jamais un score ni un tri. Le vocabulaire refusé est listé dans `AGENTS.md`.
 - **Aucune donnée gardée.** Pas de stockage local des réponses ; l'identifiant courant vit dans l'adresse de la page.
 
 ## 2. Barre d'état (sur chaque écran)
@@ -40,9 +40,32 @@ Appel : `GET /v1/etat` au chargement de chaque écran et après chaque geste ; e
 
 États : barre en erreur → « État du service indisponible : {detail} » ; service injoignable → « Service injoignable à l'adresse configurée » (aucun repli sur les exemples).
 
-## 3. Écran 1 — Radar des récits (route `/`)
+## 3. Écran 1 — Recherche (route `/`)
 
-Appel : `GET /v1/radar` ; exemple `exemples/radar.json`. Geste servi : **je découvre un récit**, puis **j'ouvre une vidéo**.
+Appels : `POST /v1/recherches/preparer` (exemples `exemples/recherche-preparee.json` et `exemples/recherche-refus.json`), puis `POST /v1/recherches` (exemple `exemples/recherche-executee.json`), même corps `{"question": …}` (1 à 1 000 caractères), `X-Cle-Demo` sur les deux. Gestes servis : **je cherche** (une question libre) et **je colle un lien** (une vidéo TikTok, Instagram ou YouTube). Aucun appel sans geste : ni au chargement, ni à la frappe.
+
+| Zone | Champ(s) du contrat (chemin JSON) | Texte fixe | Geste et appel |
+|---|---|---|---|
+| Saisie | — | « Recherche » ; « Ta question ou le lien d'une vidéo » ; « Préparer la recherche » (inactif tant que la zone est vide) | `POST /v1/recherches/preparer` ; rien n'est dépensé ni écrit |
+| En-tête de la préparation | `mode`, `enregistre_le`, `question`, `type`, `reformulation` | « Question reformulée par un modèle de langue » si `reformulation` vaut `modele` ; « Question traduite par règles » si `deterministe` ; rien pour un lien | — |
+| Filtres affichés | `filtres.phrases[]`, `filtres.noyaux[]` | « Ta question devient {nombre de filtres.phrases} filtres » ; chaque entrée entre « » ; « mots, dans n'importe quel ordre » pour celles qui sont aussi dans `filtres.noyaux[]`, « phrase exacte » pour les autres | — |
+| Où, fenêtre, plateformes, comptes | `filtres.dans`, `filtres.fenetre.debut`, `filtres.fenetre.fin`, `filtres.plateformes[]`, `filtres.comptes[]`, `filtres.comptes_exclus[]`, `filtres.identifiant_plateforme` | « Où : {dans} » ; « Fenêtre : du {debut} au {fin} » ; « Plateformes : {liste} » (« les trois » si vide) ; « Comptes exclus » ; pour un lien : la plateforme et l'identifiant, sans fenêtre | — |
+| Requête | `requete_en_clair` | « Requête envoyée à Oriane » | — |
+| Coût | `cout_estime.credits_estimes`, `cout_estime.methode` | « Coût estimé : {credits_estimes} crédits » ; `methode` tel quel | — |
+| Refus (RG-02 et autres) | `refus.code`, `refus.detail` | `detail` tel quel, en évidence ; « Lancer la recherche » inactif | — |
+| Lancer | `cout_estime.credits_estimes`, `cout_estime.methode` | « Lancer la recherche » ; confirmation « Coût estimé : {credits_estimes} crédits ({methode}). Lancer ? » | `POST /v1/recherches` avec `X-Cle-Demo`, après confirmation ; la réponse (201, `ResultatRecherche`) remplace l'affichage ; recharger `GET /v1/etat` |
+| Résultat, type `phrase` | `recit.phrase_surveillee`, `recit.requete_en_clair`, `recit.mesures[]` (mêmes champs que le § 4), `recit.plus_ancienne_version`, `recit.non_cherche[]`, `recit.videos[]` | la carte du récit comme sur le Radar ; « Voir dans le radar » | lien vers `/radar` ; le récit y est déjà ajouté |
+| Variantes (facultatif) | `recit.variantes[]` | « Variantes cherchées » | — |
+| Résultat, type `lien` | `video.compte`, `video.plateforme`, `video.publie_le`, `video.vues_selon_oriane`, `video.legende`, `video.transcription.texte`, `video.lien` | le panneau vidéo du § 4 | — |
+| Gestes sur le récit | `recit.identifiant` | « Juger la pertinence des vidéos » ; « Supprimer le récit » | mêmes gestes et mêmes textes que dans le § 4 |
+
+`recit` est rendu pour le type `phrase` et `video` pour le type `lien` : l'autre vaut `null`. `recit.variantes` est facultatif (absent pour une phrase du cas enregistré) ; quand il existe, les vidéos du récit sont l'union des vidéos trouvées par chaque variante, comptées une fois.
+
+États : `refus` renseigné → `refus.detail` tel quel, rien à lancer (exemple `exemples/recherche-refus.json`) ; 422 `validation` (question vide, ou recherche refusée au lancement) → `detail` tel quel ; 401 → `detail` tel quel ; 404 `introuvable` (lien : vidéo non retrouvée) → `detail` tel quel ; mode enregistré, phrase hors du cas → 409 `recherche_indisponible`, `detail` tel quel et mode visible ; 503 `oriane_injoignable` → `detail` tel quel, sans nouvel essai automatique.
+
+## 4. Écran 2 — Radar des récits (route `/radar`)
+
+Appel : `GET /v1/radar` ; exemple `exemples/radar.json`. Gestes servis : **je découvre un récit**, puis **j'ouvre une vidéo**.
 
 | Zone | Champ(s) du contrat (chemin JSON) | Texte fixe | Geste et appel |
 |---|---|---|---|
@@ -58,12 +81,16 @@ Appel : `GET /v1/radar` ; exemple `exemples/radar.json`. Geste servi : **je déc
 | Carte : liens sources (trois au plus) | `recits[].videos[]`, puis pour chacun `compte`, `plateforme`, `publie_le`, `lien` de `GET /v1/videos/{id}` | « Ouvrir sur la plateforme » | `GET /v1/videos/{id}` par identifiant ; lien externe dans un nouvel onglet |
 | Carte : non cherché (toujours ouvert) | `recits[].non_cherche[].texte` (segments) | « Non cherché » | — |
 | Carte : ouvrir | `recits[].identifiant` | « Ouvrir le récit » | `GET /v1/recits/{identifiant}` ; exemple `exemples/recit.json` ; panneau du récit, mêmes champs plus la liste complète des vidéos |
+| Panneau du récit : variantes (facultatif) | `recits[].variantes[]`, `recits[].sous_recherches[].libelle`, `recits[].sous_recherches[].type`, `recits[].sous_recherches[].videos` | « Variantes cherchées » ; `type` `mots` : « tous les mots, dans n'importe quel ordre » ; `exacte` : « phrase exacte » ; les vidéos du récit sont l'union, comptées une fois | — |
+| Panneau du récit : supprimer | `identifiant`, `phrase_surveillee`, `videos_retirees`, `videos_conservees`, `avertissement` | « Supprimer le récit » ; confirmation « La phrase surveillée et les vidéos que seule elle a trouvées seront retirées. Confirmer ? » ; après : « Récit supprimé : {videos_retirees} vidéos retirées, {videos_conservees} conservées » puis `avertissement` tel quel | `DELETE /v1/recits/{identifiant}` avec `X-Cle-Demo`, après confirmation ; exemple `exemples/suppression-recit.json` ; puis recharger `GET /v1/radar` |
+| Panneau du récit : pertinence | `question`, `modele`, `classees`, `fortes`, `faibles`, `hors_sujet`, `non_classees`, `avertissement` | « Juger la pertinence des vidéos » ; confirmation « Les vidéos du récit sont envoyées au modèle de langue du service pour être jugées. Aucun crédit Oriane n'est dépensé. Lancer ? » ; après : « {classees} vidéos jugées pour « {question} » par {modele} : {fortes} fortes, {faibles} faibles, {hors_sujet} hors sujet ; {non_classees} sans jugement » puis `avertissement` tel quel | `POST /v1/recits/{identifiant}/pertinence` avec `X-Cle-Demo`, après confirmation, corps vide ou `{"forcer": true}` ; exemple `exemples/pertinence-recit.json` ; puis relire les vidéos |
+| Panneau vidéo : pertinence (facultatif) | `pertinence.niveau`, `pertinence.motif`, `pertinence.modele`, `pertinence.question`, `pertinence.calcule_le` | « Pertinence jugée par {modele} pour « {question} » le {calcule_le} : {niveau} » (forte, faible ou hors sujet) ; `motif` en texte brut ; absent, rien n'est affiché | — |
 | Panneau vidéo | `compte`, `plateforme`, `identifiant_plateforme`, `publie_le`, `vues_selon_oriane`, `interactions_selon_oriane`, `legende`, `requetes_trouvees[]`, `transcription.texte`, `transcription.source`, `transcription.niveau`, `transcription.lue_le`, `texte_ecran.texte`, `texte_ecran.source`, `texte_ecran.lue_le`, `lien` | « {vues_selon_oriane} vues selon Oriane » ; « {interactions_selon_oriane} interactions selon Oriane » ; « Légende » ; « Trouvée par : {requetes_trouvees} » ; « Transcription lue chez {transcription.source} (niveau {transcription.niveau}) le {transcription.lue_le} » ; « Texte à l'écran lu chez {texte_ecran.source} le {texte_ecran.lue_le} » | Geste **j'ouvre une vidéo** : `GET /v1/videos/{id}` ; exemples `exemples/video-source.json`, `exemples/video-reprise.json` |
 | Comparer | `recits[].videos[]`, `recits[].plus_ancienne_version.video` | « Comparer deux versions » ; « Source » (par défaut la plus ancienne version retrouvée) ; « Reprise » | Geste **je compare une reprise** : `POST /v1/comparaisons` `{"video_source": id, "video_reprise": id}` avec `X-Cle-Demo`, puis aller à `/versions/{identifiant}` de la réponse |
 
 États : `recits` vide → « Aucun récit calculé. » ; récit sans vidéo (`recits[].videos` vide) → « Aucune vidéo trouvée pour cette phrase dans les sources consultées. Voir ce qui n'a pas été cherché. », encart « Non cherché » ouvert ; erreur → enveloppe telle quelle ; 401 à l'actualisation → `detail` tel quel (exemple `exemples/erreur-401-cle-demo.json`).
 
-## 4. Écran 2 — Versions côte à côte (route `/versions/:id`)
+## 5. Écran 3 — Versions côte à côte (route `/versions/:id`)
 
 Appels : `GET /v1/comparaisons/{id}` (exemple `exemples/comparaison.json`), puis `GET /v1/videos/{video_source}` et `GET /v1/videos/{video_reprise}` pour les textes. Geste servi : **je vois ce qui a changé**.
 
@@ -84,7 +111,7 @@ Repérage des mots : les positions comptent les mots dès 0 après la normalisat
 
 États : les trois listes vides → « Aucun écart au mot relevé entre les deux versions. » ; vidéo introuvable (404) → `detail` tel quel dans sa colonne ; comparaison introuvable → `detail` tel quel et lien « Revenir au radar ».
 
-## 5. Écran 3 — Fiche de vérification (route `/fiche/:id`)
+## 6. Écran 4 — Fiche de vérification (route `/fiche/:id`)
 
 Appel : `GET /v1/fiches/{id}` ; exemples `exemples/fiche-avant-decision.json` et `exemples/fiche-apres-decision.json`. Geste servi : **j'enregistre une décision**. Chaque geste rend la fiche entière : l'écran remplace son affichage par la réponse.
 
@@ -106,28 +133,31 @@ Le bouton d'export reste actif : c'est le service qui refuse tant qu'une décisi
 
 États : fiche introuvable → `detail` tel quel ; fiche neuve → constat vide, aucune décision, « Versions à trancher : 2 » ; erreur d'un geste → `detail` tel quel sous la zone du geste, la fiche affichée reste la dernière réponse reçue.
 
-## 6. Ce que chaque écran montre d'Oriane
+## 7. Ce que chaque écran montre d'Oriane
 
+- **Recherche** : les filtres exactement tels qu'ils partent chez Oriane (`filtres`), la requête en clair (`requete_en_clair`) et le coût estimé (`cout_estime`), avant tout lancement ; ensuite le récit ajouté au radar (`recit`) ou la vidéo retrouvée (`video`). Ce que le service calcule au-dessus : la traduction de la question en filtres (`reformulation` dit si un modèle de langue y a part) ; RG-02 refuse le seul nom d'une personne (`refus`).
 - **Radar** : la requête envoyée en clair (`recits[].requete_en_clair` : phrase exacte, fenêtre, niveau `default`), le nombre de résultats consultés (`echantillon.resultats_consultes`), la source de chaque mesure (`mesures[].source`) et les vues « selon Oriane », jamais recomptées. Ce que le service calcule au-dessus : le regroupement en récits et les mesures, chacune avec sa méthode et sa fenêtre.
 - **Versions côte à côte** : les deux transcriptions sont celles d'Oriane, au niveau `default`, lues à l'heure dite (`transcriptions.source.lue_le`, `transcriptions.reprise.lue_le`). Ce que le service calcule au-dessus : l'écart au mot (`normalisation` = `mots.v1`).
 - **Fiche** : ce que le service a fait (regroupement, écart au mot, résumé par `resume.methode`) et ce qu'il n'a pas fait (`limites[]` : aucune transcription refaite, vues non recomptées ; `non_cherche[]`).
 - **Barre d'état** : le mode et sa raison, les crédits Oriane du jour, et le journal de chaque appel parti vers Oriane.
 
-## 7. Ce que le contrat ne donne pas, et comment l'écran fait
+## 8. Ce que le contrat ne donne pas, et comment l'écran fait
 
 - L'enveloppe d'erreur ne porte pas `enregistre_le` : la date du cas vient de la barre d'état (`GET /v1/etat`).
 - Un récit ne donne que les identifiants de ses vidéos (`recits[].videos[]`) : compte, date et lien viennent d'un `GET /v1/videos/{id}` par vidéo (trois au plus sur la carte).
-- Une comparaison ne porte ni les textes ni les listes de mots normalisés : l'écran lit les deux vidéos et refait la découpe `mots.v1`, avec la vérification décrite au § 4.
+- `recit.variantes` et `recit.sous_recherches` sont facultatifs et peuvent valoir `null` : sans eux, l'écran n'affiche pas « Variantes cherchées ». `video.pertinence` est facultatif : tant que le modèle n'a rien jugé, l'écran n'affiche aucune pertinence et n'en devine aucune.
+- `reformulation` est absent d'une recherche par lien.
+- Une comparaison ne porte ni les textes ni les listes de mots normalisés : l'écran lit les deux vidéos et refait la découpe `mots.v1`, avec la vérification décrite au § 5.
 - `apercu` (vidéo) est facultatif : `vignette` (adresse ou nul), `images_cles` (dix adresses au plus), `source` (toujours Oriane), `lue_le`. Le service émet `"apercu": null` quand Oriane ne sert rien (le schéma accepte aussi l'absence du champ) : l'écran n'affiche alors aucune image et ne devine aucune adresse. Les adresses viennent d'Oriane, jamais construites par l'écran ; elles peuvent expirer, l'écran garde un repli sans image.
 - `mesures[].nom` est un code (`videos_trouvees`, `comptes_distincts`, `vues_cumulees`) : l'écran affiche `unite` à côté de la valeur et `nom` en petit.
 
-## 8. Mode d'emploi
+## 9. Mode d'emploi
 
 1. **Créer le projet Lovable** (pile par défaut de Lovable) et coller le contenu de `AGENTS.md` dans les instructions du projet ([connaissance du projet](https://docs.lovable.dev/features/knowledge)). Le poser aussi à la racine du projet Lovable : il est relu à chaque message.
 2. **Renseigner `.env`** à la racine du projet Lovable : `VITE_ADRESSE_SERVICE=https://<adresse du service>` et `VITE_CLE_DEMO=<clé de démonstration>`. Pas dans les Secrets de Lovable, réservés au code serveur, que ce projet n'a pas ([secrets](https://docs.lovable.dev/features/secrets)). La clé de démonstration est visible dans le navigateur : elle est de faible valeur, changée après le passage.
-3. **Coller les prompts dans l'ordre**, chacun en [mode Plan](https://docs.lovable.dev/features/plan-mode) : `prompts/00-projet.md`, `01-radar.md`, `02-versions.md`, `03-fiche.md`. Relire le plan proposé, vérifier qu'il ne cite que des champs de ce brief, puis l'approuver ; un écran à la fois. Joindre ou coller le fichier d'exemple nommé par le prompt : il devient la donnée d'essai de l'écran.
+3. **Coller les prompts dans l'ordre**, chacun en [mode Plan](https://docs.lovable.dev/features/plan-mode) : `prompts/00-projet.md`, `01-radar.md`, `02-versions.md`, `03-fiche.md`, `04-recherche.md` (route `/` ; le prompt 01 place le Radar sur `/radar`). Relire le plan proposé, vérifier qu'il ne cite que des champs de ce brief, puis l'approuver ; un écran à la fois. Joindre ou coller le fichier d'exemple nommé par le prompt : il devient la donnée d'essai de l'écran.
 4. **Donner les origines à P4** : l'origine exacte de l'aperçu Lovable et celle de la page publiée (schéma, hôte, port, lues dans la barre d'adresse), pour `ORIGINES_AUTORISEES` du service ; sinon le navigateur bloque l'appel (CORS).
-5. **Vérifier** sur l'écran : le mode affiché, une erreur 401 sans la clé, l'export refusé avant la décision.
+5. **Vérifier** sur l'écran : le mode affiché, une erreur 401 sans la clé, une recherche refusée (nom seul) sans lancement, l'export refusé avant la décision.
 
 Par un assistant relié au [serveur MCP Lovable](https://docs.lovable.dev/integrations/lovable-mcp-server) : même ordre. L'assistant pose `AGENTS.md`, envoie chaque prompt en mode Plan, attend le plan, le compare à ce brief, l'approuve, puis passe au suivant ; il ne crée ni base, ni fonction serveur, ni connecteur.
 

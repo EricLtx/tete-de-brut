@@ -1,0 +1,33 @@
+{
+  "mode": "enregistre",
+  "enregistre_le": "2026-11-07T08:00:00Z",
+  "question": "Alix Exemplaire",
+  "type": "phrase",
+  "filtres": {
+    "phrases": [
+      "Alix Exemplaire"
+    ],
+    "noyaux": [
+      "Alix Exemplaire"
+    ],
+    "dans": "parole ou texte à l'écran",
+    "fenetre": {
+      "debut": "2026-10-08T00:00:00Z",
+      "fin": "2026-11-07T08:00:00Z"
+    },
+    "comptes": [],
+    "comptes_exclus": [],
+    "plateformes": [],
+    "identifiant_plateforme": null
+  },
+  "requete_en_clair": "recherche refusée : rien n'est envoyé à Oriane",
+  "cout_estime": {
+    "credits_estimes": 0,
+    "methode": "aucun appel à Oriane : la recherche est refusée"
+  },
+  "refus": {
+    "code": "nom_seul",
+    "detail": "Une recherche sur le seul nom d'une personne est refusée : cherche une phrase, une image ou un thème."
+  },
+  "reformulation": "deterministe"
+}
