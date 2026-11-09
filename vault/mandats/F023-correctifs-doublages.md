@@ -1,7 +1,7 @@
 ---
 mandat: F023
 titre: S20 — Correctifs d'après les doublages (plafond sous verrou, purge ciblée, cache, suppression atomique, sortie du script de parcours)
-statut: redige
+statut: lance
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S20
 branche: fix/service-correctifs-doublages (part de main après fusion de F020)
@@ -10,7 +10,7 @@ modele: sonnet
 effort: high
 relecteur: sonnet / high (config)
 cree: 2026-11-09
-lance_a:
+lance_a: 2026-11-09T00:10Z
 rendu_a:
 go_a:
 allers_retours: 0
