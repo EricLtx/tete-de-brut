@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jeu d'or jeu.v1",
+  "description": "Jeu de questions du banc d'évaluation : chaque question porte un à trois faits attendus et les vidéos pertinentes trouvées à la main. Le jeu réel reste hors Git (evaluation/donnees/).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "nom", "budget_credits_reference", "questions"],
+  "properties": {
+    "version": { "const": "jeu.v1" },
+    "nom": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "budget_credits_reference": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Crédits de référence pour rejouer tout le jeu sur un bras."
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Question" }
+    }
+  },
+  "$defs": {
+    "Question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "question", "faits_attendus", "videos_pertinentes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "description": "Unique dans le jeu." },
+        "question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Texte envoyé tel quel au service."
+        },
+        "faits_attendus": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Faits qu'un bon résultat doit permettre de lire ; couvert = présent dans le texte d'une vidéo rendue."
+        },
+        "videos_pertinentes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Identifiants de vidéos du service, trouvées à la main."
+        }
+      }
+    }
+  }
+}
