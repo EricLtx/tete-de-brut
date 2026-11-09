@@ -276,3 +276,65 @@ Nouvelles tables dans le même fichier SQLite, créées par les modules qui les 
 - **Ce qu'il faut surveiller.** Crédits du jour et taux de succès du cache Oriane ; `usage.cache_read_input_tokens` ; part des exécutions `partielle` et `interrompue` ; latence par phase ; dépense mensuelle mesurée (alerte au-delà de 150 $) ; le jeu de transcriptions piégées (S35).
 - **Ce qui attend l'acceptation.** Les fiches S21, S23 et S25 à S37, directement ou par leurs dépendances ; le banc d'évaluation (S22) et le thème (S24) n'en dépendent pas ; le renommage (S38, S39) attend le nom, pas cette ADR.
 - **Conditions de révision.** Le jeu d'or montre que la requête unique couvre déjà les questions réelles (la marche 2 devient superflue : on garde le suivi des phases, on réduit le plan à une sous-recherche) ; une documentation Oriane révèle une recherche sémantique, un tri par pertinence ou un barème différent (D3 se simplifie) ; le test piégé fuit (le filtre d'injection devient obligatoire) ; une petite évaluation montre qu'une seule passe suffit à la validité des citations (D5 se réduit) ; les refus du modèle dépassent 5 % des appels d'une tâche (H) (activer le repli serveur et journaliser le modèle qui a répondu) ; l'hébergement durable impose plusieurs instances (le registre en mémoire et la reprise passent en base partagée, ADR nouvelle) ; une exigence de résidence des données.
+
+## Amendement A1 — Pipeline en sept étapes (Qualifier, Planifier, Chercher, Lire, Revoir et seuiller, Produire, Vérifier)
+
+- **Statut** : Proposée — 10/11/2026 (demande du propriétaire du même jour).
+- **Sources** : Anthropic, « How we built our multi-agent research system », 13/06/2025 ; LangChain, « Open Deep Research », juillet 2025 ; Google, Gemini Deep Research, décembre 2024 ; CRAG, arXiv 2401.15884, 29/01/2024 ; Stop-RAG, arXiv 2510.14337, 16/10/2025 ; VeriCite, arXiv 2510.11394, 13/10/2025 ; CiteEval, arXiv 2506.01829, juin 2025 ; note de veille « RAG agentique et pipelines multi-recherche ».
+
+**Décision proposée.** Adopter les sept étapes comme grille de l'écran, par un champ `etape` sur chaque phase, sans `phases.v2` : six existent déjà dans `phases.v1`, à trois écarts près (passages lus, seuils chiffrés, vérification par affirmation). Ajouter une seule phase, `verification`, neuvième de `phases.v1`, à inscrire avant S21 tant qu'aucun client ne lit `execution.v1` ; le propriétaire décide.
+
+### A1.1 Correspondance
+
+| Étape | Phase(s) (D1) | Couverture | État de l'art | Écart |
+|---|---|---|---|---|
+| Qualifier | `cadrage` (aiguillage, G5) | Partielle | Aiguillage par complexité (Adaptive-RAG) ; clarification (Open Deep Research) | Règles codées avant le modèle ; le plan modifiable tient lieu de clarification |
+| Planifier | `cadrage` (plan, budget) | Couverte | Plan modifiable avant exécution (Gemini) | Aucun |
+| Chercher | `corpus_local`, `acquisition`, `fusion` | Couverte | Commencer large, puis resserrer (Anthropic) | Aucun |
+| Lire | `pertinence` | Partielle | Passages ciblés, l'inutile écarté (CRAG) | Haiku lit les 1 200 premiers caractères (constaté, `app/pertinence.py`) : le code choisira les meilleurs segments BM25, sans jeton |
+| Revoir et seuiller | `pertinence`, `reformulation` | Partielle | Évaluateur léger (CRAG) ; arrêt appris, mais entraîné (Stop-RAG) | `REFORMULATION_SEUIL_FORTES` sans valeur ; aucun seuil d'entrée de `livrable` ; boucle unique gardée (G10) |
+| Produire | `mesures`, `livrable` | Couverte | Rédiger après la recherche (LangChain) | Aucun |
+| Vérifier | `livrable`, passes 1 et 2 | Manquante | Agent de citation (Anthropic) ; inférence textuelle par affirmation (VeriCite, CiteEval) | D5 garantit qu'une citation pointe vers un segment fourni, pas qu'il soutient l'affirmation |
+
+### A1.2 Coût par étape
+
+Exécution `multi_facettes` avec synthèse ; par million de jetons : Haiku 5.5 0,10 / 0,50 $, Sonnet 5.5 2 / 10 $ (éditeur, veille § 5).
+
+| Étape | Modèle | Crédits | Jetons entrée / sortie | Coût |
+|---|---|---|---|---|
+| Qualifier | Code | 0 | 0 | 0 |
+| Planifier | Sonnet 5.5 | 0 | 2 500 / 800 (H) | 0,013 $ (E : 2 500 × 2 + 800 × 10) |
+| Chercher | Code | 15 à 45 (G1) | 0 | Crédits seuls |
+| Lire | Code (FTS5) | 0 | 0 | 0 |
+| Revoir et seuiller | Haiku 5.5 ; Sonnet 5.5 (reformulation) | 15 en passe 2, sous G1 | Six lots de 6 500 / 600 (H) ; reformulation 3 000 / 800 (H) | 0,006 $ la passe (E : 6 × (650 + 300) millionièmes) ; reformulation 0,014 $ (E) |
+| Produire | Code, puis Sonnet 5.5 en deux passes | 0 | 10 000 / 6 000 au plus (H) | 0,08 $ au plus (E : 10 000 × 2 + 6 000 × 10) |
+| Vérifier | Code, puis Haiku 5.5 | 0 | 4 500 / 300 pour dix affirmations (H) | 0,001 $ (E) |
+
+Exécution complète, boucle comprise : 0,12 $ au plus (E, somme) et 45 crédits (G1), sous les 7 $ du jour (G3). Écart : une passe de pertinence (42 600 jetons (E)) laisse 17 400 des 60 000 de G3, moins que les 22 000 majorés (H) de `livrable` et `verification` ; avec synthèse, le moteur les réserve d'abord et la pertinence finit `partielle`.
+
+### A1.3 Seuils
+
+Trente questions du banc S22 (`02_Service/evaluation/`) font un contrôle de cohérence, pas une inférence.
+
+| Seuil | Valeur (H) | Calibrage sur S22 |
+|---|---|---|
+| Passages lus | Trois segments BM25 par vidéo, 1 200 caractères | Préfixe contre passages : garder si la précision de `forte` monte sans perte de rappel@10 |
+| Fiabilité de `forte` | Précision 0,8, rappel 0,7 contre les vidéos trouvées à la main | En dessous, revoir la consigne |
+| Entrée de `livrable` | `forte` seules ; `faible` ajoutées sous cinq `forte` ; 40 segments (D5) | Faits couverts par les segments retenus |
+| Boucle | Moins de cinq `forte`, ou moitié des sous-recherches vides | Essayer 3, 5 et 8 (bras `multi`, `boucle`) : la plus basse qui garde les gains ; boucle sur moins d'un tiers des questions |
+| Vérification | `soutenue` si Haiku et le code (identifiants, extrait exact, chiffres) concordent ; plus de 30 % `non_soutenue` : synthèse « à reprendre » | 30 affirmations annotées à la main, hors Git : accord 0,8, sinon Sonnet 5.5 vérifie |
+
+### A1.4 Contrat
+
+- Accepté avant S21, l'amendement garde `api.v1` et `machine: phases.v1` : `execution.v1` n'est ni écrit ni lu (S21, S31 à faire), la liste passe à neuf phases sans client à casser.
+- Additions optionnelles : `etape` par phase ; `verification` (`statut` `soutenue`, `partielle` ou `non_soutenue`, `methode`) par affirmation de `livrable.v1` ; compteurs `passages_lus`, `affirmations_verifiees`.
+- Après S21 ou S31, la même phase romprait « toujours toutes les phases, dans l'ordre » : il faudrait `phases.v2`.
+- Phase refusée : passe 3 de `livrable`, contrat inchangé, étape invisible. Fiches touchées : S21, S29, S32.
+
+### A1.5 Options écartées
+
+- **Agent libre, orchestrateur et sous-agents** : environ 15 fois les jetons (éditeur), crédits non bornés ; déjà écarté (1B).
+- **Itération sans plafond, ou arrêt appris** : pas de trajectoires d'entraînement ; G1 et G10 tomberaient.
+- **Transcriptions complètes** : jetons multipliés sans gain mesuré ; FTS5 situe le passage.
+- **Vérifier par un modèle d'inférence dédié ou par Sonnet** : dépendance hors pile ; vingt fois Haiku sans gain mesuré.
+- **`phases.v2` maintenant, ou sept phases renommées** : aucun client à protéger ; fondre `corpus_local` dans `acquisition` cacherait les crédits.
