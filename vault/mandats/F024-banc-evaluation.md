@@ -1,7 +1,7 @@
 ---
 mandat: F024
 titre: S22 — Banc d'évaluation rejouable sans réseau (jeu.v1, rappel@k, nDCG@k, faits couverts)
-statut: go
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S22
 branche: feat/service-banc-evaluation

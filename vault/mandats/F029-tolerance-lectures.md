@@ -1,7 +1,7 @@
 ---
 mandat: F029
 titre: Tolérance aux pertinences mal formées étendue aux lectures restantes (suites du doublage F027)
-statut: lance
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S20 (suite)
 branche: fix/service-tolerance-lectures

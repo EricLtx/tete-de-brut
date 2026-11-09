@@ -1,7 +1,7 @@
 ---
 mandat: F026
 titre: Kit et documentation réalignés sur quatre écrans (suites du doublage F017)
-statut: go
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: S14 (suites)
 branche: fix/ecrans-kit-quatre-ecrans
