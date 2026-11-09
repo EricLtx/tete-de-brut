@@ -30,7 +30,7 @@ Mode Plan. Construis l'écran **Fiche de vérification** sur la route `/fiche/:i
 
 **Export** : bouton « Exporter la fiche », toujours actif, avec l'aide « Rien n'est envoyé : l'export ouvre une page à relire. » `GET /v1/fiches/{id}/export` : en 200 (`text/html`), ouvrir la page dans un nouvel onglet par une adresse `blob:` ; en 409, afficher `detail` tel quel sous le bouton (codes `decision_manquante`, `version_non_tranchee`, `constat_manquant`). Ne désactive jamais le bouton : c'est le service qui refuse.
 
-**États** : fiche en 404 → `detail` et un lien « Revenir au radar » ; erreur d'un geste → `detail` sous la zone du geste, la fiche affichée reste la dernière reçue.
+**États** : fiche en 404 → `detail` et un lien « Revenir au radar » vers `/radar` ; erreur d'un geste → `detail` sous la zone du geste, la fiche affichée reste la dernière reçue.
 
 **Données d'essai** : `exemples/fiche-avant-decision.json` (constat vide, aucune décision, deux versions à trancher) au chargement ; `exemples/fiche-apres-decision.json` (deux versions confirmées, constat écrit, décision « À vérifier ») comme réponse d'essai des gestes ; `exemples/erreur-409-decision-manquante.json` comme réponse d'essai de l'export avant décision.
 

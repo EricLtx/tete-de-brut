@@ -11,7 +11,7 @@ Ce dossier suffit à construire les écrans sans lire le code du service ; chaqu
 | `exemples/*.json` | Une réponse par route, fictive, en mode `enregistre`, validée par les modèles du service (`02_Service/tests/test_exemples_ecrans.py`) |
 | `README.md` | Ce brief : zones, champs par chemin JSON, gestes et appels, états, textes fixes |
 
-Les exemples sont fictifs : une ville fictive, des comptes `compte_fictif_*`, des phrases inventées sur un budget de crèches. Ils servent de données d'essai tant qu'une route répond 501 `non_implemente`, et seulement dans ce cas.
+Les exemples sont fictifs : une ville fictive, des comptes `compte_fictif_*`, des phrases inventées sur un budget de crèches. Ils servent de données d'essai tant qu'une route répond 501 `non_implemente`, et seulement dans ce cas ; pour les routes de recherche, de suppression et de pertinence, servies en 200 ou 201, ils fixent la forme à afficher et ne remplacent jamais une réponse (409, 422, 503 compris).
 
 ## 1. Règles communes aux quatre écrans
 
@@ -48,8 +48,8 @@ Appels : `POST /v1/recherches/preparer` (exemples `exemples/recherche-preparee.j
 |---|---|---|---|
 | Saisie | — | « Recherche » ; « Ta question ou le lien d'une vidéo » ; « Préparer la recherche » (inactif tant que la zone est vide) | `POST /v1/recherches/preparer` ; rien n'est dépensé ni écrit |
 | En-tête de la préparation | `mode`, `enregistre_le`, `question`, `type`, `reformulation` | « Question reformulée par un modèle de langue » si `reformulation` vaut `modele` ; « Question traduite par règles » si `deterministe` ; rien pour un lien | — |
-| Filtres affichés | `filtres.phrases[]`, `filtres.noyaux[]` | « Ta question devient {nombre de filtres.phrases} filtres » ; chaque entrée entre « » ; « mots, dans n'importe quel ordre » pour celles qui sont aussi dans `filtres.noyaux[]`, « phrase exacte » pour les autres | — |
-| Où, fenêtre, plateformes, comptes | `filtres.dans`, `filtres.fenetre.debut`, `filtres.fenetre.fin`, `filtres.plateformes[]`, `filtres.comptes[]`, `filtres.comptes_exclus[]`, `filtres.identifiant_plateforme` | « Où : {dans} » ; « Fenêtre : du {debut} au {fin} » ; « Plateformes : {liste} » (« les trois » si vide) ; « Comptes exclus » ; pour un lien : la plateforme et l'identifiant, sans fenêtre | — |
+| Filtres affichés | `filtres.phrases[]`, `filtres.noyaux[]` | « Ta question devient {n} filtres » (n = nombre de `filtres.phrases` ; « 1 filtre » quand n vaut 1) ; chaque entrée entre « » ; « mots, dans n'importe quel ordre » pour celles qui sont aussi dans `filtres.noyaux[]`, « phrase exacte » pour les autres | — |
+| Où, fenêtre, plateformes, comptes | `filtres.dans`, `filtres.fenetre.debut`, `filtres.fenetre.fin`, `filtres.plateformes[]`, `filtres.comptes[]`, `filtres.comptes_exclus[]`, `filtres.identifiant_plateforme` | « Où : {dans} » ; « Fenêtre : du {debut} au {fin} » ; « Plateformes : {liste} » (« les trois » si vide) ; « Comptes ciblés » (s'il y en a) ; « Comptes exclus » (s'il y en a) ; pour un lien : la plateforme et l'identifiant, sans fenêtre | — |
 | Requête | `requete_en_clair` | « Requête envoyée à Oriane » | — |
 | Coût | `cout_estime.credits_estimes`, `cout_estime.methode` | « Coût estimé : {credits_estimes} crédits » ; `methode` tel quel | — |
 | Refus (RG-02 et autres) | `refus.code`, `refus.detail` | `detail` tel quel, en évidence ; « Lancer la recherche » inactif | — |
@@ -57,7 +57,7 @@ Appels : `POST /v1/recherches/preparer` (exemples `exemples/recherche-preparee.j
 | Résultat, type `phrase` | `recit.phrase_surveillee`, `recit.requete_en_clair`, `recit.mesures[]` (mêmes champs que le § 4), `recit.plus_ancienne_version`, `recit.non_cherche[]`, `recit.videos[]` | la carte du récit comme sur le Radar ; « Voir dans le radar » | lien vers `/radar` ; le récit y est déjà ajouté |
 | Variantes (facultatif) | `recit.variantes[]` | « Variantes cherchées » | — |
 | Résultat, type `lien` | `video.compte`, `video.plateforme`, `video.publie_le`, `video.vues_selon_oriane`, `video.legende`, `video.transcription.texte`, `video.lien` | le panneau vidéo du § 4 | — |
-| Gestes sur le récit | `recit.identifiant` | « Juger la pertinence des vidéos » ; « Supprimer le récit » | mêmes gestes et mêmes textes que dans le § 4 |
+| Gestes sur le récit | `recit.identifiant` | « Juger la pertinence des vidéos » ; « Supprimer le récit » | mêmes gestes, textes et exemples (`exemples/suppression-recit.json`, `exemples/pertinence-recit.json`) que dans le § 4 ; après la suppression, l'écran efface le récit et rend la saisie vide sans recharger le radar (il est sur `/radar`) ; après la pertinence, il relit les vidéos par `GET /v1/videos/{id}` |
 
 `recit` est rendu pour le type `phrase` et `video` pour le type `lien` : l'autre vaut `null`. `recit.variantes` est facultatif (absent pour une phrase du cas enregistré) ; quand il existe, les vidéos du récit sont l'union des vidéos trouvées par chaque variante, comptées une fois.
 
@@ -109,7 +109,7 @@ Appels : `GET /v1/comparaisons/{id}` (exemple `exemples/comparaison.json`), puis
 
 Repérage des mots : les positions comptent les mots dès 0 après la normalisation `mots.v1` (règle donnée dans `prompts/02-versions.md`). L'écran découpe chaque texte selon cette règle, marque les mots aux positions données et vérifie qu'ils sont bien ceux de `mots_source` ou `mots_reprise` ; s'ils diffèrent, il ne marque rien et affiche « Repérage au mot indisponible pour ce texte : voir la liste des écarts. » Sous chaque colonne, le texte tel que lu chez Oriane reste lisible en entier.
 
-États : les trois listes vides → « Aucun écart au mot relevé entre les deux versions. » ; vidéo introuvable (404) → `detail` tel quel dans sa colonne ; comparaison introuvable → `detail` tel quel et lien « Revenir au radar ».
+États : les trois listes vides → « Aucun écart au mot relevé entre les deux versions. » ; vidéo introuvable (404) → `detail` tel quel dans sa colonne ; comparaison introuvable → `detail` tel quel et lien « Revenir au radar » vers `/radar`.
 
 ## 6. Écran 4 — Fiche de vérification (route `/fiche/:id`)
 
