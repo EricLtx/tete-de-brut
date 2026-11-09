@@ -1,7 +1,7 @@
 ---
 mandat: F030
 titre: Base SQLite en WAL, lectures sans verrou d'écriture, connexion et schéma préparés une fois
-statut: go
+statut: fusionne
 plan: 01_Docs/08_Plans/plan-service-demonstration.md
 fiche: préalable de S21 (revue d'architecture du 09/11)
 branche: fix/service-base-wal
